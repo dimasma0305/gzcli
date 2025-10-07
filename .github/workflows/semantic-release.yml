@@ -1,4 +1,4 @@
-name: Semantic Release
+name: Release
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  release:
+  semantic-release-and-build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -118,11 +118,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
 
-      - name: Output new version
-        if: success()
+      - name: Check if version was released
+        id: check_version
         run: |
           if [ -f .version ]; then
-            echo "New version released: $(cat .version)"
+            VERSION=$(cat .version)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "released=true" >> $GITHUB_OUTPUT
+            echo "New version released: $VERSION"
           else
+            echo "released=false" >> $GITHUB_OUTPUT
             echo "No new version released"
           fi
+
+      - name: Run GoReleaser
+        if: steps.check_version.outputs.released == 'true'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        if: steps.check_version.outputs.released == 'true'
+        run: |
+          echo "🎉 Successfully released version v${{ steps.check_version.outputs.version }}"
+          echo "📦 Binaries built and published to GitHub Releases"

@@ -50,19 +50,12 @@ The commit type determines the version bump:
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  GitHub Actions (Semantic Release)                               │
+│  GitHub Actions (Release Workflow)                               │
+│  ├─ Runs tests                                                  │
 │  ├─ Analyzes commits since last release                         │
 │  ├─ Determines version bump (major/minor/patch)                 │
 │  ├─ Creates git tag (e.g., v1.2.3)                              │
 │  ├─ Generates CHANGELOG.md                                      │
-│  └─ Pushes tag to repository                                    │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  GitHub Actions (Release)                                        │
-│  ├─ Triggered by new tag                                        │
-│  ├─ Runs tests                                                  │
 │  ├─ Builds binaries for all platforms with GoReleaser          │
 │  │   - Linux (amd64, arm64, arm)                               │
 │  │   - macOS (Universal Binary)                                │
@@ -246,8 +239,7 @@ make build VERSION=v1.2.3
 
 ## Configuration Files
 
-- **`.github/workflows/semantic-release.yml`**: Semantic release automation
-- **`.github/workflows/release.yml`**: GoReleaser build and publish
+- **`.github/workflows/semantic-release.yml`**: Combined semantic release automation and GoReleaser build/publish
 - **`.goreleaser.yml`**: GoReleaser configuration
 - **`CONTRIBUTING.md`**: Commit message guidelines for contributors
 - **`cmd/root.go`**: Version variables definition

@@ -47,6 +47,7 @@ jobs:
           cache: true
 
       - name: Run tests
+        shell: bash
         run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
@@ -93,4 +94,5 @@ jobs:
           cache: true
 
       - name: Run go vet
+        shell: bash
         run: go vet ./...
