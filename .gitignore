@@ -20,7 +20,7 @@ coverage.html
 go.work
 
 # IDE specific files
-.vscode/
+# .vscode/
 .idea/
 *.swp
 *.swo

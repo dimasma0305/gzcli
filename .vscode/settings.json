@@ -1,0 +1,58 @@
+{
+  "go.lintTool": "golangci-lint",
+  "go.lintOnSave": "workspace",
+  "go.formatTool": "goimports",
+  "go.useLanguageServer": true,
+  "go.buildOnSave": "off",
+  "go.vetOnSave": "off",
+  "go.coverOnSave": false,
+  "go.testOnSave": false,
+  "go.testFlags": ["-v", "-race"],
+  "go.buildFlags": [],
+  "go.buildTags": "",
+  "go.installDependenciesWhenBuilding": true,
+  "go.toolsManagement.autoUpdate": true,
+  "[go]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4
+  },
+  "[go.mod]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "gopls": {
+    "ui.semanticTokens": true,
+    "ui.codelenses": {
+      "generate": true,
+      "test": true,
+      "tidy": true,
+      "upgrade_dependency": true
+    },
+    "formatting.gofumpt": false,
+    "formatting.local": "github.com/dimasma0305/gzcli"
+  },
+  "files.exclude": {
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/.test/**": true
+  },
+  "editor.rulers": [80, 120],
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "editor.minimap.enabled": false,
+  "breadcrumbs.enabled": true,
+  "testing.automaticallyOpenPeekView": "failureInVisibleDocument",
+  "go.testEnvFile": "${workspaceFolder}/.env.test",
+  "go.testTimeout": "60s"
+}

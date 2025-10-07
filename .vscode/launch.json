@@ -1,0 +1,63 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: gzcli init",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}",
+      "args": ["init"],
+      "cwd": "${workspaceFolder}/.test"
+    },
+    {
+      "name": "Debug: gzcli sync",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}",
+      "args": ["sync"],
+      "cwd": "${workspaceFolder}/.test"
+    },
+    {
+      "name": "Debug: gzcli watch start",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}",
+      "args": ["watch", "start", "--foreground"],
+      "cwd": "${workspaceFolder}/.test"
+    },
+    {
+      "name": "Debug: Current Test",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}",
+      "args": ["-test.v", "-test.run", "^${selectedText}$"]
+    },
+    {
+      "name": "Debug: All Tests",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}",
+      "args": ["-test.v"]
+    },
+    {
+      "name": "Debug: Current Package Tests",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${fileDirname}",
+      "args": ["-test.v"]
+    },
+    {
+      "name": "Attach to Process",
+      "type": "go",
+      "request": "attach",
+      "mode": "local",
+      "processId": 0
+    }
+  ]
+}
