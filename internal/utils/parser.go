@@ -67,7 +67,7 @@ func parseFormURLEncoded(f *proxy.Flow) (interface{}, error) {
 }
 
 func parseMultipartFormData(f *proxy.Flow) (interface{}, error) {
-	boundary := strings.Replace(f.Request.Header.Get("Content-Type"), "multipart/form-data; boundary=", "", -1)
+	boundary := strings.ReplaceAll(f.Request.Header.Get("Content-Type"), "multipart/form-data; boundary=", "")
 	reader := multipart.NewReader(strings.NewReader(string(f.Request.Body)), boundary)
 	form, err := reader.ReadForm(100000000000000)
 	if err != nil {

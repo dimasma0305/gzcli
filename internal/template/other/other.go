@@ -45,7 +45,7 @@ func randomize(n int) string {
 func getUserInput(str string) string {
 	var input string
 	fmt.Print(str)
-	fmt.Scanln(&input)
+	_, _ = fmt.Scanln(&input)
 	return input
 }
 

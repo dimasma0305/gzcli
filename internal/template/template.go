@@ -40,7 +40,9 @@ func (e embeddedFS) Stat(name string) (fs.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	return f.Stat()
 }
 
@@ -116,7 +118,9 @@ func processFile(fsys fileSystem, file string, info interface{}, destination str
 			errs = append(errs, fmt.Errorf("failed to open raw file %q: %w", file, openErr))
 			return errs
 		}
-		defer rawFile.Close()
+		defer func() {
+			_ = rawFile.Close()
+		}()
 		content = rawFile
 	}
 
@@ -160,7 +164,9 @@ func writeContent(destination string, content io.Reader) error {
 		}
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer destFile.Close()
+	defer func() {
+		_ = destFile.Close()
+	}()
 
 	if _, err := io.Copy(destFile, content); err != nil {
 		return fmt.Errorf("write error: %w", err)

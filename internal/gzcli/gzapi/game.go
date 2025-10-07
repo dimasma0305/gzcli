@@ -102,10 +102,10 @@ func (g *Game) Update(game *Game) error {
 	gameCopy := *game
 
 	// Convert all time fields to UTC to avoid PostgreSQL timezone issues
-	gameCopy.Start.Time = gameCopy.Start.Time.UTC()
-	gameCopy.End.Time = gameCopy.End.Time.UTC()
-	if !gameCopy.WriteupDeadline.Time.IsZero() {
-		gameCopy.WriteupDeadline.Time = gameCopy.WriteupDeadline.Time.UTC()
+	gameCopy.Start.Time = gameCopy.Start.UTC()
+	gameCopy.End.Time = gameCopy.End.UTC()
+	if !gameCopy.WriteupDeadline.IsZero() {
+		gameCopy.WriteupDeadline.Time = gameCopy.WriteupDeadline.UTC()
 	}
 
 	return g.CS.put(fmt.Sprintf("/api/edit/games/%d", g.Id), &gameCopy, nil)

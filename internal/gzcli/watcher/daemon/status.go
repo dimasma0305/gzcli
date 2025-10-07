@@ -17,7 +17,8 @@ func ShowStatus(pidFile, logFile string, jsonOutput bool) error {
 	log.Info("🔍 GZCTF Watcher Status")
 	log.Info("==========================================")
 
-	if isDaemon && daemonState == "running" {
+	switch {
+	case isDaemon && daemonState == "running":
 		log.Info("🟢 Status: RUNNING (Daemon Mode)")
 		if pid, ok := daemonStatus["pid"]; ok {
 			log.Info("📄 Process ID: %v", pid)
@@ -40,19 +41,19 @@ func ShowStatus(pidFile, logFile string, jsonOutput bool) error {
 		// Show recent log entries if available
 		ShowRecentLogs(logFile)
 
-	} else if daemonState == "dead" {
+	case daemonState == "dead":
 		log.Info("🟡 Status: STOPPED (Stale PID file found)")
 		log.Info("💬 A previous daemon process was running but is no longer active")
 		log.Info("📄 Stale PID File: %s", pidFile)
 		log.Info("🔧 Suggestion: Run 'gzcli --watch' to start a new daemon")
 
-	} else if daemonState == "stopped" {
+	case daemonState == "stopped":
 		log.Info("⚫ Status: NOT RUNNING")
 		log.Info("💬 No daemon is currently running")
 		log.Info("📄 PID File: %s (not found)", pidFile)
 		log.Info("🔧 Suggestion: Run 'gzcli --watch' to start the daemon")
 
-	} else {
+	default:
 		log.Info("🔴 Status: ERROR")
 		if msg, ok := daemonStatus["message"]; ok {
 			log.Info("💬 %s", msg)

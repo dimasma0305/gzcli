@@ -348,11 +348,12 @@ func (c *Client) PrintMetrics() error {
 
 						lastDuration := ""
 						if ld, ok := scriptMetrics["LastDuration"].(float64); ok {
-							if ld >= 1000000000 { // >= 1 second
+							switch {
+							case ld >= 1000000000: // >= 1 second
 								lastDuration = fmt.Sprintf("%.1fs", ld/1000000000)
-							} else if ld >= 1000000 { // >= 1 millisecond
+							case ld >= 1000000: // >= 1 millisecond
 								lastDuration = fmt.Sprintf("%.0fms", ld/1000000)
-							} else if ld > 0 {
+							case ld > 0:
 								lastDuration = fmt.Sprintf("%.0fμs", ld/1000)
 							}
 						}
@@ -367,11 +368,12 @@ func (c *Client) PrintMetrics() error {
 						if isInterval {
 							if iv, ok := scriptMetrics["interval"].(float64); ok && iv > 0 {
 								intervalDuration := time.Duration(iv)
-								if intervalDuration >= time.Hour {
+								switch {
+								case intervalDuration >= time.Hour:
 									interval = fmt.Sprintf(" [interval: %.0fh]", intervalDuration.Hours())
-								} else if intervalDuration >= time.Minute {
+								case intervalDuration >= time.Minute:
 									interval = fmt.Sprintf(" [interval: %.0fm]", intervalDuration.Minutes())
-								} else {
+								default:
 									interval = fmt.Sprintf(" [interval: %.0fs]", intervalDuration.Seconds())
 								}
 							}

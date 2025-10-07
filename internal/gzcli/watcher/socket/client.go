@@ -38,11 +38,15 @@ func (c *Client) SendCommand(action string, data map[string]interface{}) (*types
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to watcher socket %s: %w", c.socketPath, err)
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	// Set read/write deadline
 	deadline := time.Now().Add(c.timeout)
-	conn.SetDeadline(deadline)
+	if err := conn.SetDeadline(deadline); err != nil {
+		return nil, fmt.Errorf("failed to set deadline: %w", err)
+	}
 
 	// Create and send command
 	cmd := types.WatcherCommand{

@@ -32,7 +32,7 @@ func (cs *GZAPI) CreateTeam(teamForm *TeamForm) error {
 
 func (cs *GZAPI) GetTeams() ([]*Team, error) {
 	var team []*Team
-	if err := cs.get(fmt.Sprintf("/api/team/"), &team); err != nil {
+	if err := cs.get("/api/team/", &team); err != nil {
 		return nil, err
 	}
 	return team, nil

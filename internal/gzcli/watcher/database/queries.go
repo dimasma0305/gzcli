@@ -87,7 +87,9 @@ func (d *DB) GetScriptExecutions(challengeName string, limit int) ([]types.Scrip
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	var executions []types.ScriptExecution
 	for rows.Next() {

@@ -232,7 +232,7 @@ func MockServerWithAuth(t *testing.T, validToken string, handler http.HandlerFun
 
 		if auth != "Bearer "+validToken && (cookie == nil || cookie.Value != validToken) {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"error": "unauthorized"}`))
+			_, _ = w.Write([]byte(`{"error": "unauthorized"}`))
 			return
 		}
 		handler(w, r)
@@ -328,7 +328,7 @@ func CreateChaosServer(t *testing.T, failureRate float64, handler http.HandlerFu
 				http.StatusGatewayTimeout,
 			}
 			w.WriteHeader(failures[rand.Intn(len(failures))])
-			w.Write([]byte(`{"error": "random failure"}`))
+			_, _ = w.Write([]byte(`{"error": "random failure"}`))
 			return
 		}
 		handler(w, r)
@@ -384,10 +384,10 @@ func CaptureStderr(t *testing.T, fn func()) string {
 
 	fn()
 
-	w.Close()
+	_ = w.Close()
 	os.Stderr = old
 
 	var buf strings.Builder
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	return buf.String()
 }

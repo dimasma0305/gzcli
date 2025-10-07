@@ -64,7 +64,7 @@ func (s *Server) Init() error {
 
 	// Set socket permissions
 	if err := os.Chmod(socketPath, 0666); err != nil {
-		listener.Close()
+		_ = listener.Close()
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
@@ -135,10 +135,12 @@ func (s *Server) Run(ctx context.Context) {
 
 // handleConnection handles a single socket connection
 func (s *Server) handleConnection(conn net.Conn) {
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	// Set connection timeout
-	conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(30 * time.Second))
 
 	decoder := json.NewDecoder(conn)
 	encoder := json.NewEncoder(conn)
@@ -149,7 +151,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 			Success: false,
 			Error:   fmt.Sprintf("Failed to decode command: %v", err),
 		}
-		encoder.Encode(response)
+		_ = encoder.Encode(response)
 		return
 	}
 

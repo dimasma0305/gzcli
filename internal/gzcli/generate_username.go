@@ -25,8 +25,8 @@ func transformRandomly(s string) string {
 	transformed.Grow(len(s)) // Pre-allocate capacity
 
 	for _, r := range s {
-		switch {
-		case r == ' ':
+		switch r {
+		case ' ':
 			transformed.WriteByte('_')
 		default:
 			// Leetspeak replacement with 50% probability
@@ -79,4 +79,3 @@ func generateUsername(realName string, maxLength int, existingUsernames map[stri
 		}
 	}
 }
-
