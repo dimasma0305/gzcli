@@ -1,0 +1,59 @@
+{
+  "name": "gzcli Development",
+  "image": "mcr.microsoft.com/devcontainers/go:1.24",
+
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "eamodio.gitlens",
+        "streetsidesoftware.code-spell-checker",
+        "editorconfig.editorconfig",
+        "davidanson.vscode-markdownlint",
+        "redhat.vscode-yaml"
+      ],
+      "settings": {
+        "go.toolsManagement.autoUpdate": true,
+        "go.useLanguageServer": true,
+        "go.lintTool": "golangci-lint",
+        "go.lintOnSave": "workspace",
+        "go.formatTool": "goimports",
+        "[go]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        }
+      }
+    }
+  },
+
+  "postCreateCommand": "bash scripts/setup.sh",
+
+  "remoteUser": "vscode",
+
+  "forwardPorts": [8080, 8081],
+
+  "portsAttributes": {
+    "8080": {
+      "label": "GZCTF Web",
+      "onAutoForward": "notify"
+    },
+    "8081": {
+      "label": "GZCTF API",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "mounts": [
+    "source=${localWorkspaceFolder}/.test,target=${containerWorkspaceFolder}/.test,type=bind,consistency=cached"
+  ],
+
+  "containerEnv": {
+    "GZCLI_DEBUG": "1"
+  }
+}

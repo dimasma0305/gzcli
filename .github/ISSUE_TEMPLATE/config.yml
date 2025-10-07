@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/dimasma0305/gzcli/discussions
+    about: Please use GitHub Discussions for questions and general discussions
+  - name: Security Issue
+    url: https://github.com/dimasma0305/gzcli/security/advisories/new
+    about: Please report security vulnerabilities privately

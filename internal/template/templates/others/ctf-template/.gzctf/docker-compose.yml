@@ -1,0 +1,145 @@
+version: "3.0"
+services:
+  gzctf:
+    image: gztime/gzctf:latest
+    restart: always
+    environment:
+      - "LC_ALL=en_US.UTF-8"
+    ports:
+      - "8080:8080"
+    privileged: true
+    userns_mode: host
+    volumes:
+      - "gzctf-files:/app/files"
+      - "./appsettings.json:/app/appsettings.json:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    networks:
+      traefik:
+      app_net:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.gzctf.loadbalancer.server.port=8080"
+      # HTTPS router
+      - "traefik.http.routers.https.rule=Host(`{{.PublicEntry}}`)"
+      - "traefik.http.routers.https.entrypoints=websecure"
+      - "traefik.http.routers.https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.https.service=gzctf"
+      # HTTP router
+      - "traefik.http.routers.http.rule=Host(`{{.PublicEntry}}`)"
+      - "traefik.http.routers.http.entrypoints=web"
+      - "traefik.http.routers.http.service=gzctf"
+
+  gzctf-bot:
+    build: bot
+    restart: always
+    environment:
+      GZCTF_DISCORD_WEBHOOK: ""
+      POSTGRES_PASSWORD: postgres
+    networks:
+      app_net:
+
+  db:
+    image: postgres:alpine
+    restart: always
+    environment:
+      - "POSTGRES_PASSWORD=postgres"
+    volumes:
+      - "postgres-data:/var/lib/postgresql/data"
+    networks:
+      app_net:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:alpine
+    restart: always
+    networks:
+      app_net:
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  traefik:
+    image: traefik:v3.5
+    restart: always
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik"
+      - "--log.level=DEBUG"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.email=dimasmaulana0305@gmail.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      traefik:
+      app_net:
+        ipv4_address: 172.28.0.2
+    depends_on:
+      - gzctf
+
+  portainer:
+    image: portainer/portainer-ce:alpine
+    command: -H unix:///var/run/docker.sock
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      traefik:
+    labels:
+      # Frontend
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`portainer.{{.PublicEntry}}`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.services.frontend.loadbalancer.server.port=9000"
+      - "traefik.http.routers.frontend.service=frontend"
+      - "traefik.http.routers.frontend.tls.certresolver=leresolver"
+      
+      # Edge
+      - "traefik.http.routers.edge.rule=Host(`edge.{{.PublicEntry}}`)"
+      - "traefik.http.routers.edge.entrypoints=websecure"
+      - "traefik.http.services.edge.loadbalancer.server.port=8000"
+      - "traefik.http.routers.edge.service=edge"
+      - "traefik.http.routers.edge.tls.certresolver=leresolver"
+
+      # tls
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.edge.tls.certresolver=letsencrypt"
+
+volumes:
+  gzctf-files:
+  postgres-data:
+  portainer_data:
+  
+networks:
+  traefik:
+    name: traefik
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+  app_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
