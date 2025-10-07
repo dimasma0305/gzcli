@@ -342,7 +342,7 @@ Use conventional commit format:
 
 ## Commit Message Guidelines
 
-We follow [Conventional Commits](https://www.conventionalcommits.org/) specification.
+We follow [Conventional Commits](https://www.conventionalcommits.org/) specification for all commits. This is **required** because we use automated semantic versioning.
 
 ### Format
 
@@ -356,18 +356,48 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) specifica
 
 ### Types
 
-- **feat**: New feature
-- **fix**: Bug fix
-- **docs**: Documentation changes
-- **style**: Code style changes (formatting, etc.)
-- **refactor**: Code refactoring
-- **perf**: Performance improvements
-- **test**: Adding or updating tests
-- **chore**: Maintenance tasks
-- **ci**: CI/CD changes
+- **feat**: New feature (triggers **minor** version bump: 1.x.0)
+- **fix**: Bug fix (triggers **patch** version bump: 1.0.x)
+- **perf**: Performance improvements (triggers **patch** version bump)
+- **refactor**: Code refactoring (triggers **patch** version bump)
+- **docs**: Documentation changes (no version bump)
+- **style**: Code style changes (no version bump)
+- **test**: Adding or updating tests (no version bump)
+- **chore**: Maintenance tasks (no version bump)
+- **ci**: CI/CD changes (no version bump)
+- **build**: Build system changes (no version bump)
+
+### Breaking Changes
+
+To trigger a **major** version bump (x.0.0), use one of these methods:
+
+1. Add `!` after the type: `feat!: breaking change description`
+2. Add `BREAKING CHANGE:` in the commit footer:
+   ```
+   feat(api): change authentication method
+
+   BREAKING CHANGE: The old authentication method is no longer supported.
+   Users must update their API keys.
+   ```
+
+### Automated Semantic Versioning
+
+Our project uses **automated semantic versioning** via GitHub Actions:
+
+1. When you push to the `main` branch, semantic-release analyzes commit messages
+2. It automatically determines the next version based on commit types:
+   - **Major** (x.0.0): Breaking changes (`feat!:`, `BREAKING CHANGE:`)
+   - **Minor** (1.x.0): New features (`feat:`)
+   - **Patch** (1.0.x): Bug fixes and improvements (`fix:`, `perf:`, `refactor:`)
+3. A new git tag is created (e.g., `v1.2.3`)
+4. A GitHub release is published with automatically generated changelog
+5. Binaries are built with version metadata embedded
+
+**Important**: Only commits to `main` trigger releases. Feature branches don't create releases.
 
 ### Examples
 
+**Feature (minor version bump)**
 ```
 feat(watch): add support for custom ignore patterns
 
@@ -377,6 +407,7 @@ This allows users to exclude temporary files and build artifacts.
 Closes #123
 ```
 
+**Bug fix (patch version bump)**
 ```
 fix(sync): handle empty challenge directories
 
@@ -385,6 +416,33 @@ challenge directories. Now it skips them with a warning.
 
 Fixes #456
 ```
+
+**Breaking change (major version bump)**
+```
+feat(api)!: change authentication to use OAuth2
+
+BREAKING CHANGE: Basic authentication is no longer supported.
+All users must migrate to OAuth2 authentication. See migration
+guide in docs/oauth2-migration.md.
+
+Refs #789
+```
+
+**No version bump**
+```
+docs: update installation instructions
+
+Add clarification about Go version requirements.
+```
+
+### Best Practices
+
+1. **Be specific**: Use clear, descriptive commit messages
+2. **Use scopes**: Add scope for better categorization (e.g., `feat(watch):`)
+3. **One change per commit**: Each commit should represent one logical change
+4. **Reference issues**: Link to issues using `Fixes #123`, `Closes #456`, `Refs #789`
+5. **Keep subject short**: Max 72 characters for the subject line
+6. **Explain why**: Use the body to explain why the change was needed
 
 ## Code of Conduct
 

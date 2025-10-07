@@ -13,10 +13,28 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// Version information variables.
+// These can be overridden at build time using ldflags:
+//
+//	go build -ldflags "-X github.com/dimasma0305/gzcli/cmd.Version=x.y.z \
+//	  -X github.com/dimasma0305/gzcli/cmd.GitCommit=abc123 \
+//	  -X github.com/dimasma0305/gzcli/cmd.BuildTime=2025-10-07_12:34:56"
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildTime = "unknown"
+)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gzcli",
 	Short: "High-performance CLI for GZ::CTF",
+	Version: func() string {
+		if GitCommit != "unknown" && BuildTime != "unknown" {
+			return Version + "\nCommit: " + GitCommit + "\nBuilt: " + BuildTime
+		}
+		return Version
+	}(),
 	Long: `gzcli - Modern command-line interface for GZ::CTF operations
 
 A powerful tool for managing CTF challenges, teams, and automated deployments.

@@ -28,9 +28,9 @@ builds:
         goarch: arm64
     ldflags:
       - -s -w
-      - -X main.Version={{.Version}}
-      - -X main.BuildTime={{.Date}}
-      - -X main.GitCommit={{.Commit}}
+      - -X github.com/dimasma0305/gzcli/cmd.Version={{.Version}}
+      - -X github.com/dimasma0305/gzcli/cmd.BuildTime={{.Date}}
+      - -X github.com/dimasma0305/gzcli/cmd.GitCommit={{.Commit}}
     mod_timestamp: '{{ .CommitTimestamp }}'
 
 universal_binaries:
@@ -99,4 +99,3 @@ release:
   prerelease: auto
   mode: replace
   name_template: "{{.ProjectName}} v{{.Version}}"
-
