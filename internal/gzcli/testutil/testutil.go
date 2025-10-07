@@ -19,11 +19,17 @@ import (
 
 // NetworkFailureServer creates a test server that simulates network failures
 func NetworkFailureServer(_ *testing.T, failureType string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch failureType {
 		case "timeout":
-			// Simulate timeout by hanging forever
-			time.Sleep(time.Hour)
+			// Simulate timeout by sleeping longer than typical client timeouts
+			// Sleep for 10 seconds which is much longer than test client timeout (100ms)
+			// but won't hang test suite forever. The client will timeout before this completes.
+			time.Sleep(10 * time.Second)
+			// By the time we get here, the client has already timed out
+			w.WriteHeader(http.StatusRequestTimeout)
+			_, _ = w.Write([]byte(`{"error": "timeout"}`))
+			return
 		case "connection_reset":
 			// Close connection immediately
 			hj, ok := w.(http.Hijacker)
@@ -34,12 +40,17 @@ func NetworkFailureServer(_ *testing.T, failureType string) *httptest.Server {
 		case "slow_response":
 			// Send response very slowly
 			w.WriteHeader(http.StatusOK)
-			for i := 0; i < 100; i++ {
-				_, _ = w.Write([]byte("a"))
-				if f, ok := w.(http.Flusher); ok {
-					f.Flush()
+			for i := 0; i < 10; i++ {
+				select {
+				case <-r.Context().Done():
+					return
+				default:
+					_, _ = w.Write([]byte("a"))
+					if f, ok := w.(http.Flusher); ok {
+						f.Flush()
+					}
+					time.Sleep(50 * time.Millisecond)
 				}
-				time.Sleep(100 * time.Millisecond)
 			}
 		case "malformed_json":
 			w.WriteHeader(http.StatusOK)

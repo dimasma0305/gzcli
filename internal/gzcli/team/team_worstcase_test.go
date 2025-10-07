@@ -47,18 +47,21 @@ func TestNormalizeTeamName_ExtremeCollisions(t *testing.T) {
 		t.Skip("Skipping extreme collision test in short mode")
 	}
 
-	// Create 1000 existing teams with same base name
+	// Create 1000 existing teams: Team, Team1, Team2, ..., Team999
 	existingTeams := make(map[string]struct{})
-	for i := 0; i < 1000; i++ {
+	existingTeams["Team"] = struct{}{}
+	for i := 1; i < 1000; i++ {
 		existingTeams[fmt.Sprintf("Team%d", i)] = struct{}{}
 	}
 
 	// Try to create another "Team" - should get Team1000
 	result := NormalizeTeamName("Team", 20, existingTeams)
 
-	// Should generate a unique name
-	if _, exists := existingTeams[result]; exists {
-		t.Errorf("Generated duplicate name: %s", result)
+	// NormalizeTeamName adds the result to existingTeams, so we need to check before it was added
+	// The result should be "Team1000" since Team, Team1...Team999 already exist
+	expectedResult := "Team1000"
+	if result != expectedResult {
+		t.Errorf("Expected %s, got %s", expectedResult, result)
 	}
 
 	if len(result) > 20 {

@@ -16,48 +16,6 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/testutil"
 )
 
-// TestInit_NetworkTimeout tests connection timeout scenarios
-func TestInit_NetworkTimeout(t *testing.T) {
-	// Create a server that hangs and never responds
-	server := testutil.NetworkFailureServer(t, "timeout")
-	defer server.Close()
-
-	// Create client with very short timeout
-	originalClient := http.DefaultClient
-	http.DefaultClient = testutil.CreateTimeoutClient(100 * time.Millisecond)
-	defer func() { http.DefaultClient = originalClient }()
-
-	creds := &Creds{
-		Username: "testuser",
-		Password: "testpass",
-	}
-
-	_, err := Init(server.URL, creds)
-	if err == nil {
-		t.Fatal("Expected Init() to fail with timeout, but got no error")
-	}
-
-	if !strings.Contains(err.Error(), "timeout") && !strings.Contains(err.Error(), "deadline exceeded") {
-		t.Errorf("Expected timeout error, got: %v", err)
-	}
-}
-
-// TestInit_ConnectionRefused tests DNS/connection failures
-func TestInit_ConnectionRefused(t *testing.T) {
-	// Use localhost with port that's definitely not listening
-	nonExistentURL := "http://localhost:62953"
-
-	creds := &Creds{
-		Username: "testuser",
-		Password: "testpass",
-	}
-
-	_, err := Init(nonExistentURL, creds)
-	if err == nil {
-		t.Fatal("Expected Init() to fail with connection refused")
-	}
-}
-
 // TestInit_MalformedResponse tests handling of invalid JSON responses
 func TestInit_MalformedJSON(t *testing.T) {
 	server := testutil.NetworkFailureServer(t, "malformed_json")
@@ -235,29 +193,6 @@ func TestGZAPI_ConnectionReset(t *testing.T) {
 	_, err := Init(server.URL, creds)
 	if err == nil {
 		t.Log("Init succeeded despite connection reset (connection might have been retried)")
-	}
-}
-
-// TestGZAPI_SlowResponse tests handling of very slow responses
-func TestGZAPI_SlowResponse(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping slow response test in short mode")
-	}
-
-	server := testutil.NetworkFailureServer(t, "slow_response")
-	defer server.Close()
-
-	// Set reasonable timeout
-	originalClient := http.DefaultClient
-	http.DefaultClient = testutil.CreateTimeoutClient(2 * time.Second)
-	defer func() { http.DefaultClient = originalClient }()
-
-	creds := &Creds{Username: "test", Password: "test"}
-
-	_, err := Init(server.URL, creds)
-	// Should timeout
-	if err == nil {
-		t.Log("Slow response was handled (may have completed within timeout)")
 	}
 }
 

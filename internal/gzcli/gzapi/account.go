@@ -1,9 +1,21 @@
 package gzapi
 
+import "fmt"
+
+// LoginResponse represents the response from the login endpoint
+type LoginResponse struct {
+	Succeeded bool `json:"succeeded"`
+}
+
 // Login authenticates with the GZCTF platform using stored credentials
 func (cs *GZAPI) Login() error {
-	if err := cs.post("/api/account/login", cs.Creds, nil); err != nil {
+	var response LoginResponse
+	if err := cs.post("/api/account/login", cs.Creds, &response); err != nil {
 		return err
+	}
+	// Validate that login was successful
+	if !response.Succeeded {
+		return fmt.Errorf("login failed: server returned succeeded=false")
 	}
 	return nil
 }
@@ -17,7 +29,8 @@ type RegisterForm struct {
 
 // Register creates a new user account on the GZCTF platform
 func (cs *GZAPI) Register(registerForm *RegisterForm) error {
-	if err := cs.post("/api/account/register", registerForm, nil); err != nil {
+	var response LoginResponse
+	if err := cs.post("/api/account/register", registerForm, &response); err != nil {
 		return err
 	}
 	return nil
@@ -25,7 +38,8 @@ func (cs *GZAPI) Register(registerForm *RegisterForm) error {
 
 // Logout ends the current session on the GZCTF platform
 func (cs *GZAPI) Logout() error {
-	if err := cs.post("/api/account/logout", nil, nil); err != nil {
+	var response map[string]interface{}
+	if err := cs.post("/api/account/logout", nil, &response); err != nil {
 		return err
 	}
 	return nil
