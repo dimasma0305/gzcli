@@ -18,6 +18,7 @@ builds:
       - amd64
       - arm64
       - arm
+      - "386"
     goarm:
       - 6
       - 7
@@ -26,6 +27,10 @@ builds:
         goarch: arm
       - goos: windows
         goarch: arm64
+      - goos: darwin
+        goarch: "386"
+      - goos: darwin
+        goarch: arm
     ldflags:
       - -s -w
       - -X github.com/dimasma0305/gzcli/cmd.Version={{.Version}}
@@ -99,3 +104,19 @@ release:
   prerelease: auto
   mode: replace
   name_template: "{{.ProjectName}} v{{.Version}}"
+
+brews:
+  - repository:
+      owner: dimasma0305
+      name: homebrew-tap
+    directory: Formula
+    homepage: "https://github.com/dimasma0305/gzcli"
+    description: "High-performance command-line interface for GZ::CTF operations"
+    license: "MIT"
+    test: |
+      system "#{bin}/gzcli", "--version"
+    install: |
+      bin.install "gzcli"
+      bash_completion.install "completions/gzcli.bash" => "gzcli"
+      zsh_completion.install "completions/_gzcli" => "_gzcli"
+      fish_completion.install "completions/gzcli.fish"

@@ -24,8 +24,8 @@ gzcli is a standalone CLI tool for managing GZ::CTF challenges, providing featur
 ### Quick Install (Recommended)
 
 Use the install script which will:
-- Install the latest Go version if needed
-- Install gzcli
+- Automatically download the latest pre-built binary for your platform
+- Fallback to building from source if binary not available
 - Detect your shell and setup autocompletion
 
 ```sh
@@ -40,7 +40,22 @@ chmod +x install.sh
 ./install.sh
 ```
 
-### Manual Installation
+### Binary Downloads
+
+Pre-built binaries are available for multiple platforms:
+- **Linux**: amd64, arm64, armv6, armv7, 386
+- **macOS**: Universal Binary (Intel & Apple Silicon)
+- **Windows**: amd64, 386
+
+Download from the [releases page](https://github.com/dimasma0305/gzcli/releases/latest).
+
+### Homebrew (macOS/Linux)
+
+```sh
+brew install dimasma0305/tap/gzcli
+```
+
+### Manual Installation (From Source)
 
 **Prerequisites:**
 - Go 1.23 or later
@@ -51,10 +66,6 @@ If you already have Go installed:
 ```sh
 go install github.com/dimasma0305/gzcli@latest
 ```
-
-### Binary Releases
-
-Download pre-built binaries from the [releases page](https://github.com/dimasma0305/gzcli/releases).
 
 ### Shell Completion
 
