@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/dimasma0305/gzcli/compare/v1.0.0...v1.1.0) (2025-10-07)
+
+### Features
+
+* enhance installation script and .goreleaser configuration ([f3ce9df](https://github.com/dimasma0305/gzcli/commit/f3ce9dfb982be1f6d110ba1d5e260669027af520))
+
 ## 1.0.0 (2025-10-07)
 
 ### Features
