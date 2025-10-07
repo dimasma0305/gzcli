@@ -379,7 +379,7 @@ func TestCustomTime_UnmarshalJSON_Milliseconds(t *testing.T) {
 	}
 
 	expected := time.Unix(1609459200, 0)
-	if !ct.Time.Equal(expected) {
+	if !ct.Equal(expected) {
 		t.Errorf("Expected time %v, got %v", expected, ct.Time)
 	}
 }
@@ -394,7 +394,7 @@ func TestCustomTime_UnmarshalJSON_RFC3339(t *testing.T) {
 	}
 
 	expected, _ := time.Parse(time.RFC3339, "2024-01-01T12:00:00Z")
-	if !ct.Time.Equal(expected) {
+	if !ct.Equal(expected) {
 		t.Errorf("Expected time %v, got %v", expected, ct.Time)
 	}
 }

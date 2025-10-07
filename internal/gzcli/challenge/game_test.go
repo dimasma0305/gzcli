@@ -75,6 +75,7 @@ func TestCreateNewGame(t *testing.T) {
 	gameUpdated := false
 
 	// Mock CreateGame
+	//nolint:unparam // error return kept for interface consistency in test
 	originalCreateGame := func(cfg gzapi.CreateGameForm) (*gzapi.Game, error) {
 		gameCreated = true
 		return &gzapi.Game{
@@ -92,6 +93,7 @@ func TestCreateNewGame(t *testing.T) {
 
 	// Mock setCache
 	cacheData := make(map[string]interface{})
+	//nolint:unparam // error return kept for interface consistency in test
 	setCache := func(key string, value interface{}) error {
 		cacheData[key] = value
 		return nil

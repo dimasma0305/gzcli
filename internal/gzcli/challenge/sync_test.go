@@ -195,6 +195,7 @@ func TestIsConfigEdited(t *testing.T) {
 	// Mock cache functions
 	cacheData := make(map[string]interface{})
 
+	//nolint:unparam // error return kept for interface consistency in test
 	getCache := func(key string, v interface{}) error {
 		if data, ok := cacheData[key]; ok {
 			if ptr, ok := v.(*gzapi.Challenge); ok {
