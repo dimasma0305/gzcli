@@ -120,6 +120,8 @@ func RunShellWithTimeout(ctx context.Context, script string, cwd string, timeout
 }
 
 // RunShellForInterval executes a shell command for interval scripts with proper output management
+//
+//nolint:gosec // G204: Script execution is the intended purpose of this function
 func RunShellForInterval(ctx context.Context, script string, cwd string, timeout time.Duration) error {
 	if timeout <= 0 {
 		timeout = DefaultScriptTimeout
@@ -131,7 +133,6 @@ func RunShellForInterval(ctx context.Context, script string, cwd string, timeout
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	//nolint:gosec // G204: Script execution is the intended purpose of this function
 	args := append(getShellArgs(), script)
 	cmd := exec.CommandContext(timeoutCtx, getShell(), args...)
 	cmd.Dir = cwd
