@@ -86,7 +86,7 @@ func ParseCSV(data []byte, config ConfigInterface, credsCache []*TeamCreds, isSe
 	}
 
 	// List to hold the merged team credentials
-	var teamsCreds []*TeamCreds
+	teamsCreds := make([]*TeamCreds, 0, len(records)-1)
 
 	for _, row := range records[1:] {
 		realName := row[colIndices["RealName"]]

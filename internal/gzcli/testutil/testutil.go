@@ -108,7 +108,7 @@ func ConcurrentTest(t *testing.T, concurrency int, iterations int, testFunc func
 	close(panicChan)
 
 	// Check for panics
-	var panics []string
+	panics := make([]string, 0, concurrency*iterations)
 	for p := range panicChan {
 		panics = append(panics, fmt.Sprint(p))
 	}
@@ -117,7 +117,7 @@ func ConcurrentTest(t *testing.T, concurrency int, iterations int, testFunc func
 	}
 
 	// Check for errors
-	var errors []string
+	errors := make([]string, 0, concurrency*iterations)
 	for err := range errChan {
 		errors = append(errors, err.Error())
 	}

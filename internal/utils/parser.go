@@ -90,6 +90,7 @@ func parseMultipartFormData(f *proxy.Flow) (interface{}, error) {
 	return result, nil
 }
 
+//nolint:unparam // error return kept for interface consistency
 func parseTextPlain(f *proxy.Flow) (string, error) {
 	return string(f.Request.Body), nil
 }
