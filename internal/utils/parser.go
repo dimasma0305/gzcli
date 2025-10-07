@@ -11,11 +11,13 @@ import (
 	"github.com/lqqyt2423/go-mitmproxy/proxy"
 )
 
+// FormData represents parsed form data from an HTTP request
 type FormData struct {
 	Files  []*multipart.FileHeader
 	Values map[string][]string
 }
 
+// ParseBody parses the request body based on content type
 func ParseBody(f *proxy.Flow) (interface{}, error) {
 	contentType := f.Request.Header.Get("content-type")
 	var data interface{}

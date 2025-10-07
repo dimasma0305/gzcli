@@ -1,3 +1,4 @@
+//nolint:revive // Package utils is used for utility functions
 package utils
 
 import (
@@ -29,6 +30,7 @@ func ParseYamlFromFile(confPath string, data any) error {
 	defer bufferPool.Put(buf)
 	defer buf.Reset()
 
+	//nolint:gosec // G304: Config path is constructed by application
 	f, err := os.Open(confPath)
 	if err != nil {
 		return fmt.Errorf("file open error: %w", err)

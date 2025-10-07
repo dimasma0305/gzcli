@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -27,7 +28,7 @@ Example:
   # Create teams and send registration emails
   gzcli team create teams.csv --send-email`,
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		csvFile := args[0]
 		gz := gzcli.MustInit()
 

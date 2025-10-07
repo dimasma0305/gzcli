@@ -1,3 +1,4 @@
+//nolint:errcheck,gosec,revive,staticcheck // Test file with acceptable error handling patterns
 package challenge
 
 import (

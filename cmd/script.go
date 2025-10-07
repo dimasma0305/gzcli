@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/spf13/cobra"
 )
 
 var scriptCmd = &cobra.Command{
@@ -22,7 +23,7 @@ This command will run the specified script for all challenges that have it defin
   # Run the 'cleanup' script
   gzcli script cleanup`,
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		scriptName := args[0]
 
 		log.Info("Running script: %s", scriptName)

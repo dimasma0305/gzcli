@@ -1,3 +1,4 @@
+// Package filesystem provides file system event handling utilities for the watcher
 package filesystem
 
 import (
@@ -5,9 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fsnotify/fsnotify"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/fsnotify/fsnotify"
 )
 
 // EventHandler interface for handling file system events

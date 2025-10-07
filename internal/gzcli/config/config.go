@@ -1,3 +1,4 @@
+//nolint:revive // Config struct field names match YAML/API structure
 package config
 
 import (

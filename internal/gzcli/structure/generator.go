@@ -1,3 +1,4 @@
+// Package structure provides utilities for generating challenge directory structures
 package structure
 
 import (
@@ -33,4 +34,3 @@ func GenerateStructure(challenges []ChallengeData) error {
 
 	return nil
 }
-

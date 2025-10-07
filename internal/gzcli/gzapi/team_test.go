@@ -1,3 +1,4 @@
+//nolint:errcheck,gosec // Test file with acceptable error handling patterns
 package gzapi
 
 import (
@@ -74,6 +75,7 @@ func TestGZAPI_GetTeams(t *testing.T) {
 	}
 }
 
+//nolint:dupl // Test pattern similarity with user_test is acceptable
 func TestGZAPI_Teams(t *testing.T) {
 	server := mockServer(t, map[string]http.HandlerFunc{
 		"/api/admin/teams": func(w http.ResponseWriter, r *http.Request) {

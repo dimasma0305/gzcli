@@ -91,7 +91,7 @@ func TestGetFileHashHex(t *testing.T) {
 	tmpFile := filepath.Join(tmpDir, "test.txt")
 	content := []byte("test content")
 
-	if err := os.WriteFile(tmpFile, content, 0644); err != nil {
+	if err := os.WriteFile(tmpFile, content, 0600); err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 

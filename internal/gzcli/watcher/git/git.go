@@ -1,3 +1,4 @@
+// Package git provides Git repository management for the watcher
 package git
 
 import (
@@ -78,6 +79,7 @@ func (m *Manager) PerformPull() error {
 	}
 
 	// Execute system git pull (inherits env; uses current credentials/SSH config)
+	//nolint:gosec // G204: Git repository path is validated and configured by user
 	cmd := exec.Command("git", "-C", root, "pull")
 	cmd.Env = os.Environ()
 	output, err := cmd.CombinedOutput()
@@ -91,11 +93,12 @@ func (m *Manager) PerformPull() error {
 
 	// Log concise success and any non-empty output
 	out := strings.TrimSpace(string(output))
-	if out == "Already up to date." || strings.Contains(out, "Already up to date") {
+	switch {
+	case out == "Already up to date.", strings.Contains(out, "Already up to date"):
 		log.InfoH3("📄 Repository is already up-to-date")
-	} else if out != "" {
+	case out != "":
 		log.InfoH3("✅ Git pull output:\n%s", out)
-	} else {
+	default:
 		log.InfoH3("✅ Git pull completed successfully")
 	}
 

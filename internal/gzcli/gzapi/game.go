@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// Game represents a CTF game/event in the GZCTF platform
+//
+//nolint:revive // Field names match API responses
 type Game struct {
 	Id                   int        `json:"id" yaml:"id"`
 	Title                string     `json:"title" yaml:"title"`
@@ -29,6 +32,7 @@ type Game struct {
 	CS                   *GZAPI     `json:"-" yaml:"-"`
 }
 
+// CustomTime wraps time.Time for custom JSON marshaling/unmarshaling
 type CustomTime struct {
 	time.Time
 }
@@ -57,6 +61,7 @@ func (ct *CustomTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// GetGames retrieves all games from the GZCTF platform
 func (cs *GZAPI) GetGames() ([]*Game, error) {
 	var data struct {
 		Data []*Game `json:"data"`
@@ -70,6 +75,9 @@ func (cs *GZAPI) GetGames() ([]*Game, error) {
 	return data.Data, nil
 }
 
+// GetGameById retrieves a specific game by its ID
+//
+//nolint:revive // Method name matches existing API
 func (cs *GZAPI) GetGameById(id int) (*Game, error) {
 	var data *Game
 	if err := cs.get(fmt.Sprintf("/api/edit/games/%d", id), &data); err != nil {
@@ -79,6 +87,7 @@ func (cs *GZAPI) GetGameById(id int) (*Game, error) {
 	return data, nil
 }
 
+// GetGameByTitle retrieves a specific game by its title
 func (cs *GZAPI) GetGameByTitle(title string) (*Game, error) {
 	var games []*Game
 	games, err := cs.GetGames()
@@ -93,10 +102,12 @@ func (cs *GZAPI) GetGameByTitle(title string) (*Game, error) {
 	return nil, fmt.Errorf("game not found")
 }
 
+// Delete removes the game from the platform
 func (g *Game) Delete() error {
 	return g.CS.delete(fmt.Sprintf("/api/edit/games/%d", g.Id), nil)
 }
 
+// Update updates the game configuration on the platform
 func (g *Game) Update(game *Game) error {
 	// Create a copy to avoid modifying the original
 	gameCopy := *game
@@ -111,6 +122,7 @@ func (g *Game) Update(game *Game) error {
 	return g.CS.put(fmt.Sprintf("/api/edit/games/%d", g.Id), &gameCopy, nil)
 }
 
+// UploadPoster uploads a poster image for the game
 func (g *Game) UploadPoster(poster string) (string, error) {
 	var path string
 	if err := g.CS.putMultiPart(fmt.Sprintf("/api/edit/games/%d/poster", g.Id), poster, &path); err != nil {
@@ -119,12 +131,14 @@ func (g *Game) UploadPoster(poster string) (string, error) {
 	return path, nil
 }
 
+// CreateGameForm contains the data required to create a new game
 type CreateGameForm struct {
 	Title string    `json:"title"`
 	Start time.Time `json:"start"`
 	End   time.Time `json:"end"`
 }
 
+// CreateGame creates a new game on the GZCTF platform
 func (cs *GZAPI) CreateGame(game CreateGameForm) (*Game, error) {
 	var data *Game
 	game.Start = game.Start.UTC()
@@ -136,12 +150,18 @@ func (cs *GZAPI) CreateGame(game CreateGameForm) (*Game, error) {
 	return data, nil
 }
 
+// GameJoinModel contains the data required for a team to join a game
+//
+//nolint:revive // Field and parameter names match API specification
 type GameJoinModel struct {
 	TeamId     int    `json:"teamId"`
 	Division   string `json:"division,omitempty"`
 	InviteCode string `json:"inviteCode,omitempty"`
 }
 
+// JoinGame joins a team to the game with optional division and invite code
+//
+//nolint:revive // Parameter name matches API specification
 func (g *Game) JoinGame(teamId int, division string, inviteCode string) error {
 	joinModel := &GameJoinModel{
 		TeamId:     teamId,

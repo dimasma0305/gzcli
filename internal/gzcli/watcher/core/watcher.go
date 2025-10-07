@@ -1,3 +1,4 @@
+//nolint:revive // Handler methods follow interface patterns with some unused parameters
 package core
 
 import (
@@ -5,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/challenge"
@@ -15,7 +18,6 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/socket"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/fsnotify/fsnotify"
 )
 
 // Watcher manages file watching and challenge synchronization

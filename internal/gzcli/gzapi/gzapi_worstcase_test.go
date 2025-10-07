@@ -1,3 +1,4 @@
+//nolint:errcheck,gosec,staticcheck,revive // Test file with acceptable error handling patterns
 package gzapi
 
 import (

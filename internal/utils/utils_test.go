@@ -1,3 +1,4 @@
+//nolint:revive // Test package name matches tested package
 package utils
 
 import (
@@ -155,8 +156,8 @@ func TestJsonify_ComplexTypes(t *testing.T) {
 	}
 }
 
-// TestUrlJoinPath_InvalidURL tests invalid URL components
-func TestUrlJoinPath_InvalidURL(t *testing.T) {
+// TestURLJoinPath_InvalidURL tests invalid URL components
+func TestURLJoinPath_InvalidURL(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
 			t.Error("Expected panic for invalid URL characters")
@@ -164,20 +165,20 @@ func TestUrlJoinPath_InvalidURL(t *testing.T) {
 	}()
 
 	// This should panic according to the implementation
-	_ = UrlJoinPath("ht tp://invalid", "path")
+	_ = URLJoinPath("ht tp://invalid", "path")
 }
 
-// TestUrlJoinPath_EmptyComponents tests empty path components
-func TestUrlJoinPath_EmptyComponents(t *testing.T) {
-	result := UrlJoinPath("http://example.com", "", "", "")
+// TestURLJoinPath_EmptyComponents tests empty path components
+func TestURLJoinPath_EmptyComponents(t *testing.T) {
+	result := URLJoinPath("http://example.com", "", "", "")
 	expected := "http://example.com"
 	if result != expected {
 		t.Errorf("Expected %s, got %s", expected, result)
 	}
 }
 
-// TestUrlJoinPath_SpecialCharacters tests special characters in paths
-func TestUrlJoinPath_SpecialCharacters(t *testing.T) {
+// TestURLJoinPath_SpecialCharacters tests special characters in paths
+func TestURLJoinPath_SpecialCharacters(t *testing.T) {
 	testCases := []struct {
 		base     string
 		paths    []string
@@ -196,16 +197,16 @@ func TestUrlJoinPath_SpecialCharacters(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		result := UrlJoinPath(tc.base, tc.paths...)
+		result := URLJoinPath(tc.base, tc.paths...)
 		if result != tc.expected {
 			t.Errorf("Expected %s, got %s", tc.expected, result)
 		}
 	}
 }
 
-// TestUrlJoinPath_PathTraversal tests path traversal attempts
-func TestUrlJoinPath_PathTraversal(t *testing.T) {
-	result := UrlJoinPath("http://example.com", "..", "admin")
+// TestURLJoinPath_PathTraversal tests path traversal attempts
+func TestURLJoinPath_PathTraversal(t *testing.T) {
+	result := URLJoinPath("http://example.com", "..", "admin")
 	// URL package should handle this safely
 	t.Logf("Path traversal result: %s", result)
 
@@ -215,8 +216,8 @@ func TestUrlJoinPath_PathTraversal(t *testing.T) {
 	}
 }
 
-// TestUrlJoinPath_ExtremelyLongPath tests very long URL paths
-func TestUrlJoinPath_ExtremelyLongPath(t *testing.T) {
+// TestURLJoinPath_ExtremelyLongPath tests very long URL paths
+func TestURLJoinPath_ExtremelyLongPath(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping long path test in short mode")
 	}
@@ -227,7 +228,7 @@ func TestUrlJoinPath_ExtremelyLongPath(t *testing.T) {
 		paths[i] = "segment"
 	}
 
-	result := UrlJoinPath("http://example.com", paths...)
+	result := URLJoinPath("http://example.com", paths...)
 
 	// Should not panic
 	if !strings.HasPrefix(result, "http://example.com") {
@@ -235,9 +236,9 @@ func TestUrlJoinPath_ExtremelyLongPath(t *testing.T) {
 	}
 }
 
-// TestUrlJoinPath_Unicode tests Unicode characters in paths
-func TestUrlJoinPath_Unicode(t *testing.T) {
-	result := UrlJoinPath("http://example.com", "日本語", "путь", "🚀")
+// TestURLJoinPath_Unicode tests Unicode characters in paths
+func TestURLJoinPath_Unicode(t *testing.T) {
+	result := URLJoinPath("http://example.com", "日本語", "путь", "🚀")
 
 	// Should handle Unicode properly (percent-encoded)
 	if !strings.HasPrefix(result, "http://example.com") {

@@ -1,3 +1,4 @@
+// Package utils provides common utility functions
 package utils
 
 import (
@@ -7,19 +8,20 @@ import (
 	"strings"
 )
 
-// normalize path for windows compability
+// NormalizePath normalizes a file path for Windows compatibility
 func NormalizePath(str string) string {
 	str = strings.ReplaceAll(str, "\\", "/")
 	return str
 }
 
-func GetJson(byte []byte, data any) error {
+// GetJSON unmarshals JSON data from bytes into the provided data structure
+func GetJSON(b []byte, data any) error {
 	var tmp struct {
 		Message string
 		Success bool
 		Data    json.RawMessage `json:"data"`
 	}
-	if err := json.Unmarshal(byte, &tmp); err != nil {
+	if err := json.Unmarshal(b, &tmp); err != nil {
 		return err
 	}
 	if !tmp.Success {
@@ -31,12 +33,20 @@ func GetJson(byte []byte, data any) error {
 	return nil
 }
 
-// marshall object to json
+// GetJson is deprecated, use GetJSON instead
+//
+//nolint:revive // Deprecated function kept for backward compatibility
+func GetJson(b []byte, data any) error {
+	return GetJSON(b, data)
+}
+
+// Jsonify marshals an object to JSON bytes
 func Jsonify(data any) ([]byte, error) {
 	return json.Marshal(data)
 }
 
-func UrlJoinPath(base string, path ...string) string {
+// URLJoinPath joins URL paths safely
+func URLJoinPath(base string, path ...string) string {
 	res, err := url.JoinPath(base, path...)
 	if err != nil {
 		panic(err)

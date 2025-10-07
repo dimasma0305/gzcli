@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/dimasma0305/gzcli/internal/log"
 	"github.com/dimasma0305/gzcli/internal/template/other"
-	"github.com/spf13/cobra"
 )
 
 var (
-	initUrl            string
+	initURL            string
 	initPublicEntry    string
 	initDiscordWebhook string
 )
@@ -33,9 +34,9 @@ You can provide values via flags or be prompted for input interactively.`,
 
   # With all options
   gzcli init --url https://ctf.example.com --public-entry https://public.example.com --discord-webhook https://discord.com/api/webhooks/...`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		initInfo := map[string]string{
-			"url":            initUrl,
+			"url":            initURL,
 			"publicEntry":    initPublicEntry,
 			"discordWebhook": initDiscordWebhook,
 		}
@@ -55,7 +56,7 @@ You can provide values via flags or be prompted for input interactively.`,
 func init() {
 	rootCmd.AddCommand(initCmd)
 
-	initCmd.Flags().StringVar(&initUrl, "url", "", "URL for the CTF instance")
+	initCmd.Flags().StringVar(&initURL, "url", "", "URL for the CTF instance")
 	initCmd.Flags().StringVar(&initPublicEntry, "public-entry", "", "Public entry point for the CTF")
 	initCmd.Flags().StringVar(&initDiscordWebhook, "discord-webhook", "", "Discord webhook URL for notifications")
 }

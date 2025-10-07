@@ -1,3 +1,4 @@
+// Package utils provides file operation utilities
 package utils
 
 import (
@@ -32,6 +33,7 @@ func NormalizeFileName(name string) string {
 
 // GetFileHashHex calculates the SHA256 hash of a file and returns it as a hex string
 func GetFileHashHex(file string) (string, error) {
+	//nolint:gosec // G304: File paths come from challenge config, validated by user
 	f, err := os.Open(file)
 	if err != nil {
 		return "", err
@@ -48,12 +50,14 @@ func GetFileHashHex(file string) (string, error) {
 
 // CopyFile copies a file from src to dst
 func CopyFile(src, dst string) error {
+	//nolint:gosec // G304: File paths come from challenge config, validated by user
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = sourceFile.Close() }()
 
+	//nolint:gosec // G304: File paths come from challenge config, validated by user
 	destFile, err := os.Create(dst)
 	if err != nil {
 		return err
@@ -71,6 +75,7 @@ func CopyFile(src, dst string) error {
 // ZipSource creates a zip archive of a source directory
 func ZipSource(source, target string) error {
 	// Create output file with buffered writer
+	//nolint:gosec // G304: Target path is constructed from validated challenge config
 	f, err := os.Create(target)
 	if err != nil {
 		return err
@@ -127,6 +132,7 @@ func ZipSource(source, target string) error {
 			defer func() { <-sem }()
 
 			// Read file content
+			//nolint:gosec // G304: File paths come from validated challenge directory
 			data, err := os.ReadFile(p)
 			resultChan <- result{p, data, err}
 		}(path)

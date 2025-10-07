@@ -1,3 +1,4 @@
+// Package testutil provides testing utilities and mock servers for unit tests
 package testutil
 
 import (
@@ -17,8 +18,8 @@ import (
 )
 
 // NetworkFailureServer creates a test server that simulates network failures
-func NetworkFailureServer(t *testing.T, failureType string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func NetworkFailureServer(_ *testing.T, failureType string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		switch failureType {
 		case "timeout":
 			// Simulate timeout by hanging forever
@@ -162,6 +163,7 @@ func RandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
 	for i := range b {
+		//nolint:gosec // G404: Weak RNG acceptable for test data generation
 		b[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(b)
@@ -217,7 +219,7 @@ John,"john@test.com,Team1`
 }
 
 // MockServerWithDelay creates a server that responds after a delay
-func MockServerWithDelay(t *testing.T, delay time.Duration, handler http.HandlerFunc) *httptest.Server {
+func MockServerWithDelay(_ *testing.T, delay time.Duration, handler http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(delay)
 		handler(w, r)
@@ -225,7 +227,7 @@ func MockServerWithDelay(t *testing.T, delay time.Duration, handler http.Handler
 }
 
 // MockServerWithAuth creates a server that requires authentication
-func MockServerWithAuth(t *testing.T, validToken string, handler http.HandlerFunc) *httptest.Server {
+func MockServerWithAuth(_ *testing.T, validToken string, handler http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
 		cookie, _ := r.Cookie("session")
@@ -246,42 +248,48 @@ type RaceConditionDetector struct {
 	errors   []string
 }
 
+// NewRaceConditionDetector creates a new race condition detector for testing
 func NewRaceConditionDetector() *RaceConditionDetector {
 	return &RaceConditionDetector{
 		counters: make(map[string]int),
 	}
 }
 
+// Increment increments the counter for a specific key in a thread-safe manner
 func (r *RaceConditionDetector) Increment(key string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.counters[key]++
 }
 
+// AddError adds an error to the detector in a thread-safe manner
 func (r *RaceConditionDetector) AddError(err string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.errors = append(r.errors, err)
 }
 
+// GetCount returns the current count for a specific key in a thread-safe manner
 func (r *RaceConditionDetector) GetCount(key string) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.counters[key]
 }
 
+// GetErrors returns all collected errors in a thread-safe manner
 func (r *RaceConditionDetector) GetErrors() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return append([]string{}, r.errors...)
 }
 
-// SimulateDiskFull creates a writer that fails after certain amount of data
+// DiskFullWriter simulates a writer that fails after a certain amount of data
 type DiskFullWriter struct {
 	written int
 	limit   int
 }
 
+// NewDiskFullWriter creates a new DiskFullWriter with the specified limit
 func NewDiskFullWriter(limit int) *DiskFullWriter {
 	return &DiskFullWriter{limit: limit}
 }
@@ -300,6 +308,7 @@ type FailingReader struct {
 	read      int
 }
 
+// NewFailingReader creates a new FailingReader that fails after reading a certain number of bytes
 func NewFailingReader(failAfter int) *FailingReader {
 	return &FailingReader{failAfter: failAfter}
 }
@@ -317,8 +326,9 @@ func (f *FailingReader) Read(p []byte) (n int, err error) {
 }
 
 // CreateChaosServer creates a server that randomly fails requests
-func CreateChaosServer(t *testing.T, failureRate float64, handler http.HandlerFunc) *httptest.Server {
+func CreateChaosServer(_ *testing.T, failureRate float64, handler http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//nolint:gosec // G404: Weak RNG acceptable for test chaos engineering
 		if rand.Float64() < failureRate {
 			// Random failure
 			failures := []int{
@@ -327,6 +337,7 @@ func CreateChaosServer(t *testing.T, failureRate float64, handler http.HandlerFu
 				http.StatusServiceUnavailable,
 				http.StatusGatewayTimeout,
 			}
+			//nolint:gosec // G404: Weak RNG acceptable for test chaos engineering
 			w.WriteHeader(failures[rand.Intn(len(failures))])
 			_, _ = w.Write([]byte(`{"error": "random failure"}`))
 			return
@@ -377,7 +388,7 @@ func AssertContains(t *testing.T, str, substr string) {
 }
 
 // CaptureStderr captures stderr output during test
-func CaptureStderr(t *testing.T, fn func()) string {
+func CaptureStderr(_ *testing.T, fn func()) string {
 	old := os.Stderr
 	r, w, _ := os.Pipe()
 	os.Stderr = w

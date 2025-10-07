@@ -1,3 +1,4 @@
+// Package database provides SQLite database operations for watcher logging and state management
 package database
 
 import (
@@ -8,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/dimasma0305/gzcli/internal/log"
+
+	// Import SQLite driver for database/sql
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -39,7 +42,7 @@ func (d *DB) Init() error {
 
 	// Create database directory if it doesn't exist
 	dbDir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dbDir, 0755); err != nil {
+	if err := os.MkdirAll(dbDir, 0750); err != nil {
 		return fmt.Errorf("failed to create database directory: %w", err)
 	}
 

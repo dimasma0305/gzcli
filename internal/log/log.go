@@ -36,6 +36,7 @@ func DebugH3(format string, elem ...any) {
 	}
 }
 
+// Fatal logs an error message and exits the program
 func Fatal(args ...interface{}) {
 	var message string
 
@@ -70,26 +71,32 @@ func Fatal(args ...interface{}) {
 	os.Exit(1)
 }
 
+// Error logs an error message to stderr
 func Error(str string, elem ...any) {
 	fmt.Fprintln(os.Stderr, color.RedString("[x] ")+fmt.Sprintf(str, elem...))
 }
 
+// ErrorH2 logs an indented error message to stderr
 func ErrorH2(format string, elem ...any) {
 	fmt.Fprintln(os.Stderr, color.RedString("  [x] ")+fmt.Sprintf(format, elem...))
 }
 
+// Info logs an informational message
 func Info(format string, elem ...any) {
 	fmt.Println(color.BlueString("[x] ") + fmt.Sprintf(format, elem...))
 }
 
+// InfoH2 logs an indented informational message
 func InfoH2(format string, elem ...any) {
 	fmt.Println(color.GreenString("  [x] ") + fmt.Sprintf(format, elem...))
 }
 
+// InfoH3 logs a double-indented informational message
 func InfoH3(format string, elem ...any) {
 	fmt.Println(color.YellowString("    [x] ") + fmt.Sprintf(format, elem...))
 }
 
+// SuccessDownload logs a successful challenge download
 func SuccessDownload(challName string, challCategory string) {
 	Info("success downloading: %s (%s)", challName, challCategory)
 }

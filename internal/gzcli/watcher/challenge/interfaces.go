@@ -1,3 +1,4 @@
+//nolint:revive // Interface naming follows project conventions
 package challenge
 
 import (

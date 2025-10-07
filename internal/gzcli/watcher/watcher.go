@@ -1,4 +1,6 @@
 // Package watcher provides file system watching and automatic challenge synchronization for GZCTF
+//
+//nolint:revive // Watcher type names kept for backward compatibility
 package watcher
 
 import (

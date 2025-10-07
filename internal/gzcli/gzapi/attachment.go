@@ -1,3 +1,4 @@
+//nolint:revive // Attachment struct field names match API responses
 package gzapi
 
 import (

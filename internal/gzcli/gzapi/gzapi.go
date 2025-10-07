@@ -1,3 +1,4 @@
+//nolint:revive // Struct field names match API responses
 package gzapi
 
 import (
@@ -7,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dimasma0305/gzcli/internal/log"
 	"github.com/imroc/req/v3"
+
+	"github.com/dimasma0305/gzcli/internal/log"
 )
 
 type Creds struct {
@@ -35,6 +37,7 @@ func Init(url string, creds *Creds) (*GZAPI, error) {
 	newGz := &GZAPI{
 		Client: req.C().
 			SetUserAgent("Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/110.0").
+			//nolint:gosec // G402: InsecureSkipVerify needed for self-signed certs in dev/test
 			SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 			SetTimeout(30 * time.Second), // Set reasonable timeout
 		Url:   url,
@@ -59,6 +62,7 @@ func Register(url string, creds *RegisterForm) (*GZAPI, error) {
 	newGz := &GZAPI{
 		Client: req.C().
 			SetUserAgent("Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/110.0").
+			//nolint:gosec // G402: InsecureSkipVerify needed for self-signed certs in dev/test
 			SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 			SetTimeout(30 * time.Second), // Set reasonable timeout
 		Url: url,
@@ -73,6 +77,7 @@ func Register(url string, creds *RegisterForm) (*GZAPI, error) {
 	return newGz, nil
 }
 
+//nolint:dupl // HTTP methods have intentional similarity for clarity
 func (cs *GZAPI) get(url string, data any) error {
 	if cs == nil || cs.Client == nil {
 		return fmt.Errorf("GZAPI client is not initialized")
@@ -102,6 +107,7 @@ func (cs *GZAPI) get(url string, data any) error {
 	return nil
 }
 
+//nolint:dupl // HTTP methods have intentional similarity for clarity
 func (cs *GZAPI) delete(url string, data any) error {
 	if cs == nil || cs.Client == nil {
 		return fmt.Errorf("GZAPI client is not initialized")
@@ -131,6 +137,7 @@ func (cs *GZAPI) delete(url string, data any) error {
 	return nil
 }
 
+//nolint:dupl // HTTP methods have intentional similarity for clarity
 func (cs *GZAPI) post(url string, json any, data any) error {
 	if cs == nil || cs.Client == nil {
 		return fmt.Errorf("GZAPI client is not initialized")
@@ -160,6 +167,7 @@ func (cs *GZAPI) post(url string, json any, data any) error {
 	return nil
 }
 
+//nolint:dupl // Multipart methods have intentional similarity for clarity
 func (cs *GZAPI) postMultiPart(url string, file string, data any) error {
 	if cs == nil || cs.Client == nil {
 		return fmt.Errorf("GZAPI client is not initialized")
@@ -196,6 +204,7 @@ func (cs *GZAPI) postMultiPart(url string, file string, data any) error {
 	return nil
 }
 
+//nolint:dupl // Multipart methods have intentional similarity for clarity
 func (cs *GZAPI) putMultiPart(url string, file string, data any) error {
 	if cs == nil || cs.Client == nil {
 		return fmt.Errorf("GZAPI client is not initialized")
@@ -232,6 +241,7 @@ func (cs *GZAPI) putMultiPart(url string, file string, data any) error {
 	return nil
 }
 
+//nolint:dupl // HTTP methods have intentional similarity for clarity
 func (cs *GZAPI) put(url string, json any, data any) error {
 	if cs == nil || cs.Client == nil {
 		return fmt.Errorf("GZAPI client is not initialized")

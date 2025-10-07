@@ -1,3 +1,4 @@
+//nolint:revive // Test file with unused parameters in mock functions
 package gzapi
 
 import (
@@ -8,7 +9,7 @@ import (
 
 // mockServer creates a test HTTP server that simulates GZCTF API
 // This is shared across all test files in the gzapi package
-func mockServer(t *testing.T, handlers map[string]http.HandlerFunc) *httptest.Server {
+func mockServer(_ *testing.T, handlers map[string]http.HandlerFunc) *httptest.Server {
 	mux := http.NewServeMux()
 
 	// Add default login handler if not provided
@@ -18,7 +19,7 @@ func mockServer(t *testing.T, handlers map[string]http.HandlerFunc) *httptest.Se
 	if _, ok := handlers["/api/account/login"]; !ok {
 		handlers["/api/account/login"] = func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"succeeded": true}`))
+			_, _ = w.Write([]byte(`{"succeeded": true}`))
 		}
 	}
 

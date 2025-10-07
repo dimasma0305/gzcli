@@ -61,7 +61,7 @@ func NewWatcherClient(socketPath string) *WatcherClient {
 
 // Config is a compatibility wrapper that allows lowercase appsettings field for watcher.go
 type Config struct {
-	Url         string       `yaml:"url"` //nolint:revive,stylecheck // Field name required for watcher.go compatibility
+	Url         string       `yaml:"url"` //nolint:revive // Field name required for watcher.go compatibility
 	Creds       gzapi.Creds  `yaml:"creds"`
 	Event       gzapi.Game   `yaml:"event"`
 	appsettings *AppSettings `yaml:"-"`
@@ -535,11 +535,11 @@ type teamConfigAdapter struct {
 	conf *config.Config
 }
 
-func (t *teamConfigAdapter) GetUrl() string { //nolint:revive,stylecheck // Method name required by team.ConfigInterface
+func (t *teamConfigAdapter) GetUrl() string { //nolint:revive // Method name required by team.ConfigInterface
 	return t.conf.Url
 }
 
-func (t *teamConfigAdapter) GetEventId() int { //nolint:revive,stylecheck // Method name required by team.ConfigInterface
+func (t *teamConfigAdapter) GetEventId() int { //nolint:revive // Method name required by team.ConfigInterface
 	return t.conf.Event.Id
 }
 

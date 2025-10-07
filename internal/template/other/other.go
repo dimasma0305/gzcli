@@ -1,3 +1,4 @@
+// Package other provides specialized template generators for various CTF-related files
 package other
 
 import (
@@ -8,27 +9,32 @@ import (
 	"github.com/dimasma0305/gzcli/internal/template"
 )
 
+// ReadFlag generates a read flag template at the destination
 func ReadFlag(destination string) []error {
 	return template.TemplateFSToDestination("templates/others/readflag", "", destination)
 }
 
+// Writeup generates a writeup template at the destination
 func Writeup(destination string, info any) []error {
 	return template.TemplateFSToDestination("templates/others/writeup", info, destination)
 }
 
+// POC generates a proof-of-concept template at the destination
 func POC(destination string, info any) []error {
 	return template.TemplateFSToDestination("templates/others/poc", info, destination)
 }
 
+// JavaExploitationPlus generates a Java exploitation template at the destination
 func JavaExploitationPlus(destination string, info any) []error {
 	return template.TemplateFSToDestination("templates/others/java-exploit-plus", info, destination)
 }
 
+// CTFInfo contains configuration information for CTF template generation
 type CTFInfo struct {
 	XorKey         string
 	PublicEntry    string
 	DiscordWebhook string
-	Url            string
+	URL            string
 	Username       string
 	Password       string
 }
@@ -49,6 +55,7 @@ func getUserInput(str string) string {
 	return input
 }
 
+// CTFTemplate generates a complete CTF template structure at the destination
 func CTFTemplate(destination string, info any) []error {
 	var url, publicEntry, discordWebhook string
 
@@ -74,7 +81,7 @@ func CTFTemplate(destination string, info any) []error {
 		XorKey:         randomize(16),
 		Username:       "admin",
 		Password:       "ADMIN" + randomize(16) + "ADMIN",
-		Url:            url,
+		URL:            url,
 		PublicEntry:    publicEntry,
 		DiscordWebhook: discordWebhook,
 	}

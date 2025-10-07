@@ -1,3 +1,4 @@
+//nolint:revive // Package types provides type definitions for the watcher
 package types
 
 import (
@@ -32,7 +33,9 @@ type WatcherResponse struct {
 // UpdateType represents the type of update needed based on file changes
 type UpdateType int
 
+// Update type constants
 const (
+	// UpdateNone indicates no update is needed
 	UpdateNone UpdateType = iota
 	UpdateAttachment
 	UpdateMetadata

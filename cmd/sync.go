@@ -1,8 +1,9 @@
 package cmd
 
 import (
-	"github.com/dimasma0305/gzcli/internal/gzcli"
 	"github.com/spf13/cobra"
+
+	"github.com/dimasma0305/gzcli/internal/gzcli"
 )
 
 var (
@@ -25,7 +26,7 @@ This command:
 
   # Sync and update game configuration
   gzcli sync --update-game`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		gz := gzcli.MustInit()
 		gz.UpdateGame = syncUpdateGame
 		gz.MustSync()

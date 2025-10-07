@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -21,7 +22,7 @@ var watchStatusCmd = &cobra.Command{
 
   # Show status in JSON format
   gzcli watch status --json`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		gz := gzcli.MustInit()
 
 		watcher, err := gzcli.NewWatcher(gz)

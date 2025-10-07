@@ -7,6 +7,8 @@ import (
 )
 
 // ChallengeYaml represents a challenge configuration from YAML
+//
+//nolint:revive // Name ChallengeYaml kept for clarity and backward compatibility
 type ChallengeYaml struct {
 	Name        string                 `yaml:"name"`
 	Author      string                 `yaml:"author"`
@@ -25,6 +27,8 @@ type ChallengeYaml struct {
 }
 
 // Container represents container configuration
+//
+//nolint:revive // Field names match API specification
 type Container struct {
 	FlagTemplate         string `yaml:"flagTemplate"`
 	ContainerImage       string `yaml:"containerImage"`
@@ -85,6 +89,8 @@ type Dashboard struct {
 }
 
 // Config represents the application configuration
+//
+//nolint:revive // Field names match config file structure
 type Config struct {
 	Url   string      `yaml:"url"`
 	Creds gzapi.Creds `yaml:"creds"`
@@ -92,6 +98,8 @@ type Config struct {
 }
 
 // AppSettings represents application settings
+//
+//nolint:revive // Field names match JSON structure
 type AppSettings struct {
 	ContainerProvider struct {
 		PublicEntry string `json:"PublicEntry"`

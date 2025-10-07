@@ -20,7 +20,7 @@ func setCache(key string, data any) error {
 	cachePath := filepath.Join(cacheDir, key+".yaml")
 
 	// Create cache directory with proper permissions
-	if err := os.MkdirAll(filepath.Dir(cachePath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(cachePath), 0750); err != nil {
 		return fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
@@ -57,6 +57,7 @@ func setCache(key string, data any) error {
 func GetCache(key string, data any) error {
 	cachePath := filepath.Join(cacheDir, key+".yaml")
 
+	//nolint:gosec // G304: Cache files are created by the application itself
 	file, err := os.Open(cachePath)
 	if err != nil {
 		if os.IsNotExist(err) {

@@ -1,3 +1,4 @@
+// Package template provides utilities for processing and applying templates
 package template
 
 import (
@@ -16,6 +17,7 @@ import (
 
 var (
 	//go:embed all:templates
+	// File is the embedded filesystem containing all templates
 	File embed.FS
 )
 
@@ -48,19 +50,28 @@ func (e embeddedFS) Stat(name string) (fs.FileInfo, error) {
 
 type osFS struct{}
 
+//nolint:gosec // G304: Template paths come from embedded FS or user templates directory
 func (osFS) ReadFile(name string) ([]byte, error)       { return os.ReadFile(name) }
 func (osFS) ReadDir(name string) ([]fs.DirEntry, error) { return os.ReadDir(name) }
-func (osFS) Open(name string) (fs.File, error)          { return os.Open(name) }
-func (osFS) Stat(name string) (fs.FileInfo, error)      { return os.Stat(name) }
+
+//nolint:gosec // G304: Template paths come from embedded FS or user templates directory
+func (osFS) Open(name string) (fs.File, error)     { return os.Open(name) }
+func (osFS) Stat(name string) (fs.FileInfo, error) { return os.Stat(name) }
 
 // ==================================================
 // Main Template Processing
 // ==================================================
 
+// TemplateFSToDestination processes a template from the embedded filesystem
+//
+//nolint:revive // Function name kept for API consistency
 func TemplateFSToDestination(file string, info interface{}, destination string) []error {
 	return processWithFS(embeddedFS{File}, file, info, destination)
 }
 
+// TemplateToDestination processes a template from the operating system filesystem
+//
+//nolint:revive // Function name kept for API consistency
 func TemplateToDestination(src string, info interface{}, destination string) []error {
 	return processWithFS(osFS{}, src, info, destination)
 }
@@ -73,15 +84,14 @@ func processWithFS(fsys fileSystem, src string, info interface{}, dest string) [
 
 	if fi.IsDir() {
 		return processDir(fsys, src, info, dest)
-	} else {
-		return processFile(fsys, src, info, dest)
 	}
+	return processFile(fsys, src, info, dest)
 }
 
 func processDir(fsys fileSystem, dir string, info interface{}, destination string) []error {
 	var errs []error
 
-	if err := os.MkdirAll(destination, 0755); err != nil {
+	if err := os.MkdirAll(destination, 0750); err != nil {
 		errs = append(errs, fmt.Errorf("failed to create directory %q: %w", destination, err))
 		return errs
 	}
@@ -156,8 +166,9 @@ func processTemplate(fsys fileSystem, file string, info interface{}) (io.Reader,
 // Shared Function
 // ==================================================
 
+//nolint:gosec // G304: Destination path is constructed from validated template config
 func writeContent(destination string, content io.Reader) error {
-	destFile, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	destFile, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		if os.IsExist(err) {
 			return fmt.Errorf("file already exists")

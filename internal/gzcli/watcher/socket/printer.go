@@ -12,7 +12,7 @@ func (c *Client) StreamLiveLogs(limit int, interval time.Duration) error {
 	fmt.Println("Press Ctrl+C to stop streaming")
 	fmt.Println()
 
-	var lastLogID int64 = 0
+	var lastLogID int64
 
 	for {
 		// Get recent logs

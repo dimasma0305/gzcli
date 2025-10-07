@@ -1,3 +1,4 @@
+//nolint:revive // Test file with unused parameters in mock functions
 package config
 
 import (
@@ -195,7 +196,7 @@ func TestGetConfig_WithValidCache(t *testing.T) {
 
 	// Create .gzctf directory
 	gzctfDir := filepath.Join(tmpDir, ".gzctf")
-	if err := os.Mkdir(gzctfDir, 0755); err != nil {
+	if err := os.Mkdir(gzctfDir, 0750); err != nil {
 		t.Fatalf("Failed to create .gzctf dir: %v", err)
 	}
 

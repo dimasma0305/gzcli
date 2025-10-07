@@ -6,9 +6,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -41,7 +42,7 @@ The watcher runs as a daemon by default. Use --foreground to run in the current 
 
   # Start with custom ignore patterns
   gzcli watch start --ignore "*.tmp" --ignore "*.log"`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		gz := gzcli.MustInit()
 
 		config := gzcli.WatcherConfig{

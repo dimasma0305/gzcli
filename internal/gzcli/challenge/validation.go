@@ -21,6 +21,7 @@ const (
 	MaxInterval = 24 * time.Hour
 )
 
+// IsGoodChallenge validates a challenge configuration for required fields and correct values
 func IsGoodChallenge(challenge ChallengeYaml) error {
 	var errors []string
 
@@ -55,6 +56,7 @@ func IsGoodChallenge(challenge ChallengeYaml) error {
 	return nil
 }
 
+// ValidateChallenges validates all challenges and checks for duplicate names
 func ValidateChallenges(challengesConf []ChallengeYaml) error {
 	// Track seen names and duplicate occurrences
 	seenNames := make(map[string]int, len(challengesConf))

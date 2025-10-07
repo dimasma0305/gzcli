@@ -20,6 +20,7 @@ var LeetSpeakMap = map[rune]rune{
 
 // transformRandomly applies leetspeak and random uppercase transformations
 func transformRandomly(s string) string {
+	//nolint:gosec // G404: Weak RNG acceptable for non-security username generation
 	localRand := rand.New(rand.NewSource(rand.Int63())) // Local generator seeded from global source
 	var transformed strings.Builder
 	transformed.Grow(len(s)) // Pre-allocate capacity

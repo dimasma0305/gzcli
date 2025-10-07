@@ -34,6 +34,7 @@ func getShell() string {
 	return shell
 }
 
+// RunScript executes a specified script for a challenge
 func RunScript(challengeConf ChallengeYaml, script string) error {
 	scriptValue, exists := challengeConf.Scripts[script]
 	if !exists {
@@ -62,6 +63,7 @@ func RunScript(challengeConf ChallengeYaml, script string) error {
 	return runShell(command, challengeConf.Cwd)
 }
 
+//nolint:gosec // G204: Script execution is the intended purpose of this function
 func runShell(script string, cwd string) error {
 	cmd := exec.Command(getShell(), "-c", script)
 	cmd.Dir = cwd
@@ -71,6 +73,8 @@ func runShell(script string, cwd string) error {
 }
 
 // RunShellWithContext executes a shell command with context cancellation support
+//
+//nolint:gosec // G204: Script execution is the intended purpose of this function
 func RunShellWithContext(ctx context.Context, script string, cwd string) error {
 	cmd := exec.CommandContext(ctx, getShell(), "-c", script)
 	cmd.Dir = cwd
@@ -106,6 +110,7 @@ func RunShellForInterval(ctx context.Context, script string, cwd string, timeout
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	//nolint:gosec // G204: Script execution is the intended purpose of this function
 	cmd := exec.CommandContext(timeoutCtx, getShell(), "-c", script)
 	cmd.Dir = cwd
 

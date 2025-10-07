@@ -1,13 +1,16 @@
 /*
 Copyright © 2023 dimas maulana dimasmaulana0305@gmail.com
 */
+
+// Package cmd provides command-line interface commands for gzcli
 package cmd
 
 import (
 	"os"
 
-	"github.com/dimasma0305/gzcli/internal/log"
 	"github.com/spf13/cobra"
+
+	"github.com/dimasma0305/gzcli/internal/log"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -38,7 +41,7 @@ Features:
 
   # Generate CTFTime scoreboard
   gzcli scoreboard > scoreboard.json`,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 		// Enable debug mode if flag is set
 		if debug, _ := cmd.Flags().GetBool("debug"); debug {
 			log.SetDebugMode(true)

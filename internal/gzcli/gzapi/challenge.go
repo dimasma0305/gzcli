@@ -1,3 +1,4 @@
+//nolint:revive // Challenge struct field names match API responses
 package gzapi
 
 import (

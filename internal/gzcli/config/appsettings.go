@@ -1,3 +1,4 @@
+//nolint:revive // AppSettings field names match appsettings.json structure
 package config
 
 import (
@@ -150,6 +151,7 @@ func GetAppSettings() (*AppSettings, error) {
 		return nil, err
 	}
 	appSettingsPath := filepath.Join(dir, GZCTF_DIR, APPSETTINGS_FILE)
+	//nolint:gosec // G304: Config file path is constructed by application
 	content, err := os.ReadFile(appSettingsPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading appsettings file error: %w", err)

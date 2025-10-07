@@ -1,3 +1,4 @@
+//nolint:revive // Test file with unused parameters
 package gzapi
 
 import (
@@ -57,7 +58,7 @@ func TestGZAPI_GetGameById(t *testing.T) {
 				t.Errorf("Expected GET method, got %s", r.Method)
 			}
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(Game{
+			_ = json.NewEncoder(w).Encode(Game{
 				Id:    5,
 				Title: "Test Game",
 			})
@@ -89,7 +90,7 @@ func TestGZAPI_GetGameByTitle(t *testing.T) {
 	server := mockServer(t, map[string]http.HandlerFunc{
 		"/api/edit/games": func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"data": []Game{
 					{Id: 1, Title: "Game 1"},
 					{Id: 2, Title: "Target Game"},
@@ -123,7 +124,7 @@ func TestGZAPI_GetGameByTitle_NotFound(t *testing.T) {
 	server := mockServer(t, map[string]http.HandlerFunc{
 		"/api/edit/games": func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"data": []Game{
 					{Id: 1, Title: "Game 1"},
 				},
@@ -155,7 +156,7 @@ func TestGame_Delete(t *testing.T) {
 				t.Errorf("Expected DELETE method, got %s", r.Method)
 			}
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"deleted": true}`))
+			_, _ = w.Write([]byte(`{"deleted": true}`))
 		},
 	})
 	defer server.Close()
@@ -195,7 +196,7 @@ func TestGame_Update(t *testing.T) {
 			}
 
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"success": true}`))
+			_, _ = w.Write([]byte(`{"success": true}`))
 		},
 	})
 	defer server.Close()
@@ -295,7 +296,7 @@ func TestGZAPI_CreateGame(t *testing.T) {
 			}
 
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(Game{
+			_ = json.NewEncoder(w).Encode(Game{
 				Id:    100,
 				Title: form.Title,
 			})
@@ -350,7 +351,7 @@ func TestGame_JoinGame(t *testing.T) {
 			}
 
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"success": true}`))
+			_, _ = w.Write([]byte(`{"success": true}`))
 		},
 	})
 	defer server.Close()
@@ -420,7 +421,7 @@ func TestGame_GetScoreboard(t *testing.T) {
 				t.Errorf("Expected GET method, got %s", r.Method)
 			}
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(Scoreboard{
+			_ = json.NewEncoder(w).Encode(Scoreboard{
 				Challenges: map[string][]ScoreboardChallenge{
 					"Web": {
 						{Score: 100, Category: "Web", Title: "Challenge 1"},

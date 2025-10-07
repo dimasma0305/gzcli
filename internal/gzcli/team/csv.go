@@ -16,7 +16,9 @@ import (
 func GetData(source string) ([]byte, error) {
 	var output []byte
 	var err error
-	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+	switch {
+	case strings.HasPrefix(source, "http://"), strings.HasPrefix(source, "https://"):
+		//nolint:gosec // G107: URL is validated and comes from user config
 		resp, err := http.Get(source)
 		if err != nil {
 			return nil, err
@@ -31,13 +33,14 @@ func GetData(source string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if strings.HasPrefix(source, "file://") || !strings.Contains(source, "://") {
+	case strings.HasPrefix(source, "file://"), !strings.Contains(source, "://"):
 		filePath := strings.TrimPrefix(source, "file://")
+		//nolint:gosec // G304: File path comes from user config
 		output, err = os.ReadFile(filePath)
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	default:
 		return nil, errors.New("unsupported source prefix")
 	}
 

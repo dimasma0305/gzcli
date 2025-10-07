@@ -4,6 +4,7 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 )
 
+// IsFlagExist checks if a flag exists in the provided flags list
 func IsFlagExist(flag string, flags []gzapi.Flag) bool {
 	flagMap := make(map[string]struct{}, len(flags))
 	for _, f := range flags {
@@ -13,6 +14,7 @@ func IsFlagExist(flag string, flags []gzapi.Flag) bool {
 	return exists
 }
 
+// UpdateChallengeFlags synchronizes challenge flags between configuration and API
 func UpdateChallengeFlags(config *Config, challengeConf ChallengeYaml, challengeData *gzapi.Challenge) error {
 	for _, flag := range challengeData.Flags {
 		if !IsExistInArray(flag.Flag, challengeConf.Flags) {

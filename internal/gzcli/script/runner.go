@@ -1,3 +1,4 @@
+// Package script provides utilities for running challenge scripts
 package script
 
 import (
@@ -15,6 +16,8 @@ type ChallengeConf interface {
 }
 
 // ScriptValue interface for accessing script values
+//
+//nolint:revive // Name ScriptValue is kept for backward compatibility
 type ScriptValue interface {
 	GetCommand() string
 }

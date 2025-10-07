@@ -1,3 +1,4 @@
+// Package daemon provides daemon process management for the watcher
 package daemon
 
 import (

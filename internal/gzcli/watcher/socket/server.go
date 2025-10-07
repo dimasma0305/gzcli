@@ -52,7 +52,7 @@ func (s *Server) Init() error {
 
 	// Create socket directory if it doesn't exist
 	socketDir := filepath.Dir(socketPath)
-	if err := os.MkdirAll(socketDir, 0755); err != nil {
+	if err := os.MkdirAll(socketDir, 0750); err != nil {
 		return fmt.Errorf("failed to create socket directory: %w", err)
 	}
 
@@ -63,6 +63,7 @@ func (s *Server) Init() error {
 	}
 
 	// Set socket permissions
+	//nolint:gosec // G302: Unix socket needs 0666 for multi-user access
 	if err := os.Chmod(socketPath, 0666); err != nil {
 		_ = listener.Close()
 		return fmt.Errorf("failed to set socket permissions: %w", err)

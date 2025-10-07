@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/spf13/cobra"
 )
 
 var structureCmd = &cobra.Command{
@@ -15,7 +16,7 @@ This command reads the .structure file in the challenge directory and creates
 the specified directory structure and placeholder files.`,
 	Example: `  # Generate structure for all challenges
   gzcli structure`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		gz := gzcli.MustInit()
 
 		if err := gz.GenerateStructure(); err != nil {

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/spf13/cobra"
 )
 
 var scoreboardCmd = &cobra.Command{
@@ -21,7 +22,7 @@ The output can be used to submit your CTF scoreboard to CTFTime.org.`,
 
   # Save to file
   gzcli scoreboard > scoreboard.json`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		gz := gzcli.MustInit()
 		feed := gz.MustScoreboard2CTFTimeFeed()
 

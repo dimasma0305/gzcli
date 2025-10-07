@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -19,7 +20,7 @@ var watchLogsCmd = &cobra.Command{
 
   # View custom log file
   gzcli watch logs --log-file /custom/path/watcher.log`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		gz := gzcli.MustInit()
 
 		watcher, err := gzcli.NewWatcher(gz)

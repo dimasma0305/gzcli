@@ -99,10 +99,10 @@ func (m *Manager) runIntervalScript(ctx context.Context, challengeName, scriptNa
 			m.scriptMetricsMu.Unlock()
 
 			// Execute the script with context-aware execution and proper timeout
-			var exitCode int = 0
-			var success bool = false
-			var errorOutput string = ""
-			var output string = ""
+			var exitCode int
+			var success bool
+			var errorOutput string
+			var output string
 
 			err := RunShellForInterval(ctx, command, cwd, DefaultScriptTimeout)
 			duration := time.Since(start)

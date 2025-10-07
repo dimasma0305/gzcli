@@ -1,6 +1,8 @@
 package team
 
 // TeamCreds stores team credentials
+//
+//nolint:revive // TeamCreds type name kept for package clarity and backward compatibility
 type TeamCreds struct {
 	Username           string `json:"username" yaml:"username"`
 	Password           string `json:"password" yaml:"password"`

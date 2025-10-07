@@ -13,13 +13,13 @@ import (
 func WritePIDFile(pidFile string, pid int) error {
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(pidFile)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return fmt.Errorf("failed to create PID file directory: %w", err)
 	}
 
 	// Write PID to file
 	pidStr := fmt.Sprintf("%d\n", pid)
-	if err := os.WriteFile(pidFile, []byte(pidStr), 0644); err != nil {
+	if err := os.WriteFile(pidFile, []byte(pidStr), 0600); err != nil {
 		return fmt.Errorf("failed to write PID file: %w", err)
 	}
 
@@ -30,6 +30,7 @@ func WritePIDFile(pidFile string, pid int) error {
 // ReadPIDFromFile reads a PID integer from the given pid file.
 // Returns os.ErrNotExist if the file does not exist, or a formatted error for invalid/empty PID content.
 func ReadPIDFromFile(pidFile string) (int, error) {
+	//nolint:gosec // G304: PID file path is constructed by application
 	data, err := os.ReadFile(pidFile)
 	if err != nil {
 		return 0, err

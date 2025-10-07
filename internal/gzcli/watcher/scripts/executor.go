@@ -1,3 +1,4 @@
+// Package scripts provides script execution management for the watcher
 package scripts
 
 import (

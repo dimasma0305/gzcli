@@ -1,12 +1,14 @@
+//nolint:revive // Exported functions follow project conventions
 package challenge
 
 import (
 	"fmt"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/google/go-cmp/cmp"
 )
 
 func IsChallengeExist(challengeName string, challenges []gzapi.Challenge) bool {

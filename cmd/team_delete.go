@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -16,7 +17,7 @@ var teamDeleteCmd = &cobra.Command{
 	Long:  `Delete all teams and users from the CTF platform.`,
 	Example: `  # Delete all teams and users
   gzcli team delete --all`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
 		if !deleteAll {
 			log.Error("Please specify --all flag to confirm deletion")
 			_ = cmd.Help()

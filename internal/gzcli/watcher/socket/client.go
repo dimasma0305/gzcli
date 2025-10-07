@@ -1,3 +1,4 @@
+// Package socket provides Unix socket client and server for watcher communication
 package socket
 
 import (

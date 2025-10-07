@@ -1,3 +1,4 @@
+//nolint:revive // Config constants and field names match project structure
 package config
 
 import (
@@ -184,6 +185,7 @@ func GetChallengesYaml(config *Config) ([]ChallengeYaml, error) {
 					return err
 				}
 
+				//nolint:gosec // G304: File paths come from validated challenges directory
 				content, err := os.ReadFile(path)
 				if err != nil {
 					return fmt.Errorf("reading file error: %w", err)

@@ -1,3 +1,4 @@
+//nolint:revive // Function and variable names follow project conventions
 package challenge
 
 import (
@@ -14,10 +15,12 @@ import (
 func HandleChallengeAttachments(challengeConf ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
 	log.InfoH3("Processing attachments for challenge: %s", challengeConf.Name)
 
-	if challengeConf.Provide != nil {
+	switch {
+	case challengeConf.Provide != nil:
 		log.InfoH3("Challenge %s has attachment: %s", challengeConf.Name, *challengeConf.Provide)
 
-		if strings.HasPrefix(*challengeConf.Provide, "http") {
+		switch {
+		case strings.HasPrefix(*challengeConf.Provide, "http"):
 			log.InfoH3("Creating remote attachment for %s: %s", challengeConf.Name, *challengeConf.Provide)
 			if err := challengeData.CreateAttachment(gzapi.CreateAttachmentForm{
 				AttachmentType: "Remote",
@@ -27,11 +30,11 @@ func HandleChallengeAttachments(challengeConf ChallengeYaml, challengeData *gzap
 				return fmt.Errorf("remote attachment creation failed for %s: %w", challengeConf.Name, err)
 			}
 			log.InfoH3("Successfully created remote attachment for %s", challengeConf.Name)
-		} else {
+		default:
 			log.InfoH3("Processing local attachment for %s: %s", challengeConf.Name, *challengeConf.Provide)
 			return HandleLocalAttachment(challengeConf, challengeData, api)
 		}
-	} else if challengeData.Attachment != nil {
+	case challengeData.Attachment != nil:
 		log.InfoH3("Removing existing attachment for %s", challengeConf.Name)
 		if err := challengeData.CreateAttachment(gzapi.CreateAttachmentForm{
 			AttachmentType: "None",
@@ -40,7 +43,7 @@ func HandleChallengeAttachments(challengeConf ChallengeYaml, challengeData *gzap
 			return fmt.Errorf("attachment removal failed for %s: %w", challengeConf.Name, err)
 		}
 		log.InfoH3("Successfully removed attachment for %s", challengeConf.Name)
-	} else {
+	default:
 		log.InfoH3("No attachment processing needed for %s", challengeConf.Name)
 	}
 
@@ -148,7 +151,8 @@ func CreateUniqueAttachmentFile(srcPath, dstPath, challengeName string) error {
 	}
 
 	// Append challenge-specific metadata to make the file unique
-	file, err := os.OpenFile(dstPath, os.O_APPEND|os.O_WRONLY, 0644)
+	//nolint:gosec // G304: File path constructed from validated challenge config
+	file, err := os.OpenFile(dstPath, os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}

@@ -1,3 +1,4 @@
+//nolint:revive // Exported functions follow project conventions
 package challenge
 
 import (
