@@ -152,8 +152,27 @@ test-watch:
 ## bench: Run benchmarks
 bench:
 	@echo "${BLUE}Running benchmarks...${NC}"
-	@go test -bench=. -benchmem ./...
+	@go test -bench=. -benchmem -benchtime=3s ./...
 	@echo "${GREEN}Benchmarks complete${NC}"
+
+## bench-compare: Run benchmarks and save results for comparison
+bench-compare:
+	@echo "${BLUE}Running benchmarks and saving results...${NC}"
+	@mkdir -p .bench
+	@go test -bench=. -benchmem -benchtime=3s ./... | tee .bench/bench-$$(date +%Y%m%d-%H%M%S).txt
+	@echo "${GREEN}Benchmark results saved to .bench/${NC}"
+
+## profile-cpu: Run CPU profiling
+profile-cpu:
+	@echo "${BLUE}Running CPU profiling...${NC}"
+	@go test -cpuprofile=cpu.prof -bench=. ./...
+	@go tool pprof -http=:8080 cpu.prof
+
+## profile-mem: Run memory profiling
+profile-mem:
+	@echo "${BLUE}Running memory profiling...${NC}"
+	@go test -memprofile=mem.prof -bench=. ./...
+	@go tool pprof -http=:8080 mem.prof
 
 ##@ Release
 

@@ -1,4 +1,6 @@
 // Package utils provides common utility functions
+//
+//nolint:revive // utils is a common and acceptable package name for utility functions
 package utils
 
 import (

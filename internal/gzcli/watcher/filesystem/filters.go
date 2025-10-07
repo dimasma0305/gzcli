@@ -2,14 +2,106 @@ package filesystem
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
 	"github.com/dimasma0305/gzcli/internal/log"
 	"github.com/fsnotify/fsnotify"
 )
 
-// ShouldProcessEvent determines if we should process a file system event
+// FilterMatcher provides optimized pattern matching with pre-compiled regex
+type FilterMatcher struct {
+	ignoreRegexes []*regexp.Regexp
+	watchRegexes  []*regexp.Regexp
+	mu            sync.RWMutex
+}
+
+// globalFilterMatcher is a singleton for compiled patterns
+var (
+	globalFilterMatcher *FilterMatcher
+	filterOnce          sync.Once
+)
+
+// getFilterMatcher returns the global filter matcher, initializing if needed
+func getFilterMatcher(config types.WatcherConfig) *FilterMatcher {
+	filterOnce.Do(func() {
+		globalFilterMatcher = newFilterMatcher(config)
+	})
+	return globalFilterMatcher
+}
+
+// newFilterMatcher creates a new filter matcher with pre-compiled patterns
+func newFilterMatcher(config types.WatcherConfig) *FilterMatcher {
+	fm := &FilterMatcher{
+		ignoreRegexes: make([]*regexp.Regexp, 0, len(config.IgnorePatterns)),
+		watchRegexes:  make([]*regexp.Regexp, 0, len(config.WatchPatterns)),
+	}
+
+	// Compile ignore patterns to regex
+	for _, pattern := range config.IgnorePatterns {
+		// Convert glob pattern to regex
+		regex := globToRegex(pattern)
+		if compiled, err := regexp.Compile(regex); err == nil {
+			fm.ignoreRegexes = append(fm.ignoreRegexes, compiled)
+		}
+	}
+
+	// Compile watch patterns to regex
+	for _, pattern := range config.WatchPatterns {
+		regex := globToRegex(pattern)
+		if compiled, err := regexp.Compile(regex); err == nil {
+			fm.watchRegexes = append(fm.watchRegexes, compiled)
+		}
+	}
+
+	return fm
+}
+
+// globToRegex converts a glob pattern to a regular expression
+func globToRegex(glob string) string {
+	// Escape special regex characters except * and ?
+	regex := regexp.QuoteMeta(glob)
+	// Replace \* with .* (match any characters)
+	regex = strings.ReplaceAll(regex, `\*`, ".*")
+	// Replace \? with . (match single character)
+	regex = strings.ReplaceAll(regex, `\?`, ".")
+	// Anchor the pattern
+	return "^" + regex + "$"
+}
+
+// matchesIgnorePattern checks if a filename/path matches any ignore pattern
+func (fm *FilterMatcher) matchesIgnorePattern(filename, fullPath string) bool {
+	fm.mu.RLock()
+	defer fm.mu.RUnlock()
+
+	for _, regex := range fm.ignoreRegexes {
+		if regex.MatchString(filename) || regex.MatchString(fullPath) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesWatchPattern checks if a filename matches any watch pattern
+func (fm *FilterMatcher) matchesWatchPattern(filename string) bool {
+	fm.mu.RLock()
+	defer fm.mu.RUnlock()
+
+	if len(fm.watchRegexes) == 0 {
+		return true // No watch patterns means watch everything
+	}
+
+	for _, regex := range fm.watchRegexes {
+		if regex.MatchString(filename) {
+			return true
+		}
+	}
+	return false
+}
+
+// ShouldProcessEvent determines if we should process a file system event using optimized matching
 func ShouldProcessEvent(event fsnotify.Event, config types.WatcherConfig) bool {
 	// Process Write, Create, Remove, and Rename events
 	if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) == 0 {
@@ -31,24 +123,19 @@ func ShouldProcessEvent(event fsnotify.Event, config types.WatcherConfig) bool {
 		return false
 	}
 
-	// Check ignore patterns (if any)
-	for _, pattern := range config.IgnorePatterns {
-		if matched, _ := filepath.Match(pattern, filename); matched {
+	// Use optimized regex-based matching if patterns exist
+	if len(config.IgnorePatterns) > 0 || len(config.WatchPatterns) > 0 {
+		matcher := getFilterMatcher(config)
+		
+		// Check ignore patterns first
+		if matcher.matchesIgnorePattern(filename, event.Name) {
 			return false
 		}
-		if strings.Contains(event.Name, pattern) {
-			return false
-		}
-	}
 
-	// Check if it matches watch patterns (if specified)
-	if len(config.WatchPatterns) > 0 {
-		for _, pattern := range config.WatchPatterns {
-			if matched, _ := filepath.Match(pattern, filename); matched {
-				return true
-			}
+		// Check watch patterns
+		if len(config.WatchPatterns) > 0 {
+			return matcher.matchesWatchPattern(filename)
 		}
-		return false
 	}
 
 	return true

@@ -1,5 +1,4 @@
-//nolint:revive // Test package name matches tested package
-package utils
+package utils //nolint:revive // utils is a common and acceptable package name
 
 import (
 	"strings"

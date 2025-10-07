@@ -113,9 +113,9 @@ Additional optimizations that could be explored:
    - `gzcli-full`: All features including proxy, email, etc.
 
 2. **Dependency Analysis**: Review and potentially replace heavy dependencies
-   - `github.com/lqqyt2423/go-mitmproxy`: Consider conditional compilation
+   - `github.com/lqqyt2423/go-mitmproxy`: ✅ **Removed** (~3MB savings, dead code eliminated)
    - `github.com/mattn/go-sqlite3`: Evaluate pure-Go alternatives like `modernc.org/sqlite`
-   - QUIC libraries: Check if needed for all use cases
+   - QUIC libraries: Check if needed for all use cases (used by req/v3)
 
 3. **Dead Code Elimination**: Use `-tags` to exclude unused code paths
 

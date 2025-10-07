@@ -1,11 +1,12 @@
 package gzcli
 
 import (
-	"bufio"
+	"container/list"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -17,12 +18,134 @@ var cacheDir = func() string {
 	return filepath.Join(dir, ".gzcli")
 }()
 
-// setCache atomically writes data to cache with proper directory creation
+// Cache configuration constants
+const (
+	maxMemoryCacheSize = 100             // Maximum number of entries in memory cache
+	defaultCacheTTL    = 5 * time.Minute // Default TTL for cache entries
+)
+
+// cacheEntry represents a cached item with metadata
+type cacheEntry struct {
+	data      []byte
+	timestamp time.Time
+	key       string
+}
+
+// lruCache implements an LRU cache with TTL support
+type lruCache struct {
+	mu       sync.RWMutex
+	capacity int
+	entries  map[string]*list.Element
+	lruList  *list.List
+	ttl      time.Duration
+}
+
+// Global in-memory cache instance
+var memoryCache = newLRUCache(maxMemoryCacheSize, defaultCacheTTL)
+
+// newLRUCache creates a new LRU cache
+func newLRUCache(capacity int, ttl time.Duration) *lruCache {
+	return &lruCache{
+		capacity: capacity,
+		entries:  make(map[string]*list.Element, capacity),
+		lruList:  list.New(),
+		ttl:      ttl,
+	}
+}
+
+// get retrieves a value from the LRU cache
+func (c *lruCache) get(key string) ([]byte, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	element, exists := c.entries[key]
+	if !exists {
+		return nil, false
+	}
+
+	entry := element.Value.(*cacheEntry)
+
+	// Check if entry has expired
+	if time.Since(entry.timestamp) > c.ttl {
+		c.removeElement(element)
+		return nil, false
+	}
+
+	// Move to front (most recently used)
+	c.lruList.MoveToFront(element)
+	return entry.data, true
+}
+
+// put adds or updates a value in the LRU cache
+func (c *lruCache) put(key string, data []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// If key exists, update and move to front
+	if element, exists := c.entries[key]; exists {
+		c.lruList.MoveToFront(element)
+		entry := element.Value.(*cacheEntry)
+		entry.data = data
+		entry.timestamp = time.Now()
+		return
+	}
+
+	// Add new entry
+	entry := &cacheEntry{
+		data:      data,
+		timestamp: time.Now(),
+		key:       key,
+	}
+	element := c.lruList.PushFront(entry)
+	c.entries[key] = element
+
+	// Evict least recently used if over capacity
+	if c.lruList.Len() > c.capacity {
+		c.evictOldest()
+	}
+}
+
+// remove removes a key from the cache
+func (c *lruCache) remove(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if element, exists := c.entries[key]; exists {
+		c.removeElement(element)
+	}
+}
+
+// removeElement removes an element from the cache (must be called with lock held)
+func (c *lruCache) removeElement(element *list.Element) {
+	c.lruList.Remove(element)
+	entry := element.Value.(*cacheEntry)
+	delete(c.entries, entry.key)
+}
+
+// evictOldest removes the least recently used entry
+func (c *lruCache) evictOldest() {
+	element := c.lruList.Back()
+	if element != nil {
+		c.removeElement(element)
+	}
+}
+
+// setCache atomically writes data to two-tier cache (memory + disk)
 func setCache(key string, data any) error {
+	// Encode data to bytes using YAML
+	buf, err := yaml.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("encoding failed: %w", err)
+	}
+
+	// Store in memory cache
+	memoryCache.put(key, buf)
+
+	// Write to disk cache
 	cachePath := filepath.Join(cacheDir, key+".yaml")
 
 	// Create cache directory with proper permissions
-	if err := os.MkdirAll(filepath.Dir(cachePath), 0750); err != nil {
+	if err = os.MkdirAll(filepath.Dir(cachePath), 0750); err != nil {
 		return fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
@@ -34,16 +157,11 @@ func setCache(key string, data any) error {
 	tmpPath := tmpFile.Name()
 	defer func() { _ = os.Remove(tmpPath) }()
 
-	// Use buffered writer with pre-allocated buffer
-	bw := bufio.NewWriterSize(tmpFile, 32*1024) // 32KB buffer
-	if err := yaml.NewEncoder(bw).Encode(data); err != nil {
-		return fmt.Errorf("encoding failed: %w", err)
+	// Write data
+	if _, err := tmpFile.Write(buf); err != nil {
+		return fmt.Errorf("write failed: %w", err)
 	}
 
-	// Flush buffer before renaming
-	if err := bw.Flush(); err != nil {
-		return fmt.Errorf("buffer flush failed: %w", err)
-	}
 	if err := tmpFile.Close(); err != nil {
 		return fmt.Errorf("temp file close failed: %w", err)
 	}
@@ -87,8 +205,20 @@ func renameWithRetry(src, dst string) error {
 	return lastErr
 }
 
-// GetCache reads cached data using optimized file access
+// GetCache reads cached data from two-tier cache (memory first, then disk)
 func GetCache(key string, data any) error {
+	// Try memory cache first
+	if cachedData, found := memoryCache.get(key); found {
+		// Decode from cached bytes
+		if err := yaml.Unmarshal(cachedData, data); err != nil {
+			// If unmarshal fails, remove from cache and fall through to disk
+			memoryCache.remove(key)
+		} else {
+			return nil
+		}
+	}
+
+	// Fall back to disk cache
 	cachePath := filepath.Join(cacheDir, key+".yaml")
 
 	//nolint:gosec // G304: Cache files are created by the application itself
@@ -101,16 +231,34 @@ func GetCache(key string, data any) error {
 	}
 	defer func() { _ = file.Close() }()
 
-	buffered := bufio.NewReader(file)
-	if err := yaml.NewDecoder(buffered).Decode(data); err != nil {
+	// Read file content
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("stat error: %w", err)
+	}
+
+	buf := make([]byte, fileInfo.Size())
+	if _, err := file.Read(buf); err != nil {
+		return fmt.Errorf("read error: %w", err)
+	}
+
+	// Decode data
+	if err := yaml.Unmarshal(buf, data); err != nil {
 		return fmt.Errorf("decoding error: %w", err)
 	}
+
+	// Store in memory cache for future access
+	memoryCache.put(key, buf)
 
 	return nil
 }
 
-// DeleteCache removes cache files with minimal syscalls
+// DeleteCache removes cache from both memory and disk
 func DeleteCache(key string) error {
+	// Remove from memory cache
+	memoryCache.remove(key)
+
+	// Remove from disk cache
 	cachePath := filepath.Join(cacheDir, key+".yaml")
 
 	if err := os.Remove(cachePath); err != nil {
