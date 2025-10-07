@@ -1,3 +1,9 @@
+## [1.1.2](https://github.com/dimasma0305/gzcli/compare/v1.1.1...v1.1.2) (2025-10-07)
+
+### Code Refactoring
+
+* update script execution comments for security linting ([723bf78](https://github.com/dimasma0305/gzcli/commit/723bf786bdfd372197bb85e8455f0a49f35e261b))
+
 ## [1.1.1](https://github.com/dimasma0305/gzcli/compare/v1.1.0...v1.1.1) (2025-10-07)
 
 ### Code Refactoring
