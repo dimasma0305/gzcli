@@ -1,0 +1,16 @@
+name: Test Challenge
+author: Test Author
+description: Test Description
+flags:
+  - flag{test}
+value: 100
+type: StaticAttachment
+hints:
+  - This is a hint
+visible: true
+scripts:
+  deploy: docker compose up -d
+  test:
+    execute: ./test.sh
+    interval: 5m
+

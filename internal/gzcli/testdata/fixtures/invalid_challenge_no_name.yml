@@ -1,0 +1,7 @@
+author: "test-author"
+description: "Missing name field"
+type: "StaticAttachment"
+value: 100
+flags:
+  - "FLAG{test}"
+

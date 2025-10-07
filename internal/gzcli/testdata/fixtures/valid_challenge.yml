@@ -1,0 +1,12 @@
+name: "Test Challenge"
+author: "test-author"
+description: |
+  This is a test challenge description
+type: "StaticAttachment"
+value: 500
+flags:
+  - "FLAG{test_flag_123}"
+hints:
+  - "This is a test hint"
+provide: "./dist"
+

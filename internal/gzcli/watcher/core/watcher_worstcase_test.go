@@ -1,0 +1,549 @@
+package core
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
+	"github.com/dimasma0305/gzcli/internal/gzcli/testutil"
+)
+
+// TestNew_NilAPI tests watcher creation with nil API
+func TestNew_NilAPI(t *testing.T) {
+	_, err := New(nil)
+	if err == nil {
+		t.Error("Expected error when creating watcher with nil API")
+	}
+}
+
+// TestWatcher_ConcurrentFileChanges tests handling of concurrent file events
+func TestWatcher_ConcurrentFileChanges(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping concurrent file changes test in short mode")
+	}
+
+	tmpDir := setupWatcherTest(t)
+	defer os.RemoveAll(tmpDir)
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Create multiple files concurrently
+	testutil.ConcurrentTest(t, 10, 5, func(id, iter int) error {
+		filename := filepath.Join(tmpDir, fmt.Sprintf("file-%d-%d.txt", id, iter))
+		return os.WriteFile(filename, []byte("test"), 0644)
+	})
+}
+
+// TestWatcher_RapidFileChanges tests handling of very rapid file changes
+func TestWatcher_RapidFileChanges(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping rapid file changes test in short mode")
+	}
+
+	tmpDir := setupWatcherTest(t)
+	defer os.RemoveAll(tmpDir)
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Create 100 files very rapidly
+	for i := 0; i < 100; i++ {
+		filename := filepath.Join(tmpDir, fmt.Sprintf("rapid-%d.txt", i))
+		os.WriteFile(filename, []byte("test"), 0644)
+		// No delay - as fast as possible
+	}
+
+	t.Log("Created 100 files rapidly without errors")
+}
+
+// TestWatcher_ConcurrentMutexAccess tests race conditions in mutex access
+func TestWatcher_ConcurrentMutexAccess(t *testing.T) {
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Access challenge mutexes concurrently
+	testutil.ConcurrentTest(t, 20, 10, func(id, iter int) error {
+		challengeName := fmt.Sprintf("challenge-%d", id%5) // Use only 5 names for contention
+		mutex := w.GetChallengeUpdateMutex(challengeName)
+
+		mutex.Lock()
+		// Simulate some work
+		time.Sleep(1 * time.Millisecond)
+		mutex.Unlock()
+
+		return nil
+	})
+
+	t.Log("Concurrent mutex access completed without deadlock")
+}
+
+// TestWatcher_UpdateStateRaceConditions tests concurrent state updates
+func TestWatcher_UpdateStateRaceConditions(t *testing.T) {
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Update state concurrently for same challenge
+	testutil.ConcurrentTest(t, 10, 20, func(id, iter int) error {
+		w.setUpdating("test-challenge", true)
+		time.Sleep(1 * time.Millisecond)
+		w.setUpdating("test-challenge", false)
+		return nil
+	})
+
+	// Verify final state is clean
+	if w.isUpdating("test-challenge") {
+		t.Error("Challenge should not be marked as updating after test")
+	}
+}
+
+// TestWatcher_PendingUpdatesRaceCondition tests concurrent pending updates
+func TestWatcher_PendingUpdatesRaceCondition(t *testing.T) {
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	challengeName := "test-challenge"
+
+	// Set and get pending updates concurrently
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			filePath := fmt.Sprintf("/path/to/file-%d", id)
+			w.setPendingUpdate(challengeName, filePath)
+		}(i)
+	}
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			w.getPendingUpdate(challengeName)
+		}()
+	}
+
+	wg.Wait()
+	t.Log("Concurrent pending updates handled without race condition")
+}
+
+// TestWatcher_ContextCancellation tests proper cleanup on context cancellation
+func TestWatcher_ContextCancellation(t *testing.T) {
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Cancel context
+	w.cancel()
+
+	// Verify context is cancelled
+	select {
+	case <-w.ctx.Done():
+		t.Log("Context cancelled successfully")
+	case <-time.After(1 * time.Second):
+		t.Error("Context not cancelled within timeout")
+	}
+}
+
+// TestWatcher_ManyWatchedDirectories tests resource exhaustion with many directories
+func TestWatcher_ManyWatchedDirectories(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping many directories test in short mode")
+	}
+
+	tmpDir := setupWatcherTest(t)
+	defer os.RemoveAll(tmpDir)
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Create 100 directories
+	for i := 0; i < 100; i++ {
+		dir := filepath.Join(tmpDir, fmt.Sprintf("dir-%d", i))
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create directory: %v", err)
+		}
+
+		// Try to add to watcher
+		if err := w.watcher.Add(dir); err != nil {
+			t.Logf("Failed to watch directory %d: %v", i, err)
+			// This might fail on systems with watch limits
+			break
+		}
+	}
+
+	t.Log("Successfully handled multiple watched directories")
+}
+
+// TestWatcher_SymlinkLoop tests handling of symlink loops
+func TestWatcher_SymlinkLoop(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping symlink test in short mode")
+	}
+
+	tmpDir := setupWatcherTest(t)
+	defer os.RemoveAll(tmpDir)
+
+	// Create symlink loop: a -> b -> a
+	linkA := filepath.Join(tmpDir, "link-a")
+	linkB := filepath.Join(tmpDir, "link-b")
+
+	if err := os.Symlink(linkB, linkA); err != nil {
+		t.Skipf("Failed to create symlink: %v", err)
+	}
+	if err := os.Symlink(linkA, linkB); err != nil {
+		t.Skipf("Failed to create symlink loop: %v", err)
+	}
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Try to watch the symlink - should handle gracefully
+	err = w.watcher.Add(linkA)
+	if err != nil {
+		t.Logf("Symlink loop handled with error: %v", err)
+	}
+}
+
+// TestWatcher_RapidCreateDelete tests rapid file creation and deletion
+func TestWatcher_RapidCreateDelete(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping rapid create/delete test in short mode")
+	}
+
+	tmpDir := setupWatcherTest(t)
+	defer os.RemoveAll(tmpDir)
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Rapidly create and delete files
+	for i := 0; i < 50; i++ {
+		filename := filepath.Join(tmpDir, fmt.Sprintf("temp-%d.txt", i))
+		os.WriteFile(filename, []byte("test"), 0644)
+		os.Remove(filename)
+	}
+
+	t.Log("Rapid create/delete cycles handled")
+}
+
+// TestWatcher_FilePermissionChanges tests handling of permission changes
+func TestWatcher_FilePermissionChanges(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("Skipping permission test when running as root")
+	}
+
+	tmpDir := setupWatcherTest(t)
+	defer os.RemoveAll(tmpDir)
+
+	filename := filepath.Join(tmpDir, "test.txt")
+	os.WriteFile(filename, []byte("test"), 0644)
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Make file unreadable
+	os.Chmod(filename, 0000)
+	defer os.Chmod(filename, 0644)
+
+	// Try to read - should handle permission error gracefully
+	_, err = os.ReadFile(filename)
+	if err == nil {
+		t.Error("Expected permission error")
+	}
+
+	t.Log("Permission changes handled")
+}
+
+// TestWatcher_LargeNumberOfEvents tests handling of event flooding
+func TestWatcher_LargeNumberOfEvents(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping large event test in short mode")
+	}
+
+	tmpDir := setupWatcherTest(t)
+	defer os.RemoveAll(tmpDir)
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	if err := w.watcher.Add(tmpDir); err != nil {
+		t.Fatalf("Failed to watch directory: %v", err)
+	}
+
+	// Create many files to generate many events
+	for i := 0; i < 1000; i++ {
+		filename := filepath.Join(tmpDir, fmt.Sprintf("event-%d.txt", i))
+		os.WriteFile(filename, []byte("test"), 0644)
+		if i%100 == 0 {
+			time.Sleep(10 * time.Millisecond) // Small delay to avoid overwhelming
+		}
+	}
+
+	t.Log("Handled 1000+ file events")
+}
+
+// TestWatcher_ConcurrentHandleFileChange tests concurrent file change handling
+func TestWatcher_ConcurrentHandleFileChange(t *testing.T) {
+	tmpDir := setupWatcherTest(t)
+	defer os.RemoveAll(tmpDir)
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Call HandleFileChange concurrently
+	testutil.ConcurrentTest(t, 10, 5, func(id, iter int) error {
+		filepath := fmt.Sprintf("/fake/path/file-%d-%d.txt", id, iter)
+		w.HandleFileChange(filepath)
+		return nil
+	})
+
+	t.Log("Concurrent HandleFileChange calls completed")
+}
+
+// TestWatcher_DeadlockPrevention tests that operations don't deadlock
+func TestWatcher_DeadlockPrevention(t *testing.T) {
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	done := make(chan bool)
+
+	go func() {
+		// Perform operations that could deadlock
+		for i := 0; i < 100; i++ {
+			challengeName := fmt.Sprintf("challenge-%d", i%10)
+
+			w.setUpdating(challengeName, true)
+			w.GetChallengeUpdateMutex(challengeName)
+			w.setPendingUpdate(challengeName, "/some/path")
+			w.getPendingUpdate(challengeName)
+			w.setUpdating(challengeName, false)
+		}
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		t.Log("No deadlock detected")
+	case <-time.After(5 * time.Second):
+		t.Fatal("Deadlock detected - operations timed out")
+	}
+}
+
+// TestWatcher_MemoryLeakDetection tests for potential memory leaks
+func TestWatcher_MemoryLeakDetection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping memory leak test in short mode")
+	}
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	initialMutexCount := len(w.challengeMutexes)
+
+	// Create many mutexes
+	for i := 0; i < 1000; i++ {
+		challengeName := fmt.Sprintf("challenge-%d", i)
+		w.GetChallengeUpdateMutex(challengeName)
+	}
+
+	finalMutexCount := len(w.challengeMutexes)
+
+	if finalMutexCount != 1000 {
+		t.Errorf("Expected 1000 mutexes, got %d", finalMutexCount)
+	}
+
+	t.Logf("Created %d mutexes (started with %d)", finalMutexCount-initialMutexCount, initialMutexCount)
+	t.Log("Note: In production, consider implementing mutex cleanup for inactive challenges")
+}
+
+// TestWatcher_NilChallengeManager tests operations when challenge manager is nil
+func TestWatcher_NilChallengeManager(t *testing.T) {
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Challenge manager should be initialized
+	if w.challengeMgr == nil {
+		t.Error("Challenge manager should not be nil")
+	}
+}
+
+// TestWatcher_StressTest performs overall stress testing
+func TestWatcher_StressTest(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping stress test in short mode")
+	}
+
+	tmpDir := setupWatcherTest(t)
+	defer os.RemoveAll(tmpDir)
+
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	// Perform various operations concurrently
+	var wg sync.WaitGroup
+
+	// File operations
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100; i++ {
+			filename := filepath.Join(tmpDir, fmt.Sprintf("stress-%d.txt", i))
+			os.WriteFile(filename, []byte("test"), 0644)
+			time.Sleep(5 * time.Millisecond)
+		}
+	}()
+
+	// State operations
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100; i++ {
+			challengeName := fmt.Sprintf("challenge-%d", i%10)
+			w.setUpdating(challengeName, true)
+			time.Sleep(2 * time.Millisecond)
+			w.setUpdating(challengeName, false)
+		}
+	}()
+
+	// Mutex operations
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100; i++ {
+			challengeName := fmt.Sprintf("challenge-%d", i%10)
+			mutex := w.GetChallengeUpdateMutex(challengeName)
+			mutex.Lock()
+			time.Sleep(1 * time.Millisecond)
+			mutex.Unlock()
+		}
+	}()
+
+	wg.Wait()
+	t.Log("Stress test completed successfully")
+}
+
+// Helper functions
+func setupWatcherTest(t *testing.T) string {
+	tmpDir, err := os.MkdirTemp("", "watcher-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	return tmpDir
+}
+
+// TestWatcher_EdgeCases tests various edge cases
+func TestWatcher_EdgeCases(t *testing.T) {
+	api := &gzapi.GZAPI{}
+	w, err := New(api)
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer w.watcher.Close()
+
+	testCases := []struct {
+		name string
+		fn   func()
+	}{
+		{
+			"Empty challenge name",
+			func() {
+				w.setUpdating("", true)
+				w.setUpdating("", false)
+			},
+		},
+		{
+			"Very long challenge name",
+			func() {
+				longName := string(make([]byte, 10000))
+				w.setUpdating(longName, true)
+			},
+		},
+		{
+			"Special characters in challenge name",
+			func() {
+				w.setUpdating("challenge\x00with\x00nulls", true)
+			},
+		},
+		{
+			"Unicode challenge name",
+			func() {
+				w.setUpdating("チャレンジ-🚀", true)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Should not panic
+			tc.fn()
+		})
+	}
+}

@@ -1,0 +1,8 @@
+url: https://test.gzctf.local
+creds:
+  username: testuser
+  password: testpass
+event:
+  title: Test CTF
+  id: 1
+

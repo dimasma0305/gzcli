@@ -19,7 +19,7 @@ var teamDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if !deleteAll {
 			log.Error("Please specify --all flag to confirm deletion")
-			cmd.Help()
+			_ = cmd.Help()
 			return
 		}
 

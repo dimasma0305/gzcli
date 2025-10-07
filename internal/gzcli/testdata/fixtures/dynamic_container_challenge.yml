@@ -1,0 +1,14 @@
+name: "Dynamic Container Challenge"
+author: "test-author"
+description: "Test dynamic container"
+type: "DynamicContainer"
+value: 1000
+container:
+  flagTemplate: "FLAG{test_[TEAM_HASH]}"
+  containerImage: "test:latest"
+  memoryLimit: 512
+  cpuCount: 2
+  storageLimit: 256
+  containerExposePort: 8080
+  enableTrafficCapture: true
+
