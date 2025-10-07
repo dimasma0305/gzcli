@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -239,6 +240,11 @@ func TestCache_LargeData(t *testing.T) {
 
 // TestCache_ReadOnlyDirectory tests cache operations when directory is read-only
 func TestCache_ReadOnlyDirectory(t *testing.T) {
+	// Skip on Windows as it has different permission model
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping read-only test on Windows (different permission model)")
+	}
+
 	if os.Getuid() == 0 {
 		t.Skip("Skipping read-only test when running as root")
 	}

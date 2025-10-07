@@ -5,14 +5,35 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/gzcli/testutil"
 )
+
+// cleanupTempDir removes a temporary directory with Windows-specific retry logic
+func cleanupTempDir(t *testing.T, dir string) {
+	// On Windows, files may be locked briefly after close
+	if runtime.GOOS == "windows" {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	err := os.RemoveAll(dir)
+	if err != nil && runtime.GOOS == "windows" {
+		// Retry once more on Windows
+		time.Sleep(200 * time.Millisecond)
+		err = os.RemoveAll(dir)
+	}
+
+	if err != nil {
+		t.Logf("Warning: Failed to remove temp dir %s: %v", dir, err)
+	}
+}
 
 // TestGetConfig_MalformedYAML tests handling of malformed YAML files
 func TestGetConfig_MalformedYAML(t *testing.T) {
@@ -29,11 +50,7 @@ func TestGetConfig_MalformedYAML(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir := setupConfigTest(t)
-			defer func() {
-				if err := os.RemoveAll(tmpDir); err != nil {
-					t.Errorf("Failed to remove temp dir: %v", err)
-				}
-			}()
+			defer cleanupTempDir(t, tmpDir)
 
 			confPath := filepath.Join(tmpDir, ".gzctf", "conf.yaml")
 			if err := os.WriteFile(confPath, []byte(tc.content), 0600); err != nil {
@@ -76,11 +93,7 @@ creds:
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir := setupConfigTest(t)
-			defer func() {
-				if err := os.RemoveAll(tmpDir); err != nil {
-					t.Errorf("Failed to remove temp dir: %v", err)
-				}
-			}()
+			defer cleanupTempDir(t, tmpDir)
 
 			confPath := filepath.Join(tmpDir, ".gzctf", "conf.yaml")
 			if err := os.WriteFile(confPath, []byte(tc.content), 0600); err != nil {
@@ -121,11 +134,7 @@ creds:
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir := setupConfigTest(t)
-			defer func() {
-				if err := os.RemoveAll(tmpDir); err != nil {
-					t.Errorf("Failed to remove temp dir: %v", err)
-				}
-			}()
+			defer cleanupTempDir(t, tmpDir)
 
 			confPath := filepath.Join(tmpDir, ".gzctf", "conf.yaml")
 			if err := os.WriteFile(confPath, []byte(tc.content), 0600); err != nil {
@@ -208,16 +217,17 @@ challenges:
 
 // TestGetConfig_ReadOnlyFile tests permissions issues
 func TestGetConfig_ReadOnlyFile(t *testing.T) {
+	// Skip on Windows as it has different permission model
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping permission test on Windows (different permission model)")
+	}
+
 	if os.Getuid() == 0 {
 		t.Skip("Skipping permission test when running as root")
 	}
 
 	tmpDir := setupConfigTest(t)
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Errorf("Failed to remove temp dir: %v", err)
-		}
-	}()
+	defer cleanupTempDir(t, tmpDir)
 
 	confPath := filepath.Join(tmpDir, ".gzctf", "conf.yaml")
 	confData := `url: "http://test.com"
@@ -253,11 +263,7 @@ func TestGetConfig_SymlinkAttack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Errorf("Failed to remove temp dir: %v", err)
-		}
-	}()
+	defer cleanupTempDir(t, tmpDir)
 
 	originalDir, _ := os.Getwd()
 	defer func() {
@@ -313,11 +319,7 @@ func TestGetConfig_SpecialCharactersInValues(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir := setupConfigTest(t)
-			defer func() {
-				if err := os.RemoveAll(tmpDir); err != nil {
-					t.Errorf("Failed to remove temp dir: %v", err)
-				}
-			}()
+			defer cleanupTempDir(t, tmpDir)
 
 			confPath := filepath.Join(tmpDir, ".gzctf", "conf.yaml")
 			confData := fmt.Sprintf(`url: "http://test.com"

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -269,6 +270,11 @@ func TestWatcher_RapidCreateDelete(t *testing.T) {
 
 // TestWatcher_FilePermissionChanges tests handling of permission changes
 func TestWatcher_FilePermissionChanges(t *testing.T) {
+	// Skip on Windows as it has different permission model
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping permission test on Windows (different permission model)")
+	}
+
 	if os.Getuid() == 0 {
 		t.Skip("Skipping permission test when running as root")
 	}

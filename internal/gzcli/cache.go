@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
@@ -29,7 +31,8 @@ func setCache(key string, data any) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer func() { _ = os.Remove(tmpFile.Name()) }()
+	tmpPath := tmpFile.Name()
+	defer func() { _ = os.Remove(tmpPath) }()
 
 	// Use buffered writer with pre-allocated buffer
 	bw := bufio.NewWriterSize(tmpFile, 32*1024) // 32KB buffer
@@ -45,12 +48,43 @@ func setCache(key string, data any) error {
 		return fmt.Errorf("temp file close failed: %w", err)
 	}
 
-	// Atomic rename to final path
-	if err := os.Rename(tmpFile.Name(), cachePath); err != nil {
+	// Atomic rename to final path with Windows-specific retry logic
+	if err := renameWithRetry(tmpPath, cachePath); err != nil {
 		return fmt.Errorf("failed to finalize cache: %w", err)
 	}
 
 	return nil
+}
+
+// renameWithRetry handles file renaming with retry logic for Windows
+func renameWithRetry(src, dst string) error {
+	const maxRetries = 5
+	const retryDelay = 10 * time.Millisecond
+
+	var lastErr error
+	for i := 0; i < maxRetries; i++ {
+		// On Windows, we need to remove the destination file first if it exists
+		// because os.Rename won't overwrite an existing file atomically
+		if runtime.GOOS == "windows" {
+			_ = os.Remove(dst) // Ignore error if file doesn't exist
+		}
+
+		err := os.Rename(src, dst)
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+		// Only retry on Windows for access denied errors
+		if runtime.GOOS == "windows" {
+			time.Sleep(retryDelay * time.Duration(i+1)) // Exponential backoff
+			continue
+		}
+		// On Unix, fail immediately
+		return err
+	}
+
+	return lastErr
 }
 
 // GetCache reads cached data using optimized file access

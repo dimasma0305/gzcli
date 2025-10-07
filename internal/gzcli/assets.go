@@ -9,7 +9,6 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
 )
 
-
 func createPosterIfNotExistOrDifferent(file string, game *gzapi.Game, client *gzapi.GZAPI) (string, error) {
 	assets, err := client.GetAssets()
 	if err != nil {

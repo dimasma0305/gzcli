@@ -5,29 +5,56 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
 )
 
 func TestGetShell(t *testing.T) {
-	// Save original SHELL env var
-	originalShell := os.Getenv("SHELL")
-	defer os.Setenv("SHELL", originalShell)
+	// Save original env vars
+	var originalShell, originalComspec string
+	if runtime.GOOS == "windows" {
+		originalComspec = os.Getenv("COMSPEC")
+		defer os.Setenv("COMSPEC", originalComspec)
+	} else {
+		originalShell = os.Getenv("SHELL")
+		defer os.Setenv("SHELL", originalShell)
+	}
 
-	// Test with SHELL set
-	os.Setenv("SHELL", "/bin/bash")
-	shell := getShell()
-	if shell != "/bin/bash" {
-		t.Errorf("Expected shell '/bin/bash', got %s", shell)
+	// Test with custom shell set
+	shellOnce = sync.Once{} // Reset sync.Once for testing
+	if runtime.GOOS == "windows" {
+		os.Setenv("COMSPEC", "powershell.exe")
+		shell = ""
+		result := getShell()
+		if result != "powershell.exe" {
+			t.Errorf("Expected shell 'powershell.exe', got %s", result)
+		}
+	} else {
+		os.Setenv("SHELL", "/bin/bash")
+		shell = ""
+		result := getShell()
+		if result != "/bin/bash" {
+			t.Errorf("Expected shell '/bin/bash', got %s", result)
+		}
 	}
 
 	// Reset for default test
-	os.Unsetenv("SHELL")
 	shellOnce = sync.Once{} // Reset sync.Once for testing
-	shell = getShell()
-	if shell != "/bin/sh" {
-		t.Errorf("Expected default shell '/bin/sh', got %s", shell)
+	shell = ""
+	if runtime.GOOS == "windows" {
+		os.Unsetenv("COMSPEC")
+		result := getShell()
+		if result != "cmd.exe" {
+			t.Errorf("Expected default shell 'cmd.exe', got %s", result)
+		}
+	} else {
+		os.Unsetenv("SHELL")
+		result := getShell()
+		if result != "/bin/sh" {
+			t.Errorf("Expected default shell '/bin/sh', got %s", result)
+		}
 	}
 }
 

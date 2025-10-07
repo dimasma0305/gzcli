@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -20,18 +21,36 @@ const (
 
 var (
 	shell     string
+	shellArgs []string
 	shellOnce sync.Once
 )
 
 // getShell returns the shell to use for script execution in a thread-safe way
 func getShell() string {
 	shellOnce.Do(func() {
-		shell = os.Getenv("SHELL")
-		if shell == "" {
-			shell = "/bin/sh"
+		if runtime.GOOS == "windows" {
+			// On Windows, use cmd.exe or powershell
+			shell = os.Getenv("COMSPEC")
+			if shell == "" {
+				shell = "cmd.exe"
+			}
+			shellArgs = []string{"/c"} // Windows uses /c instead of -c
+		} else {
+			// On Unix-like systems, use SHELL env var or default to /bin/sh
+			shell = os.Getenv("SHELL")
+			if shell == "" {
+				shell = "/bin/sh"
+			}
+			shellArgs = []string{"-c"}
 		}
 	})
 	return shell
+}
+
+// getShellArgs returns the command line arguments for the shell
+func getShellArgs() []string {
+	_ = getShell() // Ensure shell is initialized
+	return shellArgs
 }
 
 // RunScript executes a specified script for a challenge
@@ -65,7 +84,8 @@ func RunScript(challengeConf ChallengeYaml, script string) error {
 
 //nolint:gosec // G204: Script execution is the intended purpose of this function
 func runShell(script string, cwd string) error {
-	cmd := exec.Command(getShell(), "-c", script)
+	args := append(getShellArgs(), script)
+	cmd := exec.Command(getShell(), args...)
 	cmd.Dir = cwd
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -76,7 +96,8 @@ func runShell(script string, cwd string) error {
 //
 //nolint:gosec // G204: Script execution is the intended purpose of this function
 func RunShellWithContext(ctx context.Context, script string, cwd string) error {
-	cmd := exec.CommandContext(ctx, getShell(), "-c", script)
+	args := append(getShellArgs(), script)
+	cmd := exec.CommandContext(ctx, getShell(), args...)
 	cmd.Dir = cwd
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -111,7 +132,8 @@ func RunShellForInterval(ctx context.Context, script string, cwd string, timeout
 	defer cancel()
 
 	//nolint:gosec // G204: Script execution is the intended purpose of this function
-	cmd := exec.CommandContext(timeoutCtx, getShell(), "-c", script)
+	args := append(getShellArgs(), script)
+	cmd := exec.CommandContext(timeoutCtx, getShell(), args...)
 	cmd.Dir = cwd
 
 	// For interval scripts, capture output for logging instead of stdout
