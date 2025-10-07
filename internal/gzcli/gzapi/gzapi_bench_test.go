@@ -9,7 +9,7 @@ import (
 func BenchmarkURLConstruction_Concat(b *testing.B) {
 	baseURL := "https://ctf.example.com"
 	path := "/api/challenges/list"
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = baseURL + path
@@ -19,7 +19,7 @@ func BenchmarkURLConstruction_Concat(b *testing.B) {
 func BenchmarkURLConstruction_Builder(b *testing.B) {
 	baseURL := "https://ctf.example.com"
 	path := "/api/challenges/list"
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var builder strings.Builder
@@ -40,7 +40,7 @@ func BenchmarkURLConstruction_Batch_Concat(b *testing.B) {
 		"/api/teams/list",
 		"/api/games/current",
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, path := range paths {
@@ -58,7 +58,7 @@ func BenchmarkURLConstruction_Batch_Builder(b *testing.B) {
 		"/api/teams/list",
 		"/api/games/current",
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var builder strings.Builder
@@ -71,4 +71,3 @@ func BenchmarkURLConstruction_Batch_Builder(b *testing.B) {
 		}
 	}
 }
-

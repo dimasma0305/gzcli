@@ -114,7 +114,7 @@ BenchmarkGetCache-8 (disk)              50000           25000 ns/op      2048 B/
 ```
 BenchmarkShouldProcessEvent-8           10000000         120 ns/op        0 B/op      0 allocs/op
 BenchmarkDetermineUpdateType-8          500000          3500 ns/op      512 B/op      8 allocs/op
-BenchmarkFindChallengeForFile-8         
+BenchmarkFindChallengeForFile-8
   - With index:                         2000000          850 ns/op        0 B/op      0 allocs/op
   - Linear search (fallback):           100000         12500 ns/op        0 B/op      0 allocs/op
 ```
@@ -277,4 +277,3 @@ When optimizing performance:
 5. **Review**: Consider readability vs performance tradeoffs
 
 For questions or suggestions, open an issue or discussion on GitHub.
-

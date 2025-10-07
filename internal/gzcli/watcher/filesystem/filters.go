@@ -6,9 +6,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/fsnotify/fsnotify"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/fsnotify/fsnotify"
 )
 
 // FilterMatcher provides optimized pattern matching with pre-compiled regex
@@ -126,7 +127,7 @@ func ShouldProcessEvent(event fsnotify.Event, config types.WatcherConfig) bool {
 	// Use optimized regex-based matching if patterns exist
 	if len(config.IgnorePatterns) > 0 || len(config.WatchPatterns) > 0 {
 		matcher := getFilterMatcher(config)
-		
+
 		// Check ignore patterns first
 		if matcher.matchesIgnorePattern(filename, event.Name) {
 			return false
