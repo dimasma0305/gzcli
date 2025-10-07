@@ -1,3 +1,13 @@
+## [1.1.3](https://github.com/dimasma0305/gzcli/compare/v1.1.2...v1.1.3) (2025-10-07)
+
+### Bug Fixes
+
+* clean up whitespace in benchmark tests and documentation ([d557e25](https://github.com/dimasma0305/gzcli/commit/d557e25c2d803e40c46eaa9687b136386d997fd1))
+
+### Code Refactoring
+
+* optimize caching mechanism and enhance file system event filtering ([75a80ae](https://github.com/dimasma0305/gzcli/commit/75a80ae263f6509fd952bd6a46b58494fba93032))
+
 ## [1.1.2](https://github.com/dimasma0305/gzcli/compare/v1.1.1...v1.1.2) (2025-10-07)
 
 ### Code Refactoring
