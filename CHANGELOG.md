@@ -1,3 +1,9 @@
+## [1.1.1](https://github.com/dimasma0305/gzcli/compare/v1.1.0...v1.1.1) (2025-10-07)
+
+### Code Refactoring
+
+* improve cross-platform compatibility and testing logic ([a2bb8c6](https://github.com/dimasma0305/gzcli/commit/a2bb8c6a271b3cbebdaee5ab97fe36e8c86ba208))
+
 ## [1.1.0](https://github.com/dimasma0305/gzcli/compare/v1.0.0...v1.1.0) (2025-10-07)
 
 ### Features
