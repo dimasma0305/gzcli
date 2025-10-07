@@ -5,7 +5,7 @@ BINARY_NAME=gzcli
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo 'unknown')
-LDFLAGS=-ldflags "-X github.com/dimasma0305/gzcli/cmd.Version=${VERSION} -X github.com/dimasma0305/gzcli/cmd.BuildTime=${BUILD_TIME} -X github.com/dimasma0305/gzcli/cmd.GitCommit=${GIT_COMMIT}"
+LDFLAGS=-trimpath -ldflags "-s -w -X github.com/dimasma0305/gzcli/cmd.Version=${VERSION} -X github.com/dimasma0305/gzcli/cmd.BuildTime=${BUILD_TIME} -X github.com/dimasma0305/gzcli/cmd.GitCommit=${GIT_COMMIT}"
 GOPATH?=$(shell go env GOPATH)
 
 # Colors for output

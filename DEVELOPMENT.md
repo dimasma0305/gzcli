@@ -187,6 +187,27 @@ make clean
 make release
 ```
 
+### Optimized Builds
+
+The project uses aggressive build optimizations to reduce binary size:
+
+- **Standard build**: ~18 MB (with `-trimpath`, `-s`, `-w` flags)
+- **UPX compressed**: ~5-6 MB (Linux/Windows release builds only)
+
+For more details on binary optimization, see [Binary Optimization](docs/BINARY_OPTIMIZATION.md).
+
+To manually create a UPX-compressed binary:
+
+```bash
+# Build normally
+make build
+
+# Compress with UPX (requires upx installed)
+upx --best --lzma gzcli
+```
+
+**Note:** macOS binaries are not UPX-compressed in releases due to code signing compatibility.
+
 ### Running
 
 ```bash

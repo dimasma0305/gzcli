@@ -31,6 +31,8 @@ builds:
         goarch: "386"
       - goos: darwin
         goarch: arm
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
       - -X github.com/dimasma0305/gzcli/cmd.Version={{.Version}}
@@ -41,6 +43,19 @@ builds:
 universal_binaries:
   - id: gzcli-darwin
     replace: true
+
+# UPX compression for smaller binaries
+# Note: UPX may trigger false positives in some antivirus software
+# and adds ~10-20ms to startup time, but reduces size by 50-70%
+upx:
+  - enabled: true
+    goos: [linux, windows]
+    goarch: [amd64, arm64, arm, "386"]
+    # Compression level: 1-9 (1=fast, 9=best compression)
+    # Level 9 gives best compression but takes longer to build
+    compress: best
+    # Level 1-9 numeric value (9 = best compression)
+    lzma: true
 
 archives:
   - id: gzcli-archive

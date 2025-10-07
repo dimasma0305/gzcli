@@ -49,6 +49,8 @@ Pre-built binaries are available for multiple platforms:
 
 Download from the [releases page](https://github.com/dimasma0305/gzcli/releases/latest).
 
+**Size:** Linux/Windows binaries are optimized and compressed with UPX, resulting in ~5-6 MB downloads. macOS binaries are ~18 MB (uncompressed for code signing compatibility). See [Binary Optimization](docs/BINARY_OPTIMIZATION.md) for details.
+
 ### Homebrew (macOS/Linux)
 
 ```sh
@@ -224,6 +226,7 @@ event:
 
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to the project
 - **[Development Guide](DEVELOPMENT.md)** - Setup and development workflow
+- **[Binary Optimization](docs/BINARY_OPTIMIZATION.md)** - Binary size optimizations and compression details
 - **[Testing Guide](TESTING.md)** - Writing and running tests
 - **[Architecture](docs/architecture.md)** - System architecture and design
 - **[API Reference](docs/api-reference.md)** - Internal API documentation
