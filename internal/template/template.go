@@ -33,10 +33,24 @@ type fileSystem interface {
 
 type embeddedFS struct{ fs embed.FS }
 
-func (e embeddedFS) ReadFile(name string) ([]byte, error)       { return e.fs.ReadFile(name) }
-func (e embeddedFS) ReadDir(name string) ([]fs.DirEntry, error) { return e.fs.ReadDir(name) }
-func (e embeddedFS) Open(name string) (fs.File, error)          { return e.fs.Open(name) }
+// embeddedFS wrapper methods normalize paths for cross-platform compatibility.
+// On Windows, filepath.Join uses backslashes, but embed.FS always uses forward slashes.
+// NormalizePath converts Windows backslashes to forward slashes.
+
+func (e embeddedFS) ReadFile(name string) ([]byte, error) {
+	name = utils.NormalizePath(name)
+	return e.fs.ReadFile(name)
+}
+func (e embeddedFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	name = utils.NormalizePath(name)
+	return e.fs.ReadDir(name)
+}
+func (e embeddedFS) Open(name string) (fs.File, error) {
+	name = utils.NormalizePath(name)
+	return e.fs.Open(name)
+}
 func (e embeddedFS) Stat(name string) (fs.FileInfo, error) {
+	name = utils.NormalizePath(name)
 	f, err := e.fs.Open(name)
 	if err != nil {
 		return nil, err

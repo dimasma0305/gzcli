@@ -4,8 +4,29 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"testing"
 )
+
+// equalSlicesIgnoreOrder compares two slices for equality regardless of element order
+func equalSlicesIgnoreOrder(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	// Create copies to avoid modifying original slices
+	aCopy := make([]string, len(a))
+	bCopy := make([]string, len(b))
+	copy(aCopy, a)
+	copy(bCopy, b)
+
+	// Sort both slices
+	sort.Strings(aCopy)
+	sort.Strings(bCopy)
+
+	// Compare sorted slices
+	return reflect.DeepEqual(aCopy, bCopy)
+}
 
 func TestPortParser_ParseDockerfilePorts(t *testing.T) {
 	tests := []struct {
@@ -64,10 +85,12 @@ CMD ["sh"]`,
 	}
 
 	pp := NewPortParser()
-	tmpDir := t.TempDir()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a separate temp directory for each subtest to avoid race conditions
+			tmpDir := t.TempDir()
+
 			// Create temp Dockerfile
 			dockerfilePath := filepath.Join(tmpDir, "Dockerfile")
 			if err := os.WriteFile(dockerfilePath, []byte(tt.dockerfile), 0600); err != nil {
@@ -84,9 +107,6 @@ CMD ["sh"]`,
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseDockerfilePorts() = %v, want %v", got, tt.want)
 			}
-
-			// Cleanup
-			_ = os.Remove(dockerfilePath)
 		})
 	}
 }
@@ -157,10 +177,12 @@ services:
 	}
 
 	pp := NewPortParser()
-	tmpDir := t.TempDir()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a separate temp directory for each subtest to avoid race conditions
+			tmpDir := t.TempDir()
+
 			// Create temp docker-compose.yml
 			composePath := filepath.Join(tmpDir, "docker-compose.yml")
 			if err := os.WriteFile(composePath, []byte(tt.compose), 0600); err != nil {
@@ -174,12 +196,10 @@ services:
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
+			// Use order-agnostic comparison since map iteration order is non-deterministic
+			if !equalSlicesIgnoreOrder(got, tt.want) {
 				t.Errorf("parseComposePorts() = %v, want %v", got, tt.want)
 			}
-
-			// Cleanup
-			_ = os.Remove(composePath)
 		})
 	}
 }
@@ -256,10 +276,12 @@ spec:
 	}
 
 	pp := NewPortParser()
-	tmpDir := t.TempDir()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a separate temp directory for each subtest to avoid race conditions
+			tmpDir := t.TempDir()
+
 			// Create temp manifest
 			manifestPath := filepath.Join(tmpDir, "manifest.yaml")
 			if err := os.WriteFile(manifestPath, []byte(tt.manifest), 0600); err != nil {
@@ -276,9 +298,6 @@ spec:
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseKubernetesPorts() = %v, want %v", got, tt.want)
 			}
-
-			// Cleanup
-			_ = os.Remove(manifestPath)
 		})
 	}
 }
