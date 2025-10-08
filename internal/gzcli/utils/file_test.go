@@ -248,7 +248,7 @@ func TestCopyFile_Success(t *testing.T) {
 	dstFile := filepath.Join(tmpDir, "dest.txt")
 
 	content := []byte("Test content for copy")
-	if err := os.WriteFile(srcFile, content, 0644); err != nil {
+	if err := os.WriteFile(srcFile, content, 0600); err != nil {
 		t.Fatalf("Failed to create source file: %v", err)
 	}
 
@@ -290,7 +290,7 @@ func TestCopyFile_InvalidDestination(t *testing.T) {
 	tmpDir := t.TempDir()
 	srcFile := filepath.Join(tmpDir, "source.txt")
 
-	if err := os.WriteFile(srcFile, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(srcFile, []byte("test"), 0600); err != nil {
 		t.Fatalf("Failed to create source file: %v", err)
 	}
 
@@ -306,7 +306,7 @@ func TestCopyFile_EmptyFile(t *testing.T) {
 	srcFile := filepath.Join(tmpDir, "empty.txt")
 	dstFile := filepath.Join(tmpDir, "empty_copy.txt")
 
-	if err := os.WriteFile(srcFile, []byte{}, 0644); err != nil {
+	if err := os.WriteFile(srcFile, []byte{}, 0600); err != nil {
 		t.Fatalf("Failed to create source file: %v", err)
 	}
 
@@ -343,7 +343,7 @@ func TestZipSource_Success(t *testing.T) {
 
 	for name, content := range testFiles {
 		file := filepath.Join(sourceDir, name)
-		if err := os.WriteFile(file, []byte(content), 0644); err != nil {
+		if err := os.WriteFile(file, []byte(content), 0600); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 	}
@@ -411,11 +411,11 @@ func TestZipSource_NestedDirectories(t *testing.T) {
 	rootFile := filepath.Join(sourceDir, "root.txt")
 	nestedFile := filepath.Join(subDir, "nested.txt")
 
-	if err := os.WriteFile(rootFile, []byte("root content"), 0644); err != nil {
+	if err := os.WriteFile(rootFile, []byte("root content"), 0600); err != nil {
 		t.Fatalf("Failed to create root file: %v", err)
 	}
 
-	if err := os.WriteFile(nestedFile, []byte("nested content"), 0644); err != nil {
+	if err := os.WriteFile(nestedFile, []byte("nested content"), 0600); err != nil {
 		t.Fatalf("Failed to create nested file: %v", err)
 	}
 
@@ -484,7 +484,7 @@ func TestZipSource_LargeFiles(t *testing.T) {
 	// Create a 1MB file
 	largeFile := filepath.Join(sourceDir, "large.bin")
 	largeContent := make([]byte, 1<<20)
-	if err := os.WriteFile(largeFile, largeContent, 0644); err != nil {
+	if err := os.WriteFile(largeFile, largeContent, 0600); err != nil {
 		t.Fatalf("Failed to create large file: %v", err)
 	}
 
