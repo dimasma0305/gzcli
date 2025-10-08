@@ -132,6 +132,7 @@ type GZ struct {
 	api        *gzapi.GZAPI
 	UpdateGame bool
 	watcher    *watcher.Watcher
+	eventName  string // Store the event name for this instance
 }
 
 // Cache frequently used paths and configurations
@@ -190,7 +191,7 @@ func InitWithEvent(eventName string) (*GZ, error) {
 
 	api, err := gzapi.Init(conf.Url, &conf.Creds)
 	if err == nil {
-		return &GZ{api: api}, nil
+		return &GZ{api: api, eventName: conf.EventName}, nil
 	}
 
 	// Fallback to registration
@@ -210,7 +211,7 @@ func InitWithEvent(eventName string) (*GZ, error) {
 		return nil, err
 	}
 
-	return &GZ{api: api}, nil
+	return &GZ{api: api, eventName: conf.EventName}, nil
 }
 
 // GenerateStructure generates challenge directory structure from templates
@@ -260,7 +261,8 @@ func (gz *GZ) Scoreboard2CTFTimeFeed() (*event.CTFTimeFeed, error) {
 func (gz *GZ) Sync() error {
 	log.Info("Starting sync process...")
 
-	conf, err := getConfigWrapper(gz.api)
+	// Use the event name stored in the GZ instance
+	conf, err := config.GetConfigWithEvent(gz.api, gz.eventName, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
 	if err != nil {
 		log.Error("Failed to get config: %v", err)
 		return fmt.Errorf("config error: %w", err)
@@ -400,8 +402,9 @@ func (gz *GZ) MustScoreboard2CTFTimeFeed() *event.CTFTimeFeed {
 }
 
 // MustRunScripts executes scripts or fatally logs error
-func MustRunScripts(script string) {
-	if err := RunScripts(script); err != nil {
+// Deprecated: Use RunScripts directly with event parameter
+func MustRunScripts(script string, eventName string) {
+	if err := RunScripts(script, eventName); err != nil {
 		log.Fatal("Script execution failed: ", err)
 	}
 }

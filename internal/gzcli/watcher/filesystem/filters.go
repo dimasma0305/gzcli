@@ -8,7 +8,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -26,7 +26,7 @@ var (
 )
 
 // getFilterMatcher returns the global filter matcher, initializing if needed
-func getFilterMatcher(config types.WatcherConfig) *FilterMatcher {
+func getFilterMatcher(config watchertypes.WatcherConfig) *FilterMatcher {
 	filterOnce.Do(func() {
 		globalFilterMatcher = newFilterMatcher(config)
 	})
@@ -34,7 +34,7 @@ func getFilterMatcher(config types.WatcherConfig) *FilterMatcher {
 }
 
 // newFilterMatcher creates a new filter matcher with pre-compiled patterns
-func newFilterMatcher(config types.WatcherConfig) *FilterMatcher {
+func newFilterMatcher(config watchertypes.WatcherConfig) *FilterMatcher {
 	fm := &FilterMatcher{
 		ignoreRegexes: make([]*regexp.Regexp, 0, len(config.IgnorePatterns)),
 		watchRegexes:  make([]*regexp.Regexp, 0, len(config.WatchPatterns)),
@@ -103,7 +103,7 @@ func (fm *FilterMatcher) matchesWatchPattern(filename string) bool {
 }
 
 // ShouldProcessEvent determines if we should process a file system event using optimized matching
-func ShouldProcessEvent(event fsnotify.Event, config types.WatcherConfig) bool {
+func ShouldProcessEvent(event fsnotify.Event, config watchertypes.WatcherConfig) bool {
 	// Process Write, Create, Remove, and Rename events
 	if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) == 0 {
 		return false
@@ -153,59 +153,59 @@ func ShouldIgnoreDir(path string) bool {
 }
 
 // DetermineUpdateType determines what type of update is needed based on the changed file
-func DetermineUpdateType(filePath string, challengeCwd string) types.UpdateType {
+func DetermineUpdateType(filePath string, challengeCwd string) watchertypes.UpdateType {
 	// Get relative path from challenge directory
 	absChallengePath, err := filepath.Abs(challengeCwd)
 	if err != nil {
 		log.Error("Failed to get absolute challenge path: %v", err)
-		return types.UpdateFullRedeploy // Default to full redeploy on error
+		return watchertypes.UpdateFullRedeploy // Default to full redeploy on error
 	}
 
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
 		log.Error("Failed to get absolute file path: %v", err)
-		return types.UpdateFullRedeploy // Default to full redeploy on error
+		return watchertypes.UpdateFullRedeploy // Default to full redeploy on error
 	}
 
 	relPath, err := filepath.Rel(absChallengePath, absFilePath)
 	if err != nil {
 		log.Error("Failed to get relative path: %v", err)
-		return types.UpdateFullRedeploy // Default to full redeploy on error
+		return watchertypes.UpdateFullRedeploy // Default to full redeploy on error
 	}
 
 	// Check if it's in solver directory - no update needed
 	if strings.HasPrefix(relPath, "solver/") || strings.HasPrefix(relPath, "writeup/") {
 		log.InfoH3("File is in solver/writeup directory, skipping update")
-		return types.UpdateNone
+		return watchertypes.UpdateNone
 	}
 
 	// Check if it's challenge.yml or challenge.yaml - metadata update only
 	base := filepath.Base(relPath)
 	if base == "challenge.yml" || base == "challenge.yaml" {
 		log.InfoH3("Challenge configuration file changed, updating metadata and attachment")
-		return types.UpdateMetadata
+		return watchertypes.UpdateMetadata
 	}
 
 	// Check if it's in dist directory - attachment update only
 	if strings.HasPrefix(relPath, "dist/") {
 		log.InfoH3("File in dist directory changed, updating attachment only")
-		return types.UpdateAttachment
+		return watchertypes.UpdateAttachment
 	}
 
 	// Check if it's in src directory - full redeploy needed
 	if strings.HasPrefix(relPath, "src/") {
 		log.InfoH3("Source file changed, full redeploy needed")
-		return types.UpdateFullRedeploy
+		return watchertypes.UpdateFullRedeploy
 	}
 
 	// Check for other important files that need full redeploy
 	fileName := filepath.Base(relPath)
 	if fileName == "Dockerfile" || fileName == "docker-compose.yml" || fileName == "Makefile" {
 		log.InfoH3("Infrastructure file changed (%s), full redeploy needed", fileName)
-		return types.UpdateFullRedeploy
+		return watchertypes.UpdateFullRedeploy
 	}
 
 	// Only listen to src/, dist/ and challenge.yml/yaml. Ignore any other paths.
 	log.InfoH3("Change outside allowed paths (src/, dist/, challenge.yml/.yaml); ignoring")
-	return types.UpdateNone
+	return watchertypes.UpdateNone
 }

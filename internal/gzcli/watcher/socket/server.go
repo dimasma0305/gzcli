@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -25,7 +25,7 @@ type Server struct {
 
 // CommandHandler interface for processing socket commands
 type CommandHandler interface {
-	HandleCommand(cmd types.WatcherCommand) types.WatcherResponse
+	HandleCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse
 }
 
 // NewServer creates a new socket server
@@ -146,9 +146,9 @@ func (s *Server) handleConnection(conn net.Conn) {
 	decoder := json.NewDecoder(conn)
 	encoder := json.NewEncoder(conn)
 
-	var cmd types.WatcherCommand
+	var cmd watchertypes.WatcherCommand
 	if err := decoder.Decode(&cmd); err != nil {
-		response := types.WatcherResponse{
+		response := watchertypes.WatcherResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Failed to decode command: %v", err),
 		}

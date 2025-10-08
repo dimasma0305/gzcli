@@ -75,28 +75,61 @@ writeupRequired: false
 
 ## Event Selection
 
-### Methods
+### Default Behavior
 
-Events can be selected in three ways (in order of priority):
+**Most commands now operate on ALL events by default.** This includes:
+- `sync` - Synchronize all events
+- `watch start` - Watch all events
+- `script` - Run scripts for all events
+- `structure` - Generate structures for all events
 
-1. **Command-line flag** (highest priority):
+### Selection Methods
+
+You can control which events are processed using:
+
+1. **Specific events** (highest priority):
    ```bash
    gzcli sync --event ctf2024
+   gzcli sync --event ctf2024 --event ctf2025
+   ```
+
+2. **Exclude events**:
+   ```bash
+   gzcli sync --exclude-event practice
+   gzcli watch start --exclude-event test-event --exclude-event staging
+   ```
+
+3. **No flags** (default):
+   ```bash
+   gzcli sync  # Operates on ALL events
+   ```
+
+### Single-Event Commands
+
+Some commands still work with single events (for backward compatibility):
+- `team create` - Creates teams for one event
+- Other management commands
+
+For these commands, event selection follows this priority:
+
+1. **Command-line flag**:
+   ```bash
+   gzcli team create teams.csv --event ctf2024
    ```
 
 2. **Environment variable**:
    ```bash
    export GZCLI_EVENT=ctf2024
-   gzcli sync
+   gzcli team create teams.csv
    ```
 
 3. **Default event file** (`.gzcli/current-event`):
    ```bash
    gzcli event switch ctf2024  # Sets default
-   gzcli sync                   # Uses default
+   gzcli team create teams.csv # Uses default
    ```
 
-4. **Auto-detection** (lowest priority):
+4. **Auto-detection**:
    - If only one event exists, it's automatically selected
    - If multiple events exist without selection, an error is shown
 
@@ -118,31 +151,71 @@ gzcli event create ctf2025
 
 ## Working with Events
 
+### Default Multi-Event Behavior
+
+**As of the latest version, most commands operate on ALL events by default.** This includes:
+- `gzcli sync` - Syncs all events
+- `gzcli watch start` - Watches all events simultaneously
+- `gzcli script <name>` - Runs scripts for all events
+- `gzcli structure` - Generates structures for all events
+
 ### Syncing Challenges
 
 ```bash
-# Sync specific event
-gzcli sync --event ctf2024
-
-# Sync default event
-gzcli event switch ctf2024
+# Sync all events (default)
 gzcli sync
+
+# Sync specific event(s)
+gzcli sync --event ctf2024
+gzcli sync --event ctf2024 --event ctf2025
+
+# Sync all except specific event(s)
+gzcli sync --exclude-event practice --exclude-event test
 ```
 
 ### File Watching
 
 ```bash
-# Watch specific event
-gzcli watch start --event ctf2024
-
-# Watch default event
+# Watch all events (default)
 gzcli watch start
+
+# Watch specific event(s)
+gzcli watch start --event ctf2024 --event ctf2025
+
+# Watch all except specific event(s)
+gzcli watch start --exclude-event practice
+```
+
+### Running Scripts
+
+```bash
+# Run script for all events (default)
+gzcli script deploy
+
+# Run script for specific event(s)
+gzcli script test --event ctf2024
+
+# Run script for all except specific event(s)
+gzcli script cleanup --exclude-event production
+```
+
+### Generating Structures
+
+```bash
+# Generate structure for all events (default)
+gzcli structure
+
+# Generate for specific event(s)
+gzcli structure --event ctf2024
+
+# Generate for all except specific event(s)
+gzcli structure --exclude-event practice
 ```
 
 ### Team Management
 
 ```bash
-# Create teams for specific event
+# Create teams for specific event (single-event command)
 gzcli team create teams.csv --event ctf2024
 
 # Create teams for default event

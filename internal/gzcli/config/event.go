@@ -29,10 +29,27 @@ func GetEventConfig(eventName string) (*EventConfig, error) {
 		return nil, err
 	}
 
-	eventPath := filepath.Join(dir, EVENTS_DIR, eventName, GZEVENT_FILE)
+	eventDir := filepath.Join(dir, EVENTS_DIR, eventName)
+	eventPath := filepath.Join(eventDir, GZEVENT_FILE)
 	var game gzapi.Game
 	if err := utils.ParseYamlFromFile(eventPath, &game); err != nil {
 		return nil, fmt.Errorf("failed to read event config %s: %w", eventPath, err)
+	}
+
+	// Resolve relative paths in the event config
+	// If poster path is relative, resolve it relative to the event directory
+	if game.Poster != "" && !filepath.IsAbs(game.Poster) {
+		resolvedPoster := filepath.Join(eventDir, game.Poster)
+		// Check if the resolved path exists, if not keep the original
+		if _, err := os.Stat(resolvedPoster); err == nil {
+			game.Poster = resolvedPoster
+		} else {
+			// Try resolving from workspace root
+			rootPoster := filepath.Join(dir, game.Poster)
+			if _, err := os.Stat(rootPoster); err == nil {
+				game.Poster = rootPoster
+			}
+		}
 	}
 
 	return &EventConfig{

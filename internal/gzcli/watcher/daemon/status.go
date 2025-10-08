@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -32,10 +32,10 @@ func ShowStatus(pidFile, logFile string, jsonOutput bool) error {
 		log.Info("   - Daemon Mode: Enabled")
 		log.Info("   - PID File: %s", pidFile)
 		log.Info("   - Log File: %s", logFile)
-		log.Info("   - Git Pull: %v", types.DefaultWatcherConfig.GitPullEnabled)
-		if types.DefaultWatcherConfig.GitPullEnabled {
-			log.Info("   - Git Pull Interval: %v", types.DefaultWatcherConfig.GitPullInterval)
-			log.Info("   - Git Repository: %s", types.DefaultWatcherConfig.GitRepository)
+		log.Info("   - Git Pull: %v", watchertypes.DefaultWatcherConfig.GitPullEnabled)
+		if watchertypes.DefaultWatcherConfig.GitPullEnabled {
+			log.Info("   - Git Pull Interval: %v", watchertypes.DefaultWatcherConfig.GitPullInterval)
+			log.Info("   - Git Repository: %s", watchertypes.DefaultWatcherConfig.GitRepository)
 		}
 
 		// Show recent log entries if available

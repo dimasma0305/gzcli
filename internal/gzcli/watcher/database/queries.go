@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 )
 
 // GetRecentLogs retrieves recent log entries from the database
-func (d *DB) GetRecentLogs(limit int) ([]types.WatcherLog, error) {
+func (d *DB) GetRecentLogs(limit int) ([]watchertypes.WatcherLog, error) {
 	db := d.GetDB()
 	if db == nil {
 		return nil, fmt.Errorf("database not initialized")
@@ -29,9 +29,9 @@ func (d *DB) GetRecentLogs(limit int) ([]types.WatcherLog, error) {
 		_ = rows.Close()
 	}()
 
-	var logs []types.WatcherLog
+	var logs []watchertypes.WatcherLog
 	for rows.Next() {
-		var log types.WatcherLog
+		var log watchertypes.WatcherLog
 		var challenge, script, errorMsg sql.NullString
 		var duration sql.NullInt64
 
@@ -55,7 +55,7 @@ func (d *DB) GetRecentLogs(limit int) ([]types.WatcherLog, error) {
 }
 
 // GetScriptExecutions retrieves script execution records from the database
-func (d *DB) GetScriptExecutions(challengeName string, limit int) ([]types.ScriptExecution, error) {
+func (d *DB) GetScriptExecutions(challengeName string, limit int) ([]watchertypes.ScriptExecution, error) {
 	db := d.GetDB()
 	if db == nil {
 		return nil, fmt.Errorf("database not initialized")
@@ -91,9 +91,9 @@ func (d *DB) GetScriptExecutions(challengeName string, limit int) ([]types.Scrip
 		_ = rows.Close()
 	}()
 
-	var executions []types.ScriptExecution
+	var executions []watchertypes.ScriptExecution
 	for rows.Next() {
-		var exec types.ScriptExecution
+		var exec watchertypes.ScriptExecution
 		var duration sql.NullInt64
 		var output, errorOutput sql.NullString
 		var exitCode sql.NullInt64

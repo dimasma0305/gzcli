@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -14,7 +14,7 @@ func BenchmarkShouldProcessEvent(b *testing.B) {
 		Name: "/home/user/ctf/web/challenge1/src/main.go",
 		Op:   fsnotify.Write,
 	}
-	config := types.WatcherConfig{
+	config := watchertypes.WatcherConfig{
 		IgnorePatterns: []string{"*.tmp", "*.log", "*.swp", ".git/*"},
 		WatchPatterns:  []string{},
 	}
@@ -52,7 +52,7 @@ func BenchmarkShouldProcessEvent_ManyPatterns(b *testing.B) {
 		Name: "/home/user/ctf/web/challenge1/src/main.go",
 		Op:   fsnotify.Write,
 	}
-	config := types.WatcherConfig{
+	config := watchertypes.WatcherConfig{
 		IgnorePatterns: []string{
 			"*.tmp", "*.log", "*.swp", ".git/*", "node_modules/*",
 			"*.pyc", "__pycache__/*", ".vscode/*", ".idea/*",

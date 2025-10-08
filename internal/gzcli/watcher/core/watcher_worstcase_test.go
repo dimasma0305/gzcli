@@ -14,7 +14,7 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/gzcli/testutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/database"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 )
 
 // TestNew_NilAPI tests watcher creation with nil API
@@ -47,7 +47,7 @@ func setupEventWatcherTest(t *testing.T) (*EventWatcher, string, func()) {
 	db.Init()
 
 	ctx := context.Background()
-	config := types.WatcherConfig{}
+	config := watchertypes.WatcherConfig{}
 
 	ew, err := NewEventWatcher("test-event", api, config, db, ctx)
 	if err != nil {

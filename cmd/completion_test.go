@@ -15,30 +15,32 @@ func TestGetAvailableEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Change to temp directory
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldWd) }()
+	_ = os.Chdir(tmpDir)
 
 	// Create events directory with test events
 	eventsDir := filepath.Join(tmpDir, "events")
-	os.MkdirAll(eventsDir, 0755)
+	_ = os.MkdirAll(eventsDir, 0750)
 
 	// Create event1 with .gzevent file
 	event1Dir := filepath.Join(eventsDir, "event1")
-	os.MkdirAll(event1Dir, 0755)
-	os.WriteFile(filepath.Join(event1Dir, ".gzevent"), []byte("title: Event 1\n"), 0644)
+	_ = os.MkdirAll(event1Dir, 0750)
+	//nolint:gosec // G306: Test file permissions are acceptable
+	_ = os.WriteFile(filepath.Join(event1Dir, ".gzevent"), []byte("title: Event 1\n"), 0644)
 
 	// Create event2 with .gzevent file
 	event2Dir := filepath.Join(eventsDir, "event2")
-	os.MkdirAll(event2Dir, 0755)
-	os.WriteFile(filepath.Join(event2Dir, ".gzevent"), []byte("title: Event 2\n"), 0644)
+	_ = os.MkdirAll(event2Dir, 0750)
+	//nolint:gosec // G306: Test file permissions are acceptable
+	_ = os.WriteFile(filepath.Join(event2Dir, ".gzevent"), []byte("title: Event 2\n"), 0644)
 
 	// Create event3 WITHOUT .gzevent file (should be ignored)
 	event3Dir := filepath.Join(eventsDir, "event3")
-	os.MkdirAll(event3Dir, 0755)
+	_ = os.MkdirAll(event3Dir, 0750)
 
 	// Test getAvailableEvents
 	events, err := getAvailableEvents()
@@ -76,11 +78,11 @@ func TestGetAvailableEvents_NoEventsDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldWd) }()
+	_ = os.Chdir(tmpDir)
 
 	// Test without events directory
 	events, err := getAvailableEvents()
@@ -99,20 +101,21 @@ func TestValidEventNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldWd) }()
+	_ = os.Chdir(tmpDir)
 
 	// Create events
 	eventsDir := filepath.Join(tmpDir, "events")
-	os.MkdirAll(eventsDir, 0755)
+	_ = os.MkdirAll(eventsDir, 0750)
 
 	for _, eventName := range []string{"ctf2024", "ctf2025", "training"} {
 		eventDir := filepath.Join(eventsDir, eventName)
-		os.MkdirAll(eventDir, 0755)
-		os.WriteFile(filepath.Join(eventDir, ".gzevent"), []byte("title: Test\n"), 0644)
+		_ = os.MkdirAll(eventDir, 0750)
+		//nolint:gosec // G306: Test file permissions are acceptable
+		_ = os.WriteFile(filepath.Join(eventDir, ".gzevent"), []byte("title: Test\n"), 0644)
 	}
 
 	// Test the completion function
@@ -148,15 +151,15 @@ func TestValidEventNames_EmptyDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldWd) }()
+	_ = os.Chdir(tmpDir)
 
 	// Create empty events directory
 	eventsDir := filepath.Join(tmpDir, "events")
-	os.MkdirAll(eventsDir, 0755)
+	_ = os.MkdirAll(eventsDir, 0750)
 
 	// Test the completion function
 	cmd := &cobra.Command{}

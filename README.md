@@ -247,19 +247,25 @@ end: "2024-10-13T12:00:00+00:00"
 
 ### Event Selection
 
-Select events using:
+**By default, most commands operate on ALL events.** You can control which events are processed:
 
 ```bash
-# Via command flag
-gzcli sync --event ctf2024
-
-# Via environment variable
-export GZCLI_EVENT=ctf2024
+# Operate on all events (default)
 gzcli sync
+gzcli watch start
+gzcli script deploy
+gzcli structure
 
-# Set default event
+# Operate on specific event(s)
+gzcli sync --event ctf2024
+gzcli sync --event ctf2024 --event ctf2025
+
+# Exclude specific event(s)
+gzcli sync --exclude-event practice
+gzcli watch start --exclude-event test-event
+
+# Set default event (for single-event commands)
 gzcli event switch ctf2024
-gzcli sync  # Uses default
 ```
 
 For detailed information about multi-event management, see [docs/MULTI_EVENT.md](docs/MULTI_EVENT.md).

@@ -10,29 +10,29 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/daemon"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/database"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/socket"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
 // Start starts the file watcher with the given configuration
-func (w *Watcher) Start(config types.WatcherConfig) error {
+func (w *Watcher) Start(config watchertypes.WatcherConfig) error {
 	w.config = config
 
 	// Validate and set defaults
 	if w.config.NewChallengeCheckInterval <= 0 {
-		w.config.NewChallengeCheckInterval = types.DefaultWatcherConfig.NewChallengeCheckInterval
+		w.config.NewChallengeCheckInterval = watchertypes.DefaultWatcherConfig.NewChallengeCheckInterval
 	}
 	if w.config.PidFile == "" {
-		w.config.PidFile = types.DefaultWatcherConfig.PidFile
+		w.config.PidFile = watchertypes.DefaultWatcherConfig.PidFile
 	}
 	if w.config.LogFile == "" {
-		w.config.LogFile = types.DefaultWatcherConfig.LogFile
+		w.config.LogFile = watchertypes.DefaultWatcherConfig.LogFile
 	}
 	if w.config.DatabasePath == "" {
-		w.config.DatabasePath = types.DefaultWatcherConfig.DatabasePath
+		w.config.DatabasePath = watchertypes.DefaultWatcherConfig.DatabasePath
 	}
 	if w.config.SocketPath == "" {
-		w.config.SocketPath = types.DefaultWatcherConfig.SocketPath
+		w.config.SocketPath = watchertypes.DefaultWatcherConfig.SocketPath
 	}
 
 	if w.config.DaemonMode {
@@ -238,7 +238,7 @@ func (w *Watcher) IsWatching() bool {
 // GetDaemonStatus returns the status of the daemon watcher
 func (w *Watcher) GetDaemonStatus(pidFile string) map[string]interface{} {
 	if pidFile == "" {
-		pidFile = types.DefaultWatcherConfig.PidFile
+		pidFile = watchertypes.DefaultWatcherConfig.PidFile
 	}
 	return daemon.GetDaemonStatus(pidFile)
 }
@@ -246,7 +246,7 @@ func (w *Watcher) GetDaemonStatus(pidFile string) map[string]interface{} {
 // StopDaemon stops the daemon watcher
 func (w *Watcher) StopDaemon(pidFile string) error {
 	if pidFile == "" {
-		pidFile = types.DefaultWatcherConfig.PidFile
+		pidFile = watchertypes.DefaultWatcherConfig.PidFile
 	}
 	return daemon.StopDaemon(pidFile)
 }
@@ -254,10 +254,10 @@ func (w *Watcher) StopDaemon(pidFile string) error {
 // ShowStatus displays the watcher status
 func (w *Watcher) ShowStatus(pidFile, logFile string, jsonOutput bool) error {
 	if pidFile == "" {
-		pidFile = types.DefaultWatcherConfig.PidFile
+		pidFile = watchertypes.DefaultWatcherConfig.PidFile
 	}
 	if logFile == "" {
-		logFile = types.DefaultWatcherConfig.LogFile
+		logFile = watchertypes.DefaultWatcherConfig.LogFile
 	}
 	return daemon.ShowStatus(pidFile, logFile, jsonOutput)
 }
@@ -265,7 +265,7 @@ func (w *Watcher) ShowStatus(pidFile, logFile string, jsonOutput bool) error {
 // FollowLogs follows the daemon log file
 func (w *Watcher) FollowLogs(logFile string) error {
 	if logFile == "" {
-		logFile = types.DefaultWatcherConfig.LogFile
+		logFile = watchertypes.DefaultWatcherConfig.LogFile
 	}
 	return daemon.FollowLogs(logFile)
 }

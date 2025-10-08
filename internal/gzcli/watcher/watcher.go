@@ -7,7 +7,7 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/core"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/socket"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 )
 
 // Re-export core types for backward compatibility
@@ -16,28 +16,28 @@ type (
 	Watcher = core.Watcher
 
 	// WatcherConfig holds configuration for the watcher
-	WatcherConfig = types.WatcherConfig
+	WatcherConfig = watchertypes.WatcherConfig
 
 	// WatcherCommand represents commands sent to the watcher via socket
-	WatcherCommand = types.WatcherCommand
+	WatcherCommand = watchertypes.WatcherCommand
 
 	// WatcherResponse represents responses from the watcher
-	WatcherResponse = types.WatcherResponse
+	WatcherResponse = watchertypes.WatcherResponse
 
 	// ScriptMetrics tracks execution statistics for scripts
-	ScriptMetrics = types.ScriptMetrics
+	ScriptMetrics = watchertypes.ScriptMetrics
 
 	// WatcherLog represents a log entry
-	WatcherLog = types.WatcherLog
+	WatcherLog = watchertypes.WatcherLog
 
 	// ChallengeState represents challenge state
-	ChallengeState = types.ChallengeState
+	ChallengeState = watchertypes.ChallengeState
 
 	// ScriptExecution represents script execution record
-	ScriptExecution = types.ScriptExecution
+	ScriptExecution = watchertypes.ScriptExecution
 
 	// UpdateType represents the type of update needed
-	UpdateType = types.UpdateType
+	UpdateType = watchertypes.UpdateType
 
 	// WatcherClient provides client interface for the watcher daemon
 	WatcherClient = socket.Client
@@ -45,14 +45,14 @@ type (
 
 // Re-export constants
 const (
-	UpdateNone         = types.UpdateNone
-	UpdateAttachment   = types.UpdateAttachment
-	UpdateMetadata     = types.UpdateMetadata
-	UpdateFullRedeploy = types.UpdateFullRedeploy
+	UpdateNone         = watchertypes.UpdateNone
+	UpdateAttachment   = watchertypes.UpdateAttachment
+	UpdateMetadata     = watchertypes.UpdateMetadata
+	UpdateFullRedeploy = watchertypes.UpdateFullRedeploy
 )
 
 // Re-export default configuration
-var DefaultWatcherConfig = types.DefaultWatcherConfig
+var DefaultWatcherConfig = watchertypes.DefaultWatcherConfig
 
 // NewWatcher creates a new file watcher instance
 func NewWatcher(api *gzapi.GZAPI) (*Watcher, error) {

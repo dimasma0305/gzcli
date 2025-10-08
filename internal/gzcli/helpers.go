@@ -150,14 +150,14 @@ func genStructureWrapper(challenges []interface{ GetCwd() string }) error {
 }
 
 // RunScripts executes scripts for all challenges using a worker pool
-func RunScripts(scriptName string) error {
-	appsettings, err := config.GetAppSettings()
+func RunScripts(scriptName string, eventName string) error {
+	// Get config for the specific event
+	configPkg, err := config.GetConfigWithEvent(&gzapi.GZAPI{}, eventName, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
 	if err != nil {
 		return err
 	}
-	conf := &Config{}
-	conf.SetAppSettings(appsettings)
-	challengesConf, err := config.GetChallengesYaml(conf.ToConfigPackage())
+
+	challengesConf, err := config.GetChallengesYaml(configPkg)
 	if err != nil {
 		return err
 	}

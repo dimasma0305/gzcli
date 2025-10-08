@@ -67,15 +67,11 @@ func (m *Manager) StartPullLoop(ctx context.Context) {
 func (m *Manager) PerformPull() error {
 	log.InfoH3("🔄 Pulling latest changes from git repository: %s", m.repoPath)
 
-	// Detect repository root (handle invocation from subdirectories)
+	// Only check for .git in the event root directory (no walking up the tree)
 	root := m.repoPath
-	if _, err := os.Stat(filepath.Join(m.repoPath, ".git")); err != nil {
-		if detected, findErr := FindGitRepoRoot(m.repoPath); findErr == nil {
-			log.Info("Detected git repository root at: %s", detected)
-			root = detected
-		} else {
-			return fmt.Errorf("failed to locate git repository at %s: %w", m.repoPath, findErr)
-		}
+	gitDir := filepath.Join(m.repoPath, ".git")
+	if _, err := os.Stat(gitDir); err != nil {
+		return fmt.Errorf("no git repository found at %s (looking for .git in event root only): %w", m.repoPath, err)
 	}
 
 	// Execute system git pull (inherits env; uses current credentials/SSH config)

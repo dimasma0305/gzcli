@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 )
 
 // Client provides a client interface to communicate with the watcher daemon
@@ -19,7 +19,7 @@ type Client struct {
 // NewClient creates a new watcher client
 func NewClient(socketPath string) *Client {
 	if socketPath == "" {
-		socketPath = types.DefaultWatcherConfig.SocketPath
+		socketPath = watchertypes.DefaultWatcherConfig.SocketPath
 	}
 	return &Client{
 		socketPath: socketPath,
@@ -33,7 +33,7 @@ func (c *Client) SetTimeout(timeout time.Duration) {
 }
 
 // SendCommand sends a command to the watcher and returns the response
-func (c *Client) SendCommand(action string, data map[string]interface{}) (*types.WatcherResponse, error) {
+func (c *Client) SendCommand(action string, data map[string]interface{}) (*watchertypes.WatcherResponse, error) {
 	// Connect to the socket
 	conn, err := net.DialTimeout("unix", c.socketPath, c.timeout)
 	if err != nil {
@@ -50,7 +50,7 @@ func (c *Client) SendCommand(action string, data map[string]interface{}) (*types
 	}
 
 	// Create and send command
-	cmd := types.WatcherCommand{
+	cmd := watchertypes.WatcherCommand{
 		Action: action,
 		Data:   data,
 	}
@@ -62,7 +62,7 @@ func (c *Client) SendCommand(action string, data map[string]interface{}) (*types
 
 	// Read response
 	decoder := json.NewDecoder(conn)
-	var response types.WatcherResponse
+	var response watchertypes.WatcherResponse
 	if err := decoder.Decode(&response); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -71,22 +71,22 @@ func (c *Client) SendCommand(action string, data map[string]interface{}) (*types
 }
 
 // Status gets the current watcher status
-func (c *Client) Status() (*types.WatcherResponse, error) {
+func (c *Client) Status() (*watchertypes.WatcherResponse, error) {
 	return c.SendCommand("status", nil)
 }
 
 // ListChallenges gets the list of watched challenges
-func (c *Client) ListChallenges() (*types.WatcherResponse, error) {
+func (c *Client) ListChallenges() (*watchertypes.WatcherResponse, error) {
 	return c.SendCommand("list_challenges", nil)
 }
 
 // GetMetrics gets script execution metrics
-func (c *Client) GetMetrics() (*types.WatcherResponse, error) {
+func (c *Client) GetMetrics() (*watchertypes.WatcherResponse, error) {
 	return c.SendCommand("get_metrics", nil)
 }
 
 // GetLogs gets recent logs from the database
-func (c *Client) GetLogs(limit int) (*types.WatcherResponse, error) {
+func (c *Client) GetLogs(limit int) (*watchertypes.WatcherResponse, error) {
 	data := map[string]interface{}{
 		"limit": limit,
 	}
@@ -94,7 +94,7 @@ func (c *Client) GetLogs(limit int) (*types.WatcherResponse, error) {
 }
 
 // StopScript stops a specific interval script
-func (c *Client) StopScript(challengeName, scriptName string) (*types.WatcherResponse, error) {
+func (c *Client) StopScript(challengeName, scriptName string) (*watchertypes.WatcherResponse, error) {
 	data := map[string]interface{}{
 		"challenge_name": challengeName,
 		"script_name":    scriptName,
@@ -103,7 +103,7 @@ func (c *Client) StopScript(challengeName, scriptName string) (*types.WatcherRes
 }
 
 // RestartChallenge triggers a full restart of a challenge
-func (c *Client) RestartChallenge(challengeName string) (*types.WatcherResponse, error) {
+func (c *Client) RestartChallenge(challengeName string) (*watchertypes.WatcherResponse, error) {
 	data := map[string]interface{}{
 		"challenge_name": challengeName,
 	}
@@ -111,7 +111,7 @@ func (c *Client) RestartChallenge(challengeName string) (*types.WatcherResponse,
 }
 
 // GetScriptExecutions gets script execution history
-func (c *Client) GetScriptExecutions(challengeName string, limit int) (*types.WatcherResponse, error) {
+func (c *Client) GetScriptExecutions(challengeName string, limit int) (*watchertypes.WatcherResponse, error) {
 	data := map[string]interface{}{
 		"limit": limit,
 	}

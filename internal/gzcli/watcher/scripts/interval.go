@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -33,10 +33,10 @@ func (m *Manager) StartIntervalScript(challengeName, scriptName string, challeng
 	// Initialize metrics if needed
 	m.scriptMetricsMu.Lock()
 	if m.scriptMetrics[challengeName] == nil {
-		m.scriptMetrics[challengeName] = make(map[string]*types.ScriptMetrics)
+		m.scriptMetrics[challengeName] = make(map[string]*watchertypes.ScriptMetrics)
 	}
 	if m.scriptMetrics[challengeName][scriptName] == nil {
-		m.scriptMetrics[challengeName][scriptName] = &types.ScriptMetrics{
+		m.scriptMetrics[challengeName][scriptName] = &watchertypes.ScriptMetrics{
 			IsInterval: true,
 			Interval:   interval,
 		}

@@ -8,7 +8,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -134,7 +134,7 @@ func fileStat(path string) error {
 }
 
 // WatchLoop is the main event loop for file watching
-func WatchLoop(watcher *fsnotify.Watcher, config types.WatcherConfig, handler EventHandler, ctx <-chan struct{}) {
+func WatchLoop(watcher *fsnotify.Watcher, config watchertypes.WatcherConfig, handler EventHandler, ctx <-chan struct{}) {
 	for {
 		select {
 		case <-ctx:

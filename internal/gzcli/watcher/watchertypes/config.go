@@ -1,4 +1,5 @@
-package types
+// Package watchertypes provides type definitions for the watcher
+package watchertypes
 
 import (
 	"time"

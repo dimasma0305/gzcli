@@ -1,5 +1,5 @@
-//nolint:revive // Package name "types" is standard for type definitions
-package types
+// Package watchertypes provides type definitions for the watcher
+package watchertypes
 
 import (
 	"time"

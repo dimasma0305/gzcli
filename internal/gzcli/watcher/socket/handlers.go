@@ -3,20 +3,20 @@ package socket
 import (
 	"fmt"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 )
 
 // Handler provides implementations for socket command handling
 // This is a placeholder interface - the actual watcher will implement this
 type Handler interface {
-	HandleStatusCommand(cmd types.WatcherCommand) types.WatcherResponse
-	HandleListChallengesCommand(cmd types.WatcherCommand) types.WatcherResponse
-	HandleGetMetricsCommand(cmd types.WatcherCommand) types.WatcherResponse
-	HandleGetLogsCommand(cmd types.WatcherCommand) types.WatcherResponse
-	HandleStopScriptCommand(cmd types.WatcherCommand) types.WatcherResponse
-	HandleRestartChallengeCommand(cmd types.WatcherCommand) types.WatcherResponse
-	HandleGetScriptExecutionsCommand(cmd types.WatcherCommand) types.WatcherResponse
-	HandleStopEventCommand(cmd types.WatcherCommand) types.WatcherResponse
+	HandleStatusCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse
+	HandleListChallengesCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse
+	HandleGetMetricsCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse
+	HandleGetLogsCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse
+	HandleStopScriptCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse
+	HandleRestartChallengeCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse
+	HandleGetScriptExecutionsCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse
+	HandleStopEventCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse
 }
 
 // DefaultCommandHandler implements CommandHandler by routing to Handler methods
@@ -30,7 +30,7 @@ func NewDefaultCommandHandler(handler Handler) *DefaultCommandHandler {
 }
 
 // HandleCommand processes a socket command
-func (h *DefaultCommandHandler) HandleCommand(cmd types.WatcherCommand) types.WatcherResponse {
+func (h *DefaultCommandHandler) HandleCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse {
 	switch cmd.Action {
 	case "status":
 		return h.handler.HandleStatusCommand(cmd)
@@ -49,7 +49,7 @@ func (h *DefaultCommandHandler) HandleCommand(cmd types.WatcherCommand) types.Wa
 	case "stop_event":
 		return h.handler.HandleStopEventCommand(cmd)
 	default:
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Unknown command: %s", cmd.Action),
 		}

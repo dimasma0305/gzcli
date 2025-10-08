@@ -9,14 +9,14 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/database"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/socket"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
 // Watcher manages file watching and challenge synchronization across multiple events
 type Watcher struct {
 	api    *gzapi.GZAPI
-	config types.WatcherConfig
+	config watchertypes.WatcherConfig
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -83,7 +83,7 @@ func (w *Watcher) RemoveEventWatcher(eventName string) {
 }
 
 // Implement socket Handler interface
-func (w *Watcher) HandleStatusCommand(cmd types.WatcherCommand) types.WatcherResponse {
+func (w *Watcher) HandleStatusCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse {
 	// Get event filter from command if specified
 	filterEvent := cmd.Event // Prioritize Event field
 	if filterEvent == "" && cmd.Data != nil {
@@ -122,14 +122,14 @@ func (w *Watcher) HandleStatusCommand(cmd types.WatcherCommand) types.WatcherRes
 		"socket_enabled":     w.config.SocketEnabled,
 	}
 
-	return types.WatcherResponse{
+	return watchertypes.WatcherResponse{
 		Success: true,
 		Message: "Watcher status retrieved successfully",
 		Data:    status,
 	}
 }
 
-func (w *Watcher) HandleListChallengesCommand(cmd types.WatcherCommand) types.WatcherResponse {
+func (w *Watcher) HandleListChallengesCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse {
 	// Get event filter from command if specified
 	filterEvent := cmd.Event // Prioritize Event field
 	if filterEvent == "" && cmd.Data != nil {
@@ -158,14 +158,14 @@ func (w *Watcher) HandleListChallengesCommand(cmd types.WatcherCommand) types.Wa
 		}
 	}
 
-	return types.WatcherResponse{
+	return watchertypes.WatcherResponse{
 		Success: true,
 		Message: fmt.Sprintf("Found %d challenges", len(challengeList)),
 		Data:    map[string]interface{}{"challenges": challengeList},
 	}
 }
 
-func (w *Watcher) HandleGetMetricsCommand(cmd types.WatcherCommand) types.WatcherResponse {
+func (w *Watcher) HandleGetMetricsCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse {
 	// Get event filter from command if specified
 	filterEvent := cmd.Event // Prioritize Event field
 	if filterEvent == "" && cmd.Data != nil {
@@ -189,16 +189,16 @@ func (w *Watcher) HandleGetMetricsCommand(cmd types.WatcherCommand) types.Watche
 		}
 	}
 
-	return types.WatcherResponse{
+	return watchertypes.WatcherResponse{
 		Success: true,
 		Message: "Script metrics retrieved successfully",
 		Data:    map[string]interface{}{"metrics": allMetrics},
 	}
 }
 
-func (w *Watcher) HandleGetLogsCommand(cmd types.WatcherCommand) types.WatcherResponse {
+func (w *Watcher) HandleGetLogsCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse {
 	if !w.config.DatabaseEnabled {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   "Database logging is disabled",
 		}
@@ -214,20 +214,20 @@ func (w *Watcher) HandleGetLogsCommand(cmd types.WatcherCommand) types.WatcherRe
 
 	logs, err := w.db.GetRecentLogs(limit)
 	if err != nil {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Failed to get logs: %v", err),
 		}
 	}
 
-	return types.WatcherResponse{
+	return watchertypes.WatcherResponse{
 		Success: true,
 		Message: fmt.Sprintf("Retrieved %d log entries", len(logs)),
 		Data:    map[string]interface{}{"logs": logs},
 	}
 }
 
-func (w *Watcher) HandleStopScriptCommand(cmd types.WatcherCommand) types.WatcherResponse {
+func (w *Watcher) HandleStopScriptCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse {
 	// Get event from command
 	eventName := cmd.Event
 	if eventName == "" && cmd.Data != nil {
@@ -237,14 +237,14 @@ func (w *Watcher) HandleStopScriptCommand(cmd types.WatcherCommand) types.Watche
 	}
 
 	if eventName == "" {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   "Missing event parameter",
 		}
 	}
 
 	if cmd.Data == nil {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   "Missing challenge_name and script_name parameters",
 		}
@@ -254,7 +254,7 @@ func (w *Watcher) HandleStopScriptCommand(cmd types.WatcherCommand) types.Watche
 	scriptName, ok2 := cmd.Data["script_name"].(string)
 
 	if !ok1 || !ok2 {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   "Invalid challenge_name or script_name parameter",
 		}
@@ -263,7 +263,7 @@ func (w *Watcher) HandleStopScriptCommand(cmd types.WatcherCommand) types.Watche
 	// Get the event watcher
 	ew, exists := w.GetEventWatcher(eventName)
 	if !exists {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Event '%s' is not being watched", eventName),
 		}
@@ -274,13 +274,13 @@ func (w *Watcher) HandleStopScriptCommand(cmd types.WatcherCommand) types.Watche
 		scriptMgr.StopIntervalScript(challengeName, scriptName)
 	}
 
-	return types.WatcherResponse{
+	return watchertypes.WatcherResponse{
 		Success: true,
 		Message: fmt.Sprintf("Stopped script '%s' for challenge '%s' in event '%s'", scriptName, challengeName, eventName),
 	}
 }
 
-func (w *Watcher) HandleRestartChallengeCommand(cmd types.WatcherCommand) types.WatcherResponse {
+func (w *Watcher) HandleRestartChallengeCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse {
 	// Get event from command
 	eventName := cmd.Event
 	if eventName == "" && cmd.Data != nil {
@@ -290,14 +290,14 @@ func (w *Watcher) HandleRestartChallengeCommand(cmd types.WatcherCommand) types.
 	}
 
 	if eventName == "" {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   "Missing event parameter",
 		}
 	}
 
 	if cmd.Data == nil {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   "Missing challenge_name parameter",
 		}
@@ -306,7 +306,7 @@ func (w *Watcher) HandleRestartChallengeCommand(cmd types.WatcherCommand) types.
 	challengeName, ok1 := cmd.Data["challenge_name"].(string)
 
 	if !ok1 {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   "Invalid challenge_name parameter",
 		}
@@ -315,7 +315,7 @@ func (w *Watcher) HandleRestartChallengeCommand(cmd types.WatcherCommand) types.
 	// Get the event watcher
 	ew, exists := w.GetEventWatcher(eventName)
 	if !exists {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Event '%s' is not being watched", eventName),
 		}
@@ -333,15 +333,15 @@ func (w *Watcher) HandleRestartChallengeCommand(cmd types.WatcherCommand) types.
 		}
 	}()
 
-	return types.WatcherResponse{
+	return watchertypes.WatcherResponse{
 		Success: true,
 		Message: fmt.Sprintf("Challenge '%s' restart initiated in event '%s'", challengeName, eventName),
 	}
 }
 
-func (w *Watcher) HandleGetScriptExecutionsCommand(cmd types.WatcherCommand) types.WatcherResponse {
+func (w *Watcher) HandleGetScriptExecutionsCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse {
 	if !w.config.DatabaseEnabled {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   "Database logging is disabled",
 		}
@@ -361,13 +361,13 @@ func (w *Watcher) HandleGetScriptExecutionsCommand(cmd types.WatcherCommand) typ
 
 	executions, err := w.db.GetScriptExecutions(challengeName, limit)
 	if err != nil {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   fmt.Sprintf("Failed to get script executions: %v", err),
 		}
 	}
 
-	return types.WatcherResponse{
+	return watchertypes.WatcherResponse{
 		Success: true,
 		Message: fmt.Sprintf("Retrieved %d script executions", len(executions)),
 		Data:    map[string]interface{}{"executions": executions},
@@ -391,7 +391,7 @@ func (w *Watcher) StopEventWatcher(eventName string) error {
 }
 
 // HandleStopEventCommand handles stopping a specific event watcher
-func (w *Watcher) HandleStopEventCommand(cmd types.WatcherCommand) types.WatcherResponse {
+func (w *Watcher) HandleStopEventCommand(cmd watchertypes.WatcherCommand) watchertypes.WatcherResponse {
 	// Get event from command
 	eventName := cmd.Event
 	if eventName == "" && cmd.Data != nil {
@@ -401,7 +401,7 @@ func (w *Watcher) HandleStopEventCommand(cmd types.WatcherCommand) types.Watcher
 	}
 
 	if eventName == "" {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   "Missing event parameter",
 		}
@@ -409,13 +409,13 @@ func (w *Watcher) HandleStopEventCommand(cmd types.WatcherCommand) types.Watcher
 
 	// Stop the event watcher
 	if err := w.StopEventWatcher(eventName); err != nil {
-		return types.WatcherResponse{
+		return watchertypes.WatcherResponse{
 			Success: false,
 			Error:   err.Error(),
 		}
 	}
 
-	return types.WatcherResponse{
+	return watchertypes.WatcherResponse{
 		Success: true,
 		Message: fmt.Sprintf("Event watcher for '%s' stopped successfully", eventName),
 	}

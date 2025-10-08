@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -35,7 +35,7 @@ type Manager struct {
 	ctx               context.Context
 	intervalScripts   map[string]map[string]context.CancelFunc
 	intervalScriptsMu sync.RWMutex
-	scriptMetrics     map[string]map[string]*types.ScriptMetrics
+	scriptMetrics     map[string]map[string]*watchertypes.ScriptMetrics
 	scriptMetricsMu   sync.RWMutex
 	challengeConfigs  map[string]ChallengeConfig
 	configsMu         sync.RWMutex
@@ -47,7 +47,7 @@ func NewManager(ctx context.Context, logger ScriptLogger) *Manager {
 	return &Manager{
 		ctx:              ctx,
 		intervalScripts:  make(map[string]map[string]context.CancelFunc),
-		scriptMetrics:    make(map[string]map[string]*types.ScriptMetrics),
+		scriptMetrics:    make(map[string]map[string]*watchertypes.ScriptMetrics),
 		challengeConfigs: make(map[string]ChallengeConfig),
 		logger:           logger,
 	}
@@ -103,10 +103,10 @@ func (m *Manager) RunScriptWithIntervalSupport(challenge ChallengeConfig, script
 	// Initialize metrics for one-time script if needed
 	m.scriptMetricsMu.Lock()
 	if m.scriptMetrics[challenge.GetName()] == nil {
-		m.scriptMetrics[challenge.GetName()] = make(map[string]*types.ScriptMetrics)
+		m.scriptMetrics[challenge.GetName()] = make(map[string]*watchertypes.ScriptMetrics)
 	}
 	if m.scriptMetrics[challenge.GetName()][scriptName] == nil {
-		m.scriptMetrics[challenge.GetName()][scriptName] = &types.ScriptMetrics{
+		m.scriptMetrics[challenge.GetName()][scriptName] = &watchertypes.ScriptMetrics{
 			IsInterval: false,
 			Interval:   0,
 		}
@@ -166,24 +166,24 @@ func (m *Manager) RunScriptWithIntervalSupport(challenge ChallengeConfig, script
 }
 
 // GetMetrics returns script execution metrics for monitoring
-func (m *Manager) GetMetrics() map[string]map[string]*types.ScriptMetrics {
+func (m *Manager) GetMetrics() map[string]map[string]*watchertypes.ScriptMetrics {
 	m.scriptMetricsMu.RLock()
 	m.configsMu.RLock()
 	defer m.scriptMetricsMu.RUnlock()
 	defer m.configsMu.RUnlock()
 
 	// Create a copy to avoid concurrent map access and enrich with interval information
-	result := make(map[string]map[string]*types.ScriptMetrics)
+	result := make(map[string]map[string]*watchertypes.ScriptMetrics)
 
 	for challengeName, challengeMetrics := range m.scriptMetrics {
-		result[challengeName] = make(map[string]*types.ScriptMetrics)
+		result[challengeName] = make(map[string]*watchertypes.ScriptMetrics)
 
 		// Get challenge config for interval information
 		challengeConfig, hasConfig := m.challengeConfigs[challengeName]
 
 		for scriptName, metrics := range challengeMetrics {
 			// Create a copy of the metrics
-			metricsCopy := &types.ScriptMetrics{
+			metricsCopy := &watchertypes.ScriptMetrics{
 				LastExecution:  metrics.LastExecution,
 				ExecutionCount: metrics.ExecutionCount,
 				LastError:      metrics.LastError,

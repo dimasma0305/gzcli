@@ -6,7 +6,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/watchertypes"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -35,7 +35,7 @@ func NewWorkerPool(workers int) *WorkerPool {
 }
 
 // Start starts the worker pool
-func (wp *WorkerPool) Start(handler EventHandler, config types.WatcherConfig) {
+func (wp *WorkerPool) Start(handler EventHandler, config watchertypes.WatcherConfig) {
 	log.InfoH3("Starting worker pool with %d workers", wp.workers)
 
 	for i := 0; i < wp.workers; i++ {
@@ -45,7 +45,7 @@ func (wp *WorkerPool) Start(handler EventHandler, config types.WatcherConfig) {
 }
 
 // worker processes events from the event channel
-func (wp *WorkerPool) worker(id int, handler EventHandler, config types.WatcherConfig) {
+func (wp *WorkerPool) worker(id int, handler EventHandler, config watchertypes.WatcherConfig) {
 	defer wp.wg.Done()
 
 	log.DebugH3("Worker %d started", id)
@@ -101,7 +101,7 @@ func (wp *WorkerPool) Stop() {
 }
 
 // WatchLoopWithWorkerPool is an optimized event loop using a worker pool
-func WatchLoopWithWorkerPool(watcher *fsnotify.Watcher, config types.WatcherConfig, handler EventHandler, workers int, ctx <-chan struct{}) {
+func WatchLoopWithWorkerPool(watcher *fsnotify.Watcher, config watchertypes.WatcherConfig, handler EventHandler, workers int, ctx <-chan struct{}) {
 	pool := NewWorkerPool(workers)
 	pool.Start(handler, config)
 	defer pool.Stop()
