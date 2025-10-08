@@ -43,6 +43,26 @@ type lruCache struct {
 // Global in-memory cache instance
 var memoryCache = newLRUCache(maxMemoryCacheSize, defaultCacheTTL)
 
+// Global file write mutex map for serializing writes to same key (especially needed on Windows)
+var (
+	fileWriteMutexes   = make(map[string]*sync.Mutex)
+	fileWriteMutexesMu sync.Mutex
+)
+
+// getFileWriteMutex returns a mutex for a specific cache key
+func getFileWriteMutex(key string) *sync.Mutex {
+	fileWriteMutexesMu.Lock()
+	defer fileWriteMutexesMu.Unlock()
+
+	if mu, exists := fileWriteMutexes[key]; exists {
+		return mu
+	}
+
+	mu := &sync.Mutex{}
+	fileWriteMutexes[key] = mu
+	return mu
+}
+
 // newLRUCache creates a new LRU cache
 func newLRUCache(capacity int, ttl time.Duration) *lruCache {
 	return &lruCache{
@@ -132,6 +152,11 @@ func (c *lruCache) evictOldest() {
 
 // setCache atomically writes data to two-tier cache (memory + disk)
 func setCache(key string, data any) error {
+	// Serialize writes to the same key to prevent Windows file locking issues
+	mu := getFileWriteMutex(key)
+	mu.Lock()
+	defer mu.Unlock()
+
 	// Encode data to bytes using YAML
 	buf, err := yaml.Marshal(data)
 	if err != nil {
@@ -176,14 +201,18 @@ func setCache(key string, data any) error {
 
 // renameWithRetry handles file renaming with retry logic for Windows
 func renameWithRetry(src, dst string) error {
-	const maxRetries = 5
-	const retryDelay = 10 * time.Millisecond
+	const maxRetries = 10
+	const retryDelay = 50 * time.Millisecond
 
 	var lastErr error
 	for i := 0; i < maxRetries; i++ {
 		// On Windows, we need to remove the destination file first if it exists
 		// because os.Rename won't overwrite an existing file atomically
 		if runtime.GOOS == "windows" {
+			// Add a small delay before removing to let any file handles close
+			if i > 0 {
+				time.Sleep(retryDelay * time.Duration(i))
+			}
 			_ = os.Remove(dst) // Ignore error if file doesn't exist
 		}
 

@@ -187,8 +187,25 @@ func TestGetConfig_LargeConfigFile(t *testing.T) {
 
 	tmpDir := setupConfigTest(t)
 	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Errorf("Failed to remove temp dir: %v", err)
+		// Force garbage collection to ensure all file handles are closed (Windows needs this)
+		runtime.GC()
+		time.Sleep(100 * time.Millisecond)
+
+		// Retry removal on Windows
+		var lastErr error
+		for i := 0; i < 5; i++ {
+			if err := os.RemoveAll(tmpDir); err != nil {
+				lastErr = err
+				if runtime.GOOS == "windows" {
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				break
+			}
+			return
+		}
+		if lastErr != nil {
+			t.Logf("Warning: Failed to remove temp dir: %v", lastErr)
 		}
 	}()
 
