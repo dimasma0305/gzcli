@@ -9,7 +9,7 @@
 //	    &Challenge{cwd: "./challenges/web/xss"},
 //	    &Challenge{cwd: "./challenges/crypto/rsa"},
 //	}
-//	
+//
 //	if err := structure.GenerateStructure(challenges); err != nil {
 //	    log.Fatalf("Failed to generate structures: %v", err)
 //	}

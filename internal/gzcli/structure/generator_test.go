@@ -263,7 +263,7 @@ func TestGenerateStructure_MixedValidInvalid(t *testing.T) {
 
 	challenges := []ChallengeData{
 		nil,                               // Invalid: nil
-		&mockChallengeData{cwd: ""},      // Invalid: empty cwd
+		&mockChallengeData{cwd: ""},       // Invalid: empty cwd
 		&mockChallengeData{cwd: validDir}, // Valid
 	}
 

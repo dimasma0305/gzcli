@@ -6,12 +6,12 @@
 // Example usage:
 //
 //	challenges := []ChallengeConf{challenge1, challenge2, challenge3}
-//	
+//
 //	runScript := func(conf ChallengeConf, scriptName string) error {
 //	    cmd := exec.Command("sh", "-c", conf.GetScripts()[scriptName].GetCommand())
 //	    return cmd.Run()
 //	}
-//	
+//
 //	if err := script.RunScripts("build", challenges, runScript); err != nil {
 //	    log.Fatalf("Script execution failed: %v", err)
 //	}

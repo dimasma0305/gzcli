@@ -10,11 +10,11 @@ import (
 
 // testStruct is a simple struct for YAML parsing tests
 type testStruct struct {
-	Name    string `yaml:"name"`
-	Age     int    `yaml:"age"`
-	Active  bool   `yaml:"active"`
-	Tags    []string `yaml:"tags"`
-	Nested  nestedStruct `yaml:"nested"`
+	Name   string       `yaml:"name"`
+	Age    int          `yaml:"age"`
+	Active bool         `yaml:"active"`
+	Tags   []string     `yaml:"tags"`
+	Nested nestedStruct `yaml:"nested"`
 }
 
 type nestedStruct struct {

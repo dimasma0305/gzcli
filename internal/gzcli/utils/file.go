@@ -10,15 +10,15 @@
 //
 //	// Normalize filename
 //	safe := utils.NormalizeFileName("My Challenge!")  // Returns: "mychallenge"
-//	
+//
 //	// Calculate file hash
 //	hash, err := utils.GetFileHashHex("challenge.zip")
-//	
+//
 //	// Copy file
 //	if err := utils.CopyFile("src.txt", "dst.txt"); err != nil {
 //	    log.Fatal(err)
 //	}
-//	
+//
 //	// Create ZIP archive
 //	if err := utils.ZipSource("./challenge", "challenge.zip"); err != nil {
 //	    log.Fatal(err)

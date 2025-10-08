@@ -7,12 +7,12 @@
 // Example usage:
 //
 //	api := gzapi.New("https://ctf.example.com")
-//	
+//
 //	// Remove all events
 //	if err := event.RemoveAllEvent(api); err != nil {
 //	    log.Fatal(err)
 //	}
-//	
+//
 //	// Convert scoreboard to CTFTime feed
 //	feed, err := event.Scoreboard2CTFTimeFeed(game)
 //	if err != nil {
