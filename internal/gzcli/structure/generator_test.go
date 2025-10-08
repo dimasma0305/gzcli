@@ -4,6 +4,7 @@ package structure
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -389,6 +390,11 @@ func TestChallengeData_Interface(t *testing.T) {
 
 // TestGenerateStructure_PermissionHandling tests handling of permission errors
 func TestGenerateStructure_PermissionHandling(t *testing.T) {
+	// Skip on Windows as chmod doesn't work the same way
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping permission test on Windows (different permission model)")
+	}
+
 	if os.Getuid() == 0 {
 		t.Skip("Skipping permission test when running as root")
 	}

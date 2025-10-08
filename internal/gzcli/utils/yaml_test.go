@@ -4,6 +4,7 @@ package utils
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -307,6 +308,11 @@ func TestParseYamlFromFile_LargeFile(t *testing.T) {
 
 // TestParseYamlFromFile_PermissionDenied tests permission error handling
 func TestParseYamlFromFile_PermissionDenied(t *testing.T) {
+	// Skip on Windows as chmod doesn't work the same way
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping permission test on Windows (different permission model)")
+	}
+
 	if os.Getuid() == 0 {
 		t.Skip("Skipping permission test when running as root")
 	}
