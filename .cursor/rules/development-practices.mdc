@@ -167,7 +167,7 @@ func (c *Cache) Get(key string) (interface{}, bool) {
    ```go
    // Good
    items := make([]Item, 0, expectedSize)
-   
+
    // Bad
    var items []Item  // Will reallocate multiple times
    ```
