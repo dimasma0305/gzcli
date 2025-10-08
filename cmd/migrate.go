@@ -61,15 +61,11 @@ func init() {
 	migrateCmd.Flags().BoolVar(&migrateDryRun, "dry-run", false, "Show what would be done without making changes")
 }
 
-func runMigration() error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
-	}
-
+// validateMigrationPreconditions checks if migration is possible
+func validateMigrationPreconditions(cwd string) (string, error) {
 	// Check if already migrated
 	if _, err := os.Stat(filepath.Join(cwd, "events")); err == nil {
-		return fmt.Errorf("already migrated: events/ directory exists")
+		return "", fmt.Errorf("already migrated: events/ directory exists")
 	}
 
 	log.Info("🔍 Detecting old structure...")
@@ -77,16 +73,14 @@ func runMigration() error {
 	// Check if old structure exists
 	oldConfPath := filepath.Join(cwd, ".gzctf", "conf.yaml")
 	if _, err := os.Stat(oldConfPath); err != nil {
-		return fmt.Errorf("no old structure detected: .gzctf/conf.yaml not found")
+		return "", fmt.Errorf("no old structure detected: .gzctf/conf.yaml not found")
 	}
 
-	// Read old config
-	oldConfig, err := readOldConfig(oldConfPath)
-	if err != nil {
-		return fmt.Errorf("failed to read old config: %w", err)
-	}
+	return oldConfPath, nil
+}
 
-	// Determine event name
+// determineEventName extracts event name from config or uses provided name
+func determineEventName(oldConfig map[interface{}]interface{}) string {
 	eventName := migrateEventName
 	if eventName == "" {
 		if title, ok := oldConfig["event"].(map[interface{}]interface{})["title"].(string); ok && title != "" {
@@ -96,15 +90,67 @@ func runMigration() error {
 			eventName = "default-event"
 		}
 	}
+	return eventName
+}
 
+// performMigrationSteps executes all migration steps in sequence
+func performMigrationSteps(cwd, eventName string, oldConfig map[interface{}]interface{}) error {
+	steps := []struct {
+		name string
+		fn   func() error
+	}{
+		{"Creating new directory structure", func() error { return createDirectories(cwd, eventName) }},
+		{"Splitting configuration files", func() error { return splitConfig(cwd, eventName, oldConfig) }},
+		{"Moving challenges", func() error { return moveChallenges(cwd, eventName) }},
+		{"Moving cache files", func() error { return moveCacheFiles(cwd) }},
+		{"Setting default event", func() error { return setDefaultEvent(cwd, eventName) }},
+	}
+
+	for i, step := range steps {
+		log.Info("%d️⃣  %s...", i+1, step.name)
+		if err := step.fn(); err != nil {
+			return err
+		}
+	}
+
+	// Update .gitignore (non-critical)
+	log.Info("6️⃣  Updating .gitignore...")
+	if err := updateGitignore(cwd); err != nil {
+		log.Info("   ⚠ Failed to update .gitignore: %v", err)
+	}
+
+	return nil
+}
+
+func runMigration() error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	// Validate preconditions
+	oldConfPath, err := validateMigrationPreconditions(cwd)
+	if err != nil {
+		return err
+	}
+
+	// Read old config
+	oldConfig, err := readOldConfig(oldConfPath)
+	if err != nil {
+		return fmt.Errorf("failed to read old config: %w", err)
+	}
+
+	// Determine event name
+	eventName := determineEventName(oldConfig)
 	log.Info("📦 Event name: %s", eventName)
 
+	// Handle dry run
 	if migrateDryRun {
 		log.Info("🔍 DRY RUN MODE - No changes will be made")
 		return showMigrationPlan(cwd, eventName, oldConfig)
 	}
 
-	// Create backup
+	// Create backup if requested
 	if !migrateNoBackup {
 		log.Info("💾 Creating backup...")
 		backupDir := fmt.Sprintf("%s_backup_%d", cwd, os.Getpid())
@@ -114,46 +160,9 @@ func runMigration() error {
 		log.Info("✅ Backup created: %s", backupDir)
 	}
 
-	// Perform migration
+	// Perform migration steps
 	log.Info("🚀 Starting migration...")
-
-	// 1. Create new directory structure
-	log.Info("1️⃣  Creating new directory structure...")
-	if err := createDirectories(cwd, eventName); err != nil {
-		return err
-	}
-
-	// 2. Split configuration files
-	log.Info("2️⃣  Splitting configuration files...")
-	if err := splitConfig(cwd, eventName, oldConfig); err != nil {
-		return err
-	}
-
-	// 3. Move challenges
-	log.Info("3️⃣  Moving challenges...")
-	if err := moveChallenges(cwd, eventName); err != nil {
-		return err
-	}
-
-	// 4. Move cache files
-	log.Info("4️⃣  Moving cache files...")
-	if err := moveCacheFiles(cwd); err != nil {
-		return err
-	}
-
-	// 5. Set default event
-	log.Info("5️⃣  Setting default event...")
-	if err := setDefaultEvent(cwd, eventName); err != nil {
-		return err
-	}
-
-	// 6. Update .gitignore
-	log.Info("6️⃣  Updating .gitignore...")
-	if err := updateGitignore(cwd); err != nil {
-		log.Info("   ⚠ Failed to update .gitignore: %v", err)
-	}
-
-	return nil
+	return performMigrationSteps(cwd, eventName, oldConfig)
 }
 
 func readOldConfig(path string) (map[interface{}]interface{}, error) {

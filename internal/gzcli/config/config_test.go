@@ -173,27 +173,8 @@ func TestGetConfig_ConfigFileNotFound(t *testing.T) {
 	}
 }
 
-func TestGetConfig_WithValidCache(t *testing.T) {
-	originalDir, _ := os.Getwd()
-	tmpDir, err := os.MkdirTemp("", "config-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Errorf("Failed to remove temp dir: %v", err)
-		}
-	}()
-	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Errorf("Failed to restore directory: %v", err)
-		}
-	}()
-
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("Failed to change to temp dir: %v", err)
-	}
-
+// setupTestConfigFiles creates all necessary config files for testing
+func setupTestConfigFiles(t *testing.T, tmpDir string) {
 	// Create .gzctf directory
 	gzctfDir := filepath.Join(tmpDir, ".gzctf")
 	if err := os.Mkdir(gzctfDir, 0750); err != nil {
@@ -243,7 +224,10 @@ end: "2024-01-02T00:00:00Z"
 	if err := os.WriteFile(appSettingsPath, []byte(appSettingsData), 0600); err != nil {
 		t.Fatalf("Failed to write appsettings file: %v", err)
 	}
+}
 
+// setupTestCacheMocks creates mock cache functions for testing
+func setupTestCacheMocks() (map[string]interface{}, func(string, interface{}) error, func(string, interface{}) error, func(string)) {
 	cacheData := map[string]interface{}{
 		"config-test-event": Config{
 			Event: gzapi.Game{
@@ -273,6 +257,36 @@ end: "2024-01-02T00:00:00Z"
 	deleteCache := func(key string) {
 		delete(cacheData, key)
 	}
+
+	return cacheData, getCache, setCache, deleteCache
+}
+
+func TestGetConfig_WithValidCache(t *testing.T) {
+	originalDir, _ := os.Getwd()
+	tmpDir, err := os.MkdirTemp("", "config-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Errorf("Failed to remove temp dir: %v", err)
+		}
+	}()
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore directory: %v", err)
+		}
+	}()
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp dir: %v", err)
+	}
+
+	// Setup all config files
+	setupTestConfigFiles(t, tmpDir)
+
+	// Setup cache mocks
+	_, getCache, setCache, deleteCache := setupTestCacheMocks()
 
 	createNewGame := func(cfg *Config, api *gzapi.GZAPI) (*gzapi.Game, error) {
 		return &gzapi.Game{Id: 456}, nil
