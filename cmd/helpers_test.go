@@ -163,17 +163,17 @@ func TestResolveTargetEvents_NoEventsDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Errorf("Failed to restore directory: %v", err)
-		}
-	}()
 
 	tmpDir, err := os.MkdirTemp("", "gzcli-no-events-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
+		// Change back to original directory first (required on Windows)
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore directory: %v", err)
+		}
+		// Now we can remove the temp directory
 		if err := os.RemoveAll(tmpDir); err != nil {
 			t.Errorf("Failed to remove temp dir: %v", err)
 		}
@@ -195,17 +195,17 @@ func TestResolveTargetEvents_EmptyEventsDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Errorf("Failed to restore directory: %v", err)
-		}
-	}()
 
 	tmpDir, err := os.MkdirTemp("", "gzcli-empty-events-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
+		// Change back to original directory first (required on Windows)
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore directory: %v", err)
+		}
+		// Now we can remove the temp directory
 		if err := os.RemoveAll(tmpDir); err != nil {
 			t.Errorf("Failed to remove temp dir: %v", err)
 		}
