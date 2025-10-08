@@ -78,13 +78,10 @@ remove_binary() {
     if command -v $BINARY_NAME &> /dev/null; then
         local binary_location=$(which $BINARY_NAME)
         if [ -f "$binary_location" ]; then
-            print_warning "Found $BINARY_NAME at non-standard location: $binary_location"
-            read -p "Do you want to remove it? (y/n) " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                if remove_binary_from "$(dirname "$binary_location")"; then
-                    found=true
-                fi
+            print_info "Found $BINARY_NAME at non-standard location: $binary_location"
+            print_info "Removing it automatically..."
+            if remove_binary_from "$(dirname "$binary_location")"; then
+                found=true
             fi
         fi
     fi
@@ -264,27 +261,16 @@ main() {
     echo "===================================="
     echo ""
 
-    # Confirm uninstallation
-    print_warning "This will remove gzcli and all its shell completions"
-    read -p "Do you want to continue? (y/n) " -n 1 -r
-    echo
+    # No confirmation needed - proceed with uninstallation
+    print_info "Removing gzcli and all its shell completions..."
     echo ""
-
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_info "Uninstallation cancelled"
-        exit 0
-    fi
 
     # Remove binary
     remove_binary
 
-    # Ask about completions
+    # Remove completions automatically
     echo ""
-    read -p "Do you want to remove shell completions? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        remove_all_completions
-    fi
+    remove_all_completions
 
     echo ""
     print_success "Uninstallation complete!"

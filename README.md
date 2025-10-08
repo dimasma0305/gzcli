@@ -29,8 +29,19 @@ Use the install script, which will:
 - Fall back to building from source if a binary is not available
 - Detect your shell and set up autocompletion
 
+**Bash:**
 ```sh
-curl -fsSL https://raw.githubusercontent.com/dimasma0305/gzcli/main/install.sh | bash
+bash <(curl -s https://raw.githubusercontent.com/dimasma0305/gzcli/main/install.sh)
+```
+
+**Zsh:**
+```sh
+zsh <(curl -s https://raw.githubusercontent.com/dimasma0305/gzcli/main/install.sh)
+```
+
+**Fish:**
+```fish
+curl -s https://raw.githubusercontent.com/dimasma0305/gzcli/main/install.sh | bash
 ```
 
 Or download and run manually:
@@ -52,73 +63,23 @@ Download from the [releases page](https://github.com/dimasma0305/gzcli/releases/
 
 **Size:** Linux and Windows binaries are optimized and compressed with UPX, resulting in ~5-6 MB downloads. macOS binaries are ~18 MB (uncompressed for code signing compatibility). See [Binary Optimization](docs/BINARY_OPTIMIZATION.md) for details.
 
-### Homebrew (macOS/Linux)
-
-```sh
-brew install dimasma0305/tap/gzcli
-```
-
-### Manual Installation (From Source)
-
-**Prerequisites:**
-- Go 1.23 or later
-- Git
-
-If you already have Go installed:
-
-```sh
-go install github.com/dimasma0305/gzcli@latest
-```
-
-### Shell Completion
-
-**Automatic Setup (Recommended)**
-
-The installation script can automatically set up completions for all available shells:
-
-```sh
-bash <(curl -s https://raw.githubusercontent.com/dimasma0305/gzcli/main/install.sh)
-# When prompted, choose 'y' to install shell completions
-```
-
-The script will detect and configure completions for all installed shells (Bash, Zsh, Fish, PowerShell).
-
-**Manual Setup**
-
-Alternatively, you can manually set up completion for your preferred shell:
-
-**Bash:**
-```sh
-gzcli completion bash > ~/.bash_completion.d/gzcli
-echo 'source ~/.bash_completion.d/gzcli' >> ~/.bashrc
-source ~/.bashrc
-```
-
-**Zsh:**
-```sh
-mkdir -p ~/.zsh/completion
-gzcli completion zsh > ~/.zsh/completion/_gzcli
-echo 'fpath=(~/.zsh/completion $fpath)' >> ~/.zshrc
-echo 'autoload -Uz compinit && compinit' >> ~/.zshrc
-source ~/.zshrc
-```
-
-**Fish:**
-```sh
-gzcli completion fish > ~/.config/fish/completions/gzcli.fish
-```
-
-**PowerShell:**
-```powershell
-gzcli completion powershell | Out-String | Invoke-Expression
-```
-
 ### Uninstallation
 
 To completely remove gzcli and all shell completions:
 
+**Bash:**
 ```sh
 bash <(curl -s https://raw.githubusercontent.com/dimasma0305/gzcli/main/uninstall.sh)
+```
+
+**Zsh:**
+```sh
+zsh <(curl -s https://raw.githubusercontent.com/dimasma0305/gzcli/main/uninstall.sh)
+```
+
+**Fish:**
+```fish
+curl -s https://raw.githubusercontent.com/dimasma0305/gzcli/main/uninstall.sh | bash
 ```
 
 Or download and run manually:

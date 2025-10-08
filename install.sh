@@ -666,15 +666,9 @@ main() {
         # Check and install Go if needed
         if ! check_go_version; then
             print_warning "Go is required to install gzcli from source"
-            read -p "Do you want to install the latest Go version? (y/n) " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                get_latest_go_version
-                install_go
-            else
-                print_error "Go is required. Please install Go manually from https://go.dev/dl/"
-                exit 1
-            fi
+            print_info "Installing latest Go version automatically..."
+            get_latest_go_version
+            install_go
         fi
 
         # Verify Go installation
@@ -702,13 +696,10 @@ main() {
         fi
     fi
 
-    # Setup shell completion for all available shells
+    # Setup shell completion for all available shells automatically
     echo ""
-    read -p "Do you want to setup shell completion for all available shells? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        setup_all_completions
-    fi
+    print_info "Setting up shell completions for all available shells..."
+    setup_all_completions
 
     echo ""
     print_success "Installation complete!"
