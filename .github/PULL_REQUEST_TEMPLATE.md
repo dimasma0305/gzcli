@@ -56,7 +56,9 @@ make test
 - [ ] I have run `make fmt` to format my code
 - [ ] I have run `make lint` and fixed any issues
 - [ ] I have run `make vet` with no issues
+- [ ] I have run `make cyclo` and complexity is acceptable
 - [ ] I have reviewed my own code
+- [ ] All code quality checks pass locally
 
 ## Breaking Changes
 
