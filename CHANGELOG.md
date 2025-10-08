@@ -1,3 +1,13 @@
+## [1.6.0](https://github.com/dimasma0305/gzcli/compare/v1.5.2...v1.6.0) (2025-10-08)
+
+### Features
+
+* update documentation and remove deprecated files ([8654d4d](https://github.com/dimasma0305/gzcli/commit/8654d4dbc62e0f7206f8e90c0d5e126a2f425c7b))
+
+### Bug Fixes
+
+* clean up whitespace in development practices documentation ([af517be](https://github.com/dimasma0305/gzcli/commit/af517bed5f6242e93f4a6e8ff8e5f0d7ebfd355b))
+
 ## [1.5.2](https://github.com/dimasma0305/gzcli/compare/v1.5.1...v1.5.2) (2025-10-08)
 
 ### Code Refactoring
