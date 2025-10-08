@@ -1,3 +1,9 @@
+## [1.3.0](https://github.com/dimasma0305/gzcli/compare/v1.2.0...v1.3.0) (2025-10-08)
+
+### Features
+
+* enhance file write handling and improve temporary directory cleanup ([7cf4f2d](https://github.com/dimasma0305/gzcli/commit/7cf4f2d07d9a282e507fd6140b3777c150656926))
+
 ## [1.2.0](https://github.com/dimasma0305/gzcli/compare/v1.1.3...v1.2.0) (2025-10-08)
 
 ### Features
