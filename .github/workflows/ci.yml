@@ -22,6 +22,7 @@ jobs:
         with:
           go-version: '1.24'
           cache: true
+          cache-dependency-path: go.sum
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v8
@@ -45,6 +46,7 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
           cache: true
+          cache-dependency-path: go.sum
 
       - name: Run tests
         shell: bash
@@ -54,7 +56,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.go == '1.24'
         uses: codecov/codecov-action@v5
         with:
-          file: ./coverage.out
+          files: ./coverage.out
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
@@ -73,6 +75,7 @@ jobs:
         with:
           go-version: '1.24'
           cache: true
+          cache-dependency-path: go.sum
 
       - name: Build
         run: make build
@@ -92,6 +95,7 @@ jobs:
         with:
           go-version: '1.24'
           cache: true
+          cache-dependency-path: go.sum
 
       - name: Run go vet
         shell: bash
