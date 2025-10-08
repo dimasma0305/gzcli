@@ -505,7 +505,7 @@ func TestGZAPI_ZeroLengthResponse(t *testing.T) {
 	server := mockServer(t, map[string]http.HandlerFunc{
 		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			// Send no body
+			// Send no body - this is acceptable for already authenticated sessions
 		},
 	})
 	defer server.Close()
@@ -513,7 +513,10 @@ func TestGZAPI_ZeroLengthResponse(t *testing.T) {
 	creds := &Creds{Username: "test", Password: "test"}
 	_, err := Init(server.URL, creds)
 
-	if err == nil {
-		t.Error("Expected error for zero-length response")
+	// Empty response with HTTP 200 should be accepted (session already active)
+	if err != nil {
+		t.Errorf("Should accept empty response with HTTP 200: %v", err)
 	}
+
+	t.Log("Zero-length response with HTTP 200 handled successfully")
 }

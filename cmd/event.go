@@ -89,7 +89,8 @@ var eventSwitchCmd = &cobra.Command{
 	Short: "Switch to a different event as the default",
 	Long: `Set a specific event as the default event for all commands.
 This creates/updates the .gzcli/current-event file.`,
-	Args: cobra.ExactArgs(1),
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: validEventNames,
 	Run: func(_ *cobra.Command, args []string) {
 		eventName := args[0]
 

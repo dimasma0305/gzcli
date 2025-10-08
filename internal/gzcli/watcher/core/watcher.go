@@ -5,45 +5,29 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
-
-	"github.com/fsnotify/fsnotify"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/challenge"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/database"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/filesystem"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/git"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/scripts"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/socket"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
-// Watcher manages file watching and challenge synchronization
+// Watcher manages file watching and challenge synchronization across multiple events
 type Watcher struct {
-	api                *gzapi.GZAPI
-	watcher            *fsnotify.Watcher
-	config             types.WatcherConfig
-	ctx                context.Context
-	cancel             context.CancelFunc
-	wg                 sync.WaitGroup
-	challengeMutexes   map[string]*sync.Mutex
-	challengeMutexesMu sync.RWMutex
-	pendingUpdates     map[string]string // challengeName -> latest file path
-	pendingUpdatesMu   sync.RWMutex
-	updatingChallenges map[string]bool // challengeName -> is updating
-	updatingMu         sync.RWMutex
+	api    *gzapi.GZAPI
+	config types.WatcherConfig
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 
-	// Component managers
-	challengeMgr *challenge.Manager
-	scriptMgr    *scripts.Manager
+	// Shared components
 	db           *database.DB
 	socketServer *socket.Server
-	gitMgr       *git.Manager
 
-	// Additional state
-	debounceTimers map[string]*time.Timer
+	// Event-specific watchers
+	eventWatchers   map[string]*EventWatcher // eventName -> EventWatcher
+	eventWatchersMu sync.RWMutex
 }
 
 // New creates a new file watcher instance
@@ -53,83 +37,87 @@ func New(api *gzapi.GZAPI) (*Watcher, error) {
 		return nil, fmt.Errorf("API client cannot be nil")
 	}
 
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create fsnotify watcher: %w", err)
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	w := &Watcher{
-		api:                api,
-		watcher:            watcher,
-		ctx:                ctx,
-		cancel:             cancel,
-		debounceTimers:     make(map[string]*time.Timer),
-		challengeMutexes:   make(map[string]*sync.Mutex),
-		pendingUpdates:     make(map[string]string),
-		updatingChallenges: make(map[string]bool),
+		api:           api,
+		ctx:           ctx,
+		cancel:        cancel,
+		eventWatchers: make(map[string]*EventWatcher),
 	}
-
-	// Initialize component managers
-	w.challengeMgr = challenge.NewManager(watcher)
-	w.scriptMgr = scripts.NewManager(ctx, w)
 
 	return w, nil
 }
 
-// getChallengeUpdateMutex gets or creates a mutex for a specific challenge
-func (w *Watcher) GetChallengeUpdateMutex(challengeName string) *sync.Mutex {
-	w.challengeMutexesMu.RLock()
-	if mutex, exists := w.challengeMutexes[challengeName]; exists {
-		w.challengeMutexesMu.RUnlock()
-		return mutex
-	}
-	w.challengeMutexesMu.RUnlock()
-
-	// Need to create new mutex
-	w.challengeMutexesMu.Lock()
-	defer w.challengeMutexesMu.Unlock()
-
-	// Double-check in case another goroutine created it
-	if mutex, exists := w.challengeMutexes[challengeName]; exists {
-		return mutex
-	}
-
-	// Create new mutex
-	mutex := &sync.Mutex{}
-	w.challengeMutexes[challengeName] = mutex
-	return mutex
+// GetEventWatcher returns the EventWatcher for a specific event
+func (w *Watcher) GetEventWatcher(eventName string) (*EventWatcher, bool) {
+	w.eventWatchersMu.RLock()
+	defer w.eventWatchersMu.RUnlock()
+	ew, exists := w.eventWatchers[eventName]
+	return ew, exists
 }
 
-// Implement ScriptLogger interface for scripts package
-func (w *Watcher) LogToDatabase(level, component, challenge, script, message, errorMsg string, duration int64) {
-	if w.db != nil {
-		w.db.LogToDatabase(level, component, challenge, script, message, errorMsg, duration)
+// GetAllEventWatchers returns all event watchers
+func (w *Watcher) GetAllEventWatchers() map[string]*EventWatcher {
+	w.eventWatchersMu.RLock()
+	defer w.eventWatchersMu.RUnlock()
+	watchers := make(map[string]*EventWatcher, len(w.eventWatchers))
+	for k, v := range w.eventWatchers {
+		watchers[k] = v
 	}
+	return watchers
 }
 
-func (w *Watcher) LogScriptExecution(challengeName, scriptName, scriptType, command, status string, duration int64, output, errorOutput string, exitCode int) {
-	if w.db != nil {
-		w.db.LogScriptExecution(challengeName, scriptName, scriptType, command, status, duration, output, errorOutput, exitCode)
-	}
+// AddEventWatcher adds an event watcher
+func (w *Watcher) AddEventWatcher(eventName string, ew *EventWatcher) {
+	w.eventWatchersMu.Lock()
+	defer w.eventWatchersMu.Unlock()
+	w.eventWatchers[eventName] = ew
 }
 
-func (w *Watcher) UpdateChallengeState(challengeName, status, errorMessage string, activeScripts map[string][]string) {
-	if w.db != nil {
-		w.db.UpdateChallengeState(challengeName, status, errorMessage, activeScripts)
-	}
+// RemoveEventWatcher removes an event watcher
+func (w *Watcher) RemoveEventWatcher(eventName string) {
+	w.eventWatchersMu.Lock()
+	defer w.eventWatchersMu.Unlock()
+	delete(w.eventWatchers, eventName)
 }
 
 // Implement socket Handler interface
 func (w *Watcher) HandleStatusCommand(cmd types.WatcherCommand) types.WatcherResponse {
-	activeScripts := w.scriptMgr.GetActiveIntervalScripts()
-	challenges := len(w.challengeMgr.GetChallenges())
+	// Get event filter from command if specified
+	filterEvent := cmd.Event // Prioritize Event field
+	if filterEvent == "" && cmd.Data != nil {
+		if ev, ok := cmd.Data["event"].(string); ok {
+			filterEvent = ev
+		}
+	}
+
+	eventWatchers := w.GetAllEventWatchers()
+	totalChallenges := 0
+	allActiveScripts := make(map[string]map[string][]string) // event -> challenge -> []scripts
+	events := []string{}
+
+	for eventName, ew := range eventWatchers {
+		// Apply event filter if specified
+		if filterEvent != "" && eventName != filterEvent {
+			continue
+		}
+
+		events = append(events, eventName)
+		challenges := ew.GetWatchedChallenges()
+		totalChallenges += len(challenges)
+
+		scriptMgr := ew.GetScriptManager()
+		if scriptMgr != nil {
+			allActiveScripts[eventName] = scriptMgr.GetActiveIntervalScripts()
+		}
+	}
 
 	status := map[string]interface{}{
 		"status":             "running",
-		"watched_challenges": challenges,
-		"active_scripts":     activeScripts,
+		"events":             events,
+		"watched_challenges": totalChallenges,
+		"active_scripts":     allActiveScripts,
 		"database_enabled":   w.config.DatabaseEnabled,
 		"socket_enabled":     w.config.SocketEnabled,
 	}
@@ -142,16 +130,32 @@ func (w *Watcher) HandleStatusCommand(cmd types.WatcherCommand) types.WatcherRes
 }
 
 func (w *Watcher) HandleListChallengesCommand(cmd types.WatcherCommand) types.WatcherResponse {
-	challenges := w.challengeMgr.GetChallenges()
-	challengeList := make([]map[string]interface{}, 0, len(challenges))
-
-	for name, dir := range challenges {
-		challengeInfo := map[string]interface{}{
-			"name":      name,
-			"watching":  true,
-			"directory": dir,
+	// Get event filter from command if specified
+	filterEvent := cmd.Event // Prioritize Event field
+	if filterEvent == "" && cmd.Data != nil {
+		if ev, ok := cmd.Data["event"].(string); ok {
+			filterEvent = ev
 		}
-		challengeList = append(challengeList, challengeInfo)
+	}
+
+	eventWatchers := w.GetAllEventWatchers()
+	challengeList := make([]map[string]interface{}, 0)
+
+	for eventName, ew := range eventWatchers {
+		// Apply event filter if specified
+		if filterEvent != "" && eventName != filterEvent {
+			continue
+		}
+
+		challenges := ew.GetWatchedChallenges()
+		for _, challengeName := range challenges {
+			challengeInfo := map[string]interface{}{
+				"event":    eventName,
+				"name":     challengeName,
+				"watching": true,
+			}
+			challengeList = append(challengeList, challengeInfo)
+		}
 	}
 
 	return types.WatcherResponse{
@@ -162,12 +166,33 @@ func (w *Watcher) HandleListChallengesCommand(cmd types.WatcherCommand) types.Wa
 }
 
 func (w *Watcher) HandleGetMetricsCommand(cmd types.WatcherCommand) types.WatcherResponse {
-	metrics := w.scriptMgr.GetMetrics()
+	// Get event filter from command if specified
+	filterEvent := cmd.Event // Prioritize Event field
+	if filterEvent == "" && cmd.Data != nil {
+		if ev, ok := cmd.Data["event"].(string); ok {
+			filterEvent = ev
+		}
+	}
+
+	eventWatchers := w.GetAllEventWatchers()
+	allMetrics := make(map[string]interface{}) // event -> metrics
+
+	for eventName, ew := range eventWatchers {
+		// Apply event filter if specified
+		if filterEvent != "" && eventName != filterEvent {
+			continue
+		}
+
+		scriptMgr := ew.GetScriptManager()
+		if scriptMgr != nil {
+			allMetrics[eventName] = scriptMgr.GetMetrics()
+		}
+	}
 
 	return types.WatcherResponse{
 		Success: true,
 		Message: "Script metrics retrieved successfully",
-		Data:    map[string]interface{}{"metrics": metrics},
+		Data:    map[string]interface{}{"metrics": allMetrics},
 	}
 }
 
@@ -203,6 +228,21 @@ func (w *Watcher) HandleGetLogsCommand(cmd types.WatcherCommand) types.WatcherRe
 }
 
 func (w *Watcher) HandleStopScriptCommand(cmd types.WatcherCommand) types.WatcherResponse {
+	// Get event from command
+	eventName := cmd.Event
+	if eventName == "" && cmd.Data != nil {
+		if ev, ok := cmd.Data["event"].(string); ok {
+			eventName = ev
+		}
+	}
+
+	if eventName == "" {
+		return types.WatcherResponse{
+			Success: false,
+			Error:   "Missing event parameter",
+		}
+	}
+
 	if cmd.Data == nil {
 		return types.WatcherResponse{
 			Success: false,
@@ -220,15 +260,42 @@ func (w *Watcher) HandleStopScriptCommand(cmd types.WatcherCommand) types.Watche
 		}
 	}
 
-	w.scriptMgr.StopIntervalScript(challengeName, scriptName)
+	// Get the event watcher
+	ew, exists := w.GetEventWatcher(eventName)
+	if !exists {
+		return types.WatcherResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Event '%s' is not being watched", eventName),
+		}
+	}
+
+	scriptMgr := ew.GetScriptManager()
+	if scriptMgr != nil {
+		scriptMgr.StopIntervalScript(challengeName, scriptName)
+	}
 
 	return types.WatcherResponse{
 		Success: true,
-		Message: fmt.Sprintf("Stopped script '%s' for challenge '%s'", scriptName, challengeName),
+		Message: fmt.Sprintf("Stopped script '%s' for challenge '%s' in event '%s'", scriptName, challengeName, eventName),
 	}
 }
 
 func (w *Watcher) HandleRestartChallengeCommand(cmd types.WatcherCommand) types.WatcherResponse {
+	// Get event from command
+	eventName := cmd.Event
+	if eventName == "" && cmd.Data != nil {
+		if ev, ok := cmd.Data["event"].(string); ok {
+			eventName = ev
+		}
+	}
+
+	if eventName == "" {
+		return types.WatcherResponse{
+			Success: false,
+			Error:   "Missing event parameter",
+		}
+	}
+
 	if cmd.Data == nil {
 		return types.WatcherResponse{
 			Success: false,
@@ -236,26 +303,39 @@ func (w *Watcher) HandleRestartChallengeCommand(cmd types.WatcherCommand) types.
 		}
 	}
 
-	challengeName, ok := cmd.Data["challenge_name"].(string)
-	if !ok {
+	challengeName, ok1 := cmd.Data["challenge_name"].(string)
+
+	if !ok1 {
 		return types.WatcherResponse{
 			Success: false,
 			Error:   "Invalid challenge_name parameter",
 		}
 	}
 
+	// Get the event watcher
+	ew, exists := w.GetEventWatcher(eventName)
+	if !exists {
+		return types.WatcherResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Event '%s' is not being watched", eventName),
+		}
+	}
+
 	// Trigger restart in background
 	go func() {
-		activeScripts := w.scriptMgr.GetActiveIntervalScripts()
-		w.UpdateChallengeState(challengeName, "restarting", "", activeScripts)
-		log.Info("Challenge restart requested: %s", challengeName)
-		// Actual restart logic would go here
-		w.UpdateChallengeState(challengeName, "watching", "", activeScripts)
+		scriptMgr := ew.GetScriptManager()
+		if scriptMgr != nil {
+			activeScripts := scriptMgr.GetActiveIntervalScripts()
+			ew.UpdateChallengeState(challengeName, "restarting", "", activeScripts)
+			log.Info("[%s] Challenge restart requested: %s", eventName, challengeName)
+			// Actual restart logic would go here
+			ew.UpdateChallengeState(challengeName, "watching", "", activeScripts)
+		}
 	}()
 
 	return types.WatcherResponse{
 		Success: true,
-		Message: fmt.Sprintf("Challenge '%s' restart initiated", challengeName),
+		Message: fmt.Sprintf("Challenge '%s' restart initiated in event '%s'", challengeName, eventName),
 	}
 }
 
@@ -294,93 +374,64 @@ func (w *Watcher) HandleGetScriptExecutionsCommand(cmd types.WatcherCommand) typ
 	}
 }
 
-// Implement filesystem.EventHandler interface
-func (w *Watcher) HandleFileChange(filePath string) {
-	log.InfoH2("Processing file change: %s", filePath)
-
-	// Find which challenge this file belongs to
-	challengeName, challengeCwd, err := w.challengeMgr.FindChallengeForFile(filePath)
-	if err != nil {
-		log.Error("Failed to find challenge for file %s: %v", filePath, err)
-		return
+// StopEventWatcher stops a specific event watcher
+func (w *Watcher) StopEventWatcher(eventName string) error {
+	ew, exists := w.GetEventWatcher(eventName)
+	if !exists {
+		return fmt.Errorf("event watcher for '%s' not found", eventName)
 	}
 
-	if challengeName == "" {
-		log.InfoH3("File %s doesn't belong to any challenge", filePath)
-		return
+	if err := ew.Stop(); err != nil {
+		return fmt.Errorf("failed to stop event watcher for '%s': %w", eventName, err)
 	}
 
-	log.Info("File %s belongs to challenge: %s", filePath, challengeName)
+	w.RemoveEventWatcher(eventName)
+	log.Info("Event watcher for '%s' stopped and removed", eventName)
+	return nil
+}
 
-	// Use the challenge-specific mutex to prevent race conditions during update checks
-	challengeMutex := w.GetChallengeUpdateMutex(challengeName)
-	challengeMutex.Lock()
-
-	// Check if this challenge is already being updated
-	if w.isUpdating(challengeName) {
-		log.InfoH3("Challenge %s is already being updated, setting as pending", challengeName)
-		w.setPendingUpdate(challengeName, filePath)
-		challengeMutex.Unlock()
-		return
-	}
-
-	// Mark as updating before releasing the mutex
-	w.setUpdating(challengeName, true)
-	challengeMutex.Unlock()
-
-	// Process update (simplified - actual implementation would call update logic)
-	go func() {
-		defer w.setUpdating(challengeName, false)
-
-		updateType := filesystem.DetermineUpdateType(filePath, challengeCwd)
-		log.Info("Update type for %s: %v", challengeName, updateType)
-
-		// Check for pending updates
-		if pendingFilePath, hasPending := w.getPendingUpdate(challengeName); hasPending {
-			log.InfoH3("Found pending update for %s, would process: %s", challengeName, pendingFilePath)
+// HandleStopEventCommand handles stopping a specific event watcher
+func (w *Watcher) HandleStopEventCommand(cmd types.WatcherCommand) types.WatcherResponse {
+	// Get event from command
+	eventName := cmd.Event
+	if eventName == "" && cmd.Data != nil {
+		if ev, ok := cmd.Data["event"].(string); ok {
+			eventName = ev
 		}
-	}()
-}
+	}
 
-func (w *Watcher) HandleFileRemoval(filePath string) {
-	log.InfoH2("Processing file removal: %s", filePath)
-	// Simplified implementation
-}
+	if eventName == "" {
+		return types.WatcherResponse{
+			Success: false,
+			Error:   "Missing event parameter",
+		}
+	}
 
-func (w *Watcher) HandleChallengeRemovalByDir(removedDir string) {
-	log.InfoH2("Processing challenge removal by directory: %s", removedDir)
-	// Simplified implementation
-}
+	// Stop the event watcher
+	if err := w.StopEventWatcher(eventName); err != nil {
+		return types.WatcherResponse{
+			Success: false,
+			Error:   err.Error(),
+		}
+	}
 
-// Helper methods for update state management
-func (w *Watcher) isUpdating(challengeName string) bool {
-	w.updatingMu.RLock()
-	defer w.updatingMu.RUnlock()
-	return w.updatingChallenges[challengeName]
-}
-
-func (w *Watcher) setUpdating(challengeName string, updating bool) {
-	w.updatingMu.Lock()
-	defer w.updatingMu.Unlock()
-	if updating {
-		w.updatingChallenges[challengeName] = true
-	} else {
-		delete(w.updatingChallenges, challengeName)
+	return types.WatcherResponse{
+		Success: true,
+		Message: fmt.Sprintf("Event watcher for '%s' stopped successfully", eventName),
 	}
 }
 
-func (w *Watcher) setPendingUpdate(challengeName, filePath string) {
-	w.pendingUpdatesMu.Lock()
-	defer w.pendingUpdatesMu.Unlock()
-	w.pendingUpdates[challengeName] = filePath
-}
+// GetWatchedChallenges returns all watched challenges from all events
+func (w *Watcher) GetWatchedChallenges() []string {
+	eventWatchers := w.GetAllEventWatchers()
+	var allChallenges []string
 
-func (w *Watcher) getPendingUpdate(challengeName string) (string, bool) {
-	w.pendingUpdatesMu.Lock()
-	defer w.pendingUpdatesMu.Unlock()
-	filePath, exists := w.pendingUpdates[challengeName]
-	if exists {
-		delete(w.pendingUpdates, challengeName)
+	for eventName, ew := range eventWatchers {
+		challenges := ew.GetWatchedChallenges()
+		for _, ch := range challenges {
+			allChallenges = append(allChallenges, fmt.Sprintf("[%s] %s", eventName, ch))
+		}
 	}
-	return filePath, exists
+
+	return allChallenges
 }

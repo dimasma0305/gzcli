@@ -6,6 +6,7 @@ import (
 
 // WatcherConfig holds configuration for the watcher
 type WatcherConfig struct {
+	Events                    []string // Event names to watch (empty means use current event)
 	PollInterval              time.Duration
 	DebounceTime              time.Duration
 	IgnorePatterns            []string

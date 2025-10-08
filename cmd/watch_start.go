@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli"
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -23,6 +24,7 @@ var (
 	watchGitPull      bool
 	watchGitInterval  time.Duration
 	watchGitRepo      string
+	watchEvents       []string // Multiple events to watch
 )
 
 var watchStartCmd = &cobra.Command{
@@ -31,11 +33,14 @@ var watchStartCmd = &cobra.Command{
 	Long: `Start the file watcher daemon for automatic challenge redeployment.
 
 The watcher runs as a daemon by default. Use --foreground to run in the current terminal.`,
-	Example: `  # Start as daemon
+	Example: `  # Start as daemon for current event
   gzcli watch start
 
   # Start in foreground
   gzcli watch start --foreground
+
+  # Watch multiple events simultaneously
+  gzcli watch start --event ctf2024 --event ctf2025
 
   # Start with custom debounce time
   gzcli watch start --debounce 5s
@@ -43,14 +48,37 @@ The watcher runs as a daemon by default. Use --foreground to run in the current 
   # Start with custom ignore patterns
   gzcli watch start --ignore "*.tmp" --ignore "*.log"`,
 	Run: func(_ *cobra.Command, _ []string) {
-		// Use event from flag if provided
-		gz, err := gzcli.InitWithEvent(GetEventFlag())
+		// Determine which events to watch
+		var eventsToWatch []string
+		if len(watchEvents) > 0 {
+			// Use explicitly specified events from --event flags
+			eventsToWatch = watchEvents
+			log.InfoH2("Watching specified events: %v", eventsToWatch)
+		} else {
+			// Fall back to single event selection (global flag, env, or auto-detect)
+			eventName := GetEventFlag()
+			if eventName == "" {
+				// Try to auto-detect using config logic
+				detectedEvent, err := config.GetCurrentEvent("")
+				if err != nil {
+					log.Error("Failed to determine event: %v", err)
+					os.Exit(1)
+				}
+				eventName = detectedEvent
+			}
+			eventsToWatch = []string{eventName}
+			log.InfoH2("Watching single event: %s", eventName)
+		}
+
+		// Initialize GZAPI without event context (we'll handle events in the watcher)
+		gz, err := gzcli.InitWithEvent("")
 		if err != nil {
 			log.Error("Failed to initialize: %v", err)
 			os.Exit(1)
 		}
 
 		config := gzcli.WatcherConfig{
+			Events:                    eventsToWatch,
 			PollInterval:              watchPollInterval,
 			DebounceTime:              watchDebounce,
 			IgnorePatterns:            gzcli.DefaultWatcherConfig.IgnorePatterns,
@@ -108,6 +136,7 @@ The watcher runs as a daemon by default. Use --foreground to run in the current 
 func init() {
 	watchCmd.AddCommand(watchStartCmd)
 
+	watchStartCmd.Flags().StringSliceVarP(&watchEvents, "event", "e", []string{}, "Event(s) to watch (can be specified multiple times, overrides global --event)")
 	watchStartCmd.Flags().BoolVarP(&watchForeground, "foreground", "f", false, "Run in foreground instead of daemon mode")
 	watchStartCmd.Flags().StringVar(&watchPidFile, "pid-file", "", "Custom PID file location (default: /tmp/gzctf-watcher.pid)")
 	watchStartCmd.Flags().StringVar(&watchLogFile, "log-file", "", "Custom log file location (default: /tmp/gzctf-watcher.log)")
@@ -118,4 +147,7 @@ func init() {
 	watchStartCmd.Flags().BoolVar(&watchGitPull, "git-pull", true, "Enable automatic git pull")
 	watchStartCmd.Flags().DurationVar(&watchGitInterval, "git-interval", 1*time.Minute, "Git pull interval")
 	watchStartCmd.Flags().StringVar(&watchGitRepo, "git-repo", ".", "Git repository path")
+
+	// Register completion for --event flag
+	_ = watchStartCmd.RegisterFlagCompletionFunc("event", validEventNames)
 }

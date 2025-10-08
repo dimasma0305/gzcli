@@ -19,6 +19,7 @@ type ScriptMetrics struct {
 // WatcherCommand represents commands that can be sent to the watcher via socket
 type WatcherCommand struct {
 	Action string                 `json:"action"`
+	Event  string                 `json:"event,omitempty"` // Optional event filter for multi-event operations
 	Data   map[string]interface{} `json:"data,omitempty"`
 }
 
@@ -26,6 +27,7 @@ type WatcherCommand struct {
 type WatcherResponse struct {
 	Success bool                   `json:"success"`
 	Message string                 `json:"message,omitempty"`
+	Events  []string               `json:"events,omitempty"` // List of events (for multi-event responses)
 	Data    map[string]interface{} `json:"data,omitempty"`
 	Error   string                 `json:"error,omitempty"`
 }

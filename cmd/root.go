@@ -88,6 +88,9 @@ func init() {
 
 	// Add global event selection flag
 	rootCmd.PersistentFlags().StringVarP(&globalEventFlag, "event", "e", "", "Specify which event to use (overrides GZCLI_EVENT env var)")
+
+	// Register completion for global --event flag
+	_ = rootCmd.RegisterFlagCompletionFunc("event", validEventNames)
 }
 
 // GetEventFlag returns the current event flag value

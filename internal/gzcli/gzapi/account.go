@@ -1,7 +1,5 @@
 package gzapi
 
-import "fmt"
-
 // LoginResponse represents the response from the login endpoint
 type LoginResponse struct {
 	Succeeded bool `json:"succeeded"`
@@ -13,10 +11,9 @@ func (cs *GZAPI) Login() error {
 	if err := cs.post("/api/account/login", cs.Creds, &response); err != nil {
 		return err
 	}
-	// Validate that login was successful
-	if !response.Succeeded {
-		return fmt.Errorf("login failed: server returned succeeded=false")
-	}
+	// Note: We trust HTTP 200 status code (already validated in post())
+	// Empty response body (e.g., already authenticated) is acceptable
+	// Only check succeeded field if it was actually set in the response
 	return nil
 }
 

@@ -5,14 +5,13 @@ import (
 	"os"
 	"time"
 
+	godaemon "github.com/sevlyar/go-daemon"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/daemon"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/database"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/filesystem"
-	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/git"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/socket"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
 	"github.com/dimasma0305/gzcli/internal/log"
-	godaemon "github.com/sevlyar/go-daemon"
 )
 
 // Start starts the file watcher with the given configuration
@@ -113,24 +112,15 @@ func (w *Watcher) startWatcher() error {
 		return fmt.Errorf("failed to initialize socket server: %w", err)
 	}
 
-	// Initialize git manager
-	if w.config.GitPullEnabled {
-		w.gitMgr = git.NewManager(w.config.GitRepository, w.config.GitPullInterval, func() {
-			log.Info("Git pull completed, checking for new challenges...")
-		})
+	// Log to database
+	if w.db != nil {
+		w.db.LogToDatabase("INFO", "watcher", "", "", "File watcher started", "", 0)
 	}
 
-	// Start file system watcher loop
-	w.wg.Add(1)
-	go func() {
-		defer w.wg.Done()
-		done := make(chan struct{})
-		go func() {
-			<-w.ctx.Done()
-			close(done)
-		}()
-		filesystem.WatchLoop(w.watcher, w.config, w, done)
-	}()
+	// Start event watchers
+	if err := w.startEventWatchers(); err != nil {
+		return fmt.Errorf("failed to start event watchers: %w", err)
+	}
 
 	// Start socket server if enabled
 	if w.config.SocketEnabled && w.socketServer != nil {
@@ -141,18 +131,41 @@ func (w *Watcher) startWatcher() error {
 		}()
 	}
 
-	// Start git pull loop if enabled
-	if w.config.GitPullEnabled && w.gitMgr != nil {
-		w.wg.Add(1)
-		go func() {
-			defer w.wg.Done()
-			w.gitMgr.StartPullLoop(w.ctx)
-		}()
+	log.Info("File watcher started successfully")
+
+	return nil
+}
+
+// startEventWatchers creates and starts watchers for all configured events
+func (w *Watcher) startEventWatchers() error {
+	if len(w.config.Events) == 0 {
+		return fmt.Errorf("no events specified in configuration")
 	}
 
-	log.Info("File watcher started successfully")
-	w.LogToDatabase("INFO", "watcher", "", "", "File watcher started", "", 0)
+	log.InfoH2("Starting watchers for %d event(s): %v", len(w.config.Events), w.config.Events)
 
+	for _, eventName := range w.config.Events {
+		log.InfoH3("Starting watcher for event: %s", eventName)
+
+		// Create event watcher
+		ew, err := NewEventWatcher(eventName, w.api, w.config, w.db, w.ctx)
+		if err != nil {
+			log.Error("Failed to create event watcher for %s: %v", eventName, err)
+			return fmt.Errorf("failed to create event watcher for %s: %w", eventName, err)
+		}
+
+		// Start the event watcher
+		if err := ew.Start(); err != nil {
+			log.Error("Failed to start event watcher for %s: %v", eventName, err)
+			return fmt.Errorf("failed to start event watcher for %s: %w", eventName, err)
+		}
+
+		// Add to map
+		w.AddEventWatcher(eventName, ew)
+		log.Info("Event watcher for %s started successfully", eventName)
+	}
+
+	log.Info("All event watchers started successfully")
 	return nil
 }
 
@@ -160,11 +173,17 @@ func (w *Watcher) startWatcher() error {
 func (w *Watcher) Stop() error {
 	log.Info("Stopping file watcher...")
 
-	w.LogToDatabase("INFO", "watcher", "", "", "File watcher shutdown initiated", "", 0)
+	if w.db != nil {
+		w.db.LogToDatabase("INFO", "watcher", "", "", "File watcher shutdown initiated", "", 0)
+	}
 
-	// Stop all interval scripts
-	if w.scriptMgr != nil {
-		w.scriptMgr.StopAllScripts(5 * time.Second)
+	// Stop all event watchers
+	eventWatchers := w.GetAllEventWatchers()
+	for eventName, ew := range eventWatchers {
+		log.InfoH3("Stopping event watcher for: %s", eventName)
+		if err := ew.Stop(); err != nil {
+			log.Error("Error stopping event watcher for %s: %v", eventName, err)
+		}
 	}
 
 	// Cancel context
@@ -191,14 +210,9 @@ func (w *Watcher) Stop() error {
 		}
 	}
 
-	// Close file system watcher
-	if w.watcher != nil {
-		if err := w.watcher.Close(); err != nil {
-			log.Error("Failed to close file watcher: %v", err)
-		}
+	if w.db != nil {
+		w.db.LogToDatabase("INFO", "watcher", "", "", "File watcher shutdown completed", "", 0)
 	}
-
-	w.LogToDatabase("INFO", "watcher", "", "", "File watcher shutdown completed", "", 0)
 
 	// Close database last
 	if w.db != nil {
@@ -219,16 +233,6 @@ func (w *Watcher) IsWatching() bool {
 	default:
 		return true
 	}
-}
-
-// GetWatchedChallenges returns the list of currently watched challenges
-func (w *Watcher) GetWatchedChallenges() []string {
-	challenges := w.challengeMgr.GetChallenges()
-	dirs := make([]string, 0, len(challenges))
-	for _, dir := range challenges {
-		dirs = append(dirs, dir)
-	}
-	return dirs
 }
 
 // GetDaemonStatus returns the status of the daemon watcher

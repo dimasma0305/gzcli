@@ -116,9 +116,14 @@ func (cs *GZAPI) get(url string, data any) error {
 	}
 
 	if data != nil {
-		if err := req.UnmarshalJson(&data); err != nil {
-			log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-			return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+		// Check if response body is empty before unmarshaling
+		if len(req.Bytes()) == 0 {
+			log.DebugH3("GET response has empty body, skipping unmarshal for: %s", fullURL)
+		} else {
+			if err := req.UnmarshalJson(&data); err != nil {
+				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
+				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+			}
 		}
 	}
 
@@ -150,9 +155,14 @@ func (cs *GZAPI) delete(url string, data any) error {
 	}
 
 	if data != nil {
-		if err := req.UnmarshalJson(&data); err != nil {
-			log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-			return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+		// Check if response body is empty before unmarshaling
+		if len(req.Bytes()) == 0 {
+			log.DebugH3("DELETE response has empty body, skipping unmarshal for: %s", fullURL)
+		} else {
+			if err := req.UnmarshalJson(&data); err != nil {
+				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
+				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+			}
 		}
 	}
 
@@ -184,9 +194,14 @@ func (cs *GZAPI) post(url string, json any, data any) error {
 	}
 
 	if data != nil {
-		if err := req.UnmarshalJson(&data); err != nil {
-			log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-			return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+		// Check if response body is empty before unmarshaling
+		if len(req.Bytes()) == 0 {
+			log.DebugH3("POST response has empty body, skipping unmarshal for: %s", fullURL)
+		} else {
+			if err := req.UnmarshalJson(&data); err != nil {
+				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
+				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+			}
 		}
 	}
 
@@ -225,9 +240,14 @@ func (cs *GZAPI) postMultiPart(url string, file string, data any) error {
 	}
 
 	if data != nil {
-		if err := req.UnmarshalJson(&data); err != nil {
-			log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-			return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+		// Check if response body is empty before unmarshaling
+		if len(req.Bytes()) == 0 {
+			log.DebugH3("POST multipart response has empty body, skipping unmarshal for: %s", fullURL)
+		} else {
+			if err := req.UnmarshalJson(&data); err != nil {
+				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
+				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+			}
 		}
 	}
 
@@ -266,9 +286,14 @@ func (cs *GZAPI) putMultiPart(url string, file string, data any) error {
 	}
 
 	if data != nil {
-		if err := req.UnmarshalJson(&data); err != nil {
-			log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-			return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+		// Check if response body is empty before unmarshaling
+		if len(req.Bytes()) == 0 {
+			log.DebugH3("PUT multipart response has empty body, skipping unmarshal for: %s", fullURL)
+		} else {
+			if err := req.UnmarshalJson(&data); err != nil {
+				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
+				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+			}
 		}
 	}
 
@@ -300,9 +325,14 @@ func (cs *GZAPI) put(url string, json any, data any) error {
 	}
 
 	if data != nil {
-		if err := req.UnmarshalJson(&data); err != nil {
-			log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-			return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+		// Check if response body is empty before unmarshaling
+		if len(req.Bytes()) == 0 {
+			log.DebugH3("PUT response has empty body, skipping unmarshal for: %s", fullURL)
+		} else {
+			if err := req.UnmarshalJson(&data); err != nil {
+				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
+				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
+			}
 		}
 	}
 

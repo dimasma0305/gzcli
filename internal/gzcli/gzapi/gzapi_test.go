@@ -940,4 +940,195 @@ func TestFlag_Delete(t *testing.T) {
 	}
 }
 
+// TestGZAPI_Post_EmptyResponse tests handling of empty response body
+func TestGZAPI_Post_EmptyResponse(t *testing.T) {
+	server := mockServer(t, map[string]http.HandlerFunc{
+		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		},
+		"/api/empty": func(w http.ResponseWriter, r *http.Request) {
+			// Return 200 with empty body (simulates second login scenario)
+			w.WriteHeader(http.StatusOK)
+			// No body written
+		},
+	})
+	defer server.Close()
+
+	creds := &Creds{Username: "test", Password: "test"}
+	api, err := Init(server.URL, creds)
+	if err != nil {
+		t.Fatalf("Init() failed: %v", err)
+	}
+
+	// Test POST with empty response body - should not error
+	var response LoginResponse
+	err = api.post("/api/empty", nil, &response)
+	if err != nil {
+		t.Fatalf("post() with empty response failed: %v", err)
+	}
+
+	t.Log("Empty POST response handled successfully")
+}
+
+// TestGZAPI_Get_EmptyResponse tests handling of empty response body for GET
+//
+//nolint:dupl // Similar test structure for different HTTP methods is intentional
+func TestGZAPI_Get_EmptyResponse(t *testing.T) {
+	server := mockServer(t, map[string]http.HandlerFunc{
+		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		},
+		"/api/empty": func(w http.ResponseWriter, r *http.Request) {
+			// Return 200 with empty body
+			w.WriteHeader(http.StatusOK)
+		},
+	})
+	defer server.Close()
+
+	creds := &Creds{Username: "test", Password: "test"}
+	api, err := Init(server.URL, creds)
+	if err != nil {
+		t.Fatalf("Init() failed: %v", err)
+	}
+
+	// Test GET with empty response body - should not error
+	var response map[string]interface{}
+	err = api.get("/api/empty", &response)
+	if err != nil {
+		t.Fatalf("get() with empty response failed: %v", err)
+	}
+
+	t.Log("Empty GET response handled successfully")
+}
+
+// TestGZAPI_Put_EmptyResponse tests handling of empty response body for PUT
+func TestGZAPI_Put_EmptyResponse(t *testing.T) {
+	server := mockServer(t, map[string]http.HandlerFunc{
+		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		},
+		"/api/update": func(w http.ResponseWriter, r *http.Request) {
+			// Return 200 with empty body
+			w.WriteHeader(http.StatusOK)
+		},
+	})
+	defer server.Close()
+
+	creds := &Creds{Username: "test", Password: "test"}
+	api, err := Init(server.URL, creds)
+	if err != nil {
+		t.Fatalf("Init() failed: %v", err)
+	}
+
+	// Test PUT with empty response body - should not error
+	var response map[string]interface{}
+	err = api.put("/api/update", map[string]string{"key": "value"}, &response)
+	if err != nil {
+		t.Fatalf("put() with empty response failed: %v", err)
+	}
+
+	t.Log("Empty PUT response handled successfully")
+}
+
+// TestGZAPI_Delete_EmptyResponse tests handling of empty response body for DELETE
+//
+//nolint:dupl // Similar test structure for different HTTP methods is intentional
+func TestGZAPI_Delete_EmptyResponse(t *testing.T) {
+	server := mockServer(t, map[string]http.HandlerFunc{
+		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		},
+		"/api/resource/123": func(w http.ResponseWriter, r *http.Request) {
+			// Return 200 with empty body
+			w.WriteHeader(http.StatusOK)
+		},
+	})
+	defer server.Close()
+
+	creds := &Creds{Username: "test", Password: "test"}
+	api, err := Init(server.URL, creds)
+	if err != nil {
+		t.Fatalf("Init() failed: %v", err)
+	}
+
+	// Test DELETE with empty response body - should not error
+	var response map[string]interface{}
+	err = api.delete("/api/resource/123", &response)
+	if err != nil {
+		t.Fatalf("delete() with empty response failed: %v", err)
+	}
+
+	t.Log("Empty DELETE response handled successfully")
+}
+
+// TestGZAPI_Login_SecondTime tests logging in when already authenticated
+func TestGZAPI_Login_SecondTime(t *testing.T) {
+	loginCount := 0
+	server := mockServer(t, map[string]http.HandlerFunc{
+		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
+			loginCount++
+			w.WriteHeader(http.StatusOK)
+			// First login returns proper JSON, subsequent logins return empty body
+			// This simulates the real-world scenario where session is already active
+			if loginCount == 1 {
+				w.Write([]byte(`{"succeeded": true}`))
+			} // Empty response for subsequent logins (already authenticated)
+		},
+	})
+	defer server.Close()
+
+	creds := &Creds{Username: "test", Password: "test"}
+
+	// First login
+	api, err := Init(server.URL, creds)
+	if err != nil {
+		t.Fatalf("First Init() failed: %v", err)
+	}
+
+	// Second login attempt (reusing same session)
+	err = api.Login()
+	if err != nil {
+		t.Fatalf("Second Login() failed (empty body should be handled): %v", err)
+	}
+
+	if loginCount != 2 {
+		t.Errorf("Expected 2 login attempts, got %d", loginCount)
+	}
+
+	t.Log("Second login with empty response handled successfully")
+}
+
+// TestGZAPI_Post_NilData tests POST with nil data parameter
+func TestGZAPI_Post_NilData(t *testing.T) {
+	server := mockServer(t, map[string]http.HandlerFunc{
+		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		},
+		"/api/action": func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			// Empty response
+		},
+	})
+	defer server.Close()
+
+	creds := &Creds{Username: "test", Password: "test"}
+	api, err := Init(server.URL, creds)
+	if err != nil {
+		t.Fatalf("Init() failed: %v", err)
+	}
+
+	// Test POST with nil data parameter - should not error
+	err = api.post("/api/action", map[string]string{"action": "test"}, nil)
+	if err != nil {
+		t.Fatalf("post() with nil data failed: %v", err)
+	}
+
+	t.Log("POST with nil data parameter handled successfully")
+}
+
 // Helper functions are in common_test.go

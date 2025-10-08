@@ -2,6 +2,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/gzcli/testutil"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/database"
+	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/types"
 )
 
 // TestNew_NilAPI tests watcher creation with nil API
@@ -22,25 +25,58 @@ func TestNew_NilAPI(t *testing.T) {
 	}
 }
 
+// setupEventWatcherTest creates a test EventWatcher
+func setupEventWatcherTest(t *testing.T) (*EventWatcher, string, func()) {
+	tmpDir, err := os.MkdirTemp("", "event-watcher-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	// Create events directory structure
+	eventDir := filepath.Join(tmpDir, "events", "test-event")
+	if err := os.MkdirAll(eventDir, 0755); err != nil {
+		t.Fatalf("Failed to create event dir: %v", err)
+	}
+
+	// Change to tmpDir so event paths work
+	oldWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+
+	api := &gzapi.GZAPI{}
+	db := database.New(":memory:", false)
+	db.Init()
+
+	ctx := context.Background()
+	config := types.WatcherConfig{}
+
+	ew, err := NewEventWatcher("test-event", api, config, db, ctx)
+	if err != nil {
+		t.Fatalf("Failed to create event watcher: %v", err)
+	}
+
+	cleanup := func() {
+		if ew.watcher != nil {
+			ew.watcher.Close()
+		}
+		os.Chdir(oldWd)
+		os.RemoveAll(tmpDir)
+	}
+
+	return ew, eventDir, cleanup
+}
+
 // TestWatcher_ConcurrentFileChanges tests handling of concurrent file events
 func TestWatcher_ConcurrentFileChanges(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping concurrent file changes test in short mode")
 	}
 
-	tmpDir := setupWatcherTest(t)
-	defer os.RemoveAll(tmpDir)
-
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	_, eventDir, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Create multiple files concurrently
 	testutil.ConcurrentTest(t, 10, 5, func(id, iter int) error {
-		filename := filepath.Join(tmpDir, fmt.Sprintf("file-%d-%d.txt", id, iter))
+		filename := filepath.Join(eventDir, fmt.Sprintf("file-%d-%d.txt", id, iter))
 		return os.WriteFile(filename, []byte("test"), 0644)
 	})
 }
@@ -51,19 +87,12 @@ func TestWatcher_RapidFileChanges(t *testing.T) {
 		t.Skip("Skipping rapid file changes test in short mode")
 	}
 
-	tmpDir := setupWatcherTest(t)
-	defer os.RemoveAll(tmpDir)
-
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	_, eventDir, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Create 100 files very rapidly
 	for i := 0; i < 100; i++ {
-		filename := filepath.Join(tmpDir, fmt.Sprintf("rapid-%d.txt", i))
+		filename := filepath.Join(eventDir, fmt.Sprintf("rapid-%d.txt", i))
 		os.WriteFile(filename, []byte("test"), 0644)
 		// No delay - as fast as possible
 	}
@@ -73,17 +102,13 @@ func TestWatcher_RapidFileChanges(t *testing.T) {
 
 // TestWatcher_ConcurrentMutexAccess tests race conditions in mutex access
 func TestWatcher_ConcurrentMutexAccess(t *testing.T) {
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, _, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Access challenge mutexes concurrently
 	testutil.ConcurrentTest(t, 20, 10, func(id, iter int) error {
 		challengeName := fmt.Sprintf("challenge-%d", id%5) // Use only 5 names for contention
-		mutex := w.GetChallengeUpdateMutex(challengeName)
+		mutex := ew.GetChallengeUpdateMutex(challengeName)
 
 		mutex.Lock()
 		// Simulate some work
@@ -98,35 +123,27 @@ func TestWatcher_ConcurrentMutexAccess(t *testing.T) {
 
 // TestWatcher_UpdateStateRaceConditions tests concurrent state updates
 func TestWatcher_UpdateStateRaceConditions(t *testing.T) {
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, _, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Update state concurrently for same challenge
 	testutil.ConcurrentTest(t, 10, 20, func(id, iter int) error {
-		w.setUpdating("test-challenge", true)
+		ew.setUpdating("test-challenge", true)
 		time.Sleep(1 * time.Millisecond)
-		w.setUpdating("test-challenge", false)
+		ew.setUpdating("test-challenge", false)
 		return nil
 	})
 
 	// Verify final state is clean
-	if w.isUpdating("test-challenge") {
+	if ew.isUpdating("test-challenge") {
 		t.Error("Challenge should not be marked as updating after test")
 	}
 }
 
 // TestWatcher_PendingUpdatesRaceCondition tests concurrent pending updates
 func TestWatcher_PendingUpdatesRaceCondition(t *testing.T) {
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, _, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	challengeName := "test-challenge"
 
@@ -137,7 +154,7 @@ func TestWatcher_PendingUpdatesRaceCondition(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			filePath := fmt.Sprintf("/path/to/file-%d", id)
-			w.setPendingUpdate(challengeName, filePath)
+			ew.setPendingUpdate(challengeName, filePath)
 		}(i)
 	}
 
@@ -145,7 +162,7 @@ func TestWatcher_PendingUpdatesRaceCondition(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			w.getPendingUpdate(challengeName)
+			ew.getPendingUpdate(challengeName)
 		}()
 	}
 
@@ -155,19 +172,15 @@ func TestWatcher_PendingUpdatesRaceCondition(t *testing.T) {
 
 // TestWatcher_ContextCancellation tests proper cleanup on context cancellation
 func TestWatcher_ContextCancellation(t *testing.T) {
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, _, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Cancel context
-	w.cancel()
+	ew.cancel()
 
 	// Verify context is cancelled
 	select {
-	case <-w.ctx.Done():
+	case <-ew.ctx.Done():
 		t.Log("Context cancelled successfully")
 	case <-time.After(1 * time.Second):
 		t.Error("Context not cancelled within timeout")
@@ -180,25 +193,18 @@ func TestWatcher_ManyWatchedDirectories(t *testing.T) {
 		t.Skip("Skipping many directories test in short mode")
 	}
 
-	tmpDir := setupWatcherTest(t)
-	defer os.RemoveAll(tmpDir)
-
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, eventDir, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Create 100 directories
 	for i := 0; i < 100; i++ {
-		dir := filepath.Join(tmpDir, fmt.Sprintf("dir-%d", i))
+		dir := filepath.Join(eventDir, fmt.Sprintf("dir-%d", i))
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			t.Fatalf("Failed to create directory: %v", err)
 		}
 
 		// Try to add to watcher
-		if err := w.watcher.Add(dir); err != nil {
+		if err := ew.watcher.Add(dir); err != nil {
 			t.Logf("Failed to watch directory %d: %v", i, err)
 			// This might fail on systems with watch limits
 			break
@@ -214,12 +220,12 @@ func TestWatcher_SymlinkLoop(t *testing.T) {
 		t.Skip("Skipping symlink test in short mode")
 	}
 
-	tmpDir := setupWatcherTest(t)
-	defer os.RemoveAll(tmpDir)
+	ew, eventDir, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Create symlink loop: a -> b -> a
-	linkA := filepath.Join(tmpDir, "link-a")
-	linkB := filepath.Join(tmpDir, "link-b")
+	linkA := filepath.Join(eventDir, "link-a")
+	linkB := filepath.Join(eventDir, "link-b")
 
 	if err := os.Symlink(linkB, linkA); err != nil {
 		t.Skipf("Failed to create symlink: %v", err)
@@ -228,15 +234,8 @@ func TestWatcher_SymlinkLoop(t *testing.T) {
 		t.Skipf("Failed to create symlink loop: %v", err)
 	}
 
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
-
 	// Try to watch the symlink - should handle gracefully
-	err = w.watcher.Add(linkA)
+	err := ew.watcher.Add(linkA)
 	if err != nil {
 		t.Logf("Symlink loop handled with error: %v", err)
 	}
@@ -248,19 +247,12 @@ func TestWatcher_RapidCreateDelete(t *testing.T) {
 		t.Skip("Skipping rapid create/delete test in short mode")
 	}
 
-	tmpDir := setupWatcherTest(t)
-	defer os.RemoveAll(tmpDir)
-
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	_, eventDir, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Rapidly create and delete files
 	for i := 0; i < 50; i++ {
-		filename := filepath.Join(tmpDir, fmt.Sprintf("temp-%d.txt", i))
+		filename := filepath.Join(eventDir, fmt.Sprintf("temp-%d.txt", i))
 		os.WriteFile(filename, []byte("test"), 0644)
 		os.Remove(filename)
 	}
@@ -279,25 +271,18 @@ func TestWatcher_FilePermissionChanges(t *testing.T) {
 		t.Skip("Skipping permission test when running as root")
 	}
 
-	tmpDir := setupWatcherTest(t)
-	defer os.RemoveAll(tmpDir)
+	_, eventDir, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
-	filename := filepath.Join(tmpDir, "test.txt")
+	filename := filepath.Join(eventDir, "test.txt")
 	os.WriteFile(filename, []byte("test"), 0644)
-
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
 
 	// Make file unreadable
 	os.Chmod(filename, 0000)
 	defer os.Chmod(filename, 0644)
 
 	// Try to read - should handle permission error gracefully
-	_, err = os.ReadFile(filename)
+	_, err := os.ReadFile(filename)
 	if err == nil {
 		t.Error("Expected permission error")
 	}
@@ -311,23 +296,16 @@ func TestWatcher_LargeNumberOfEvents(t *testing.T) {
 		t.Skip("Skipping large event test in short mode")
 	}
 
-	tmpDir := setupWatcherTest(t)
-	defer os.RemoveAll(tmpDir)
+	ew, eventDir, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
-
-	if err := w.watcher.Add(tmpDir); err != nil {
+	if err := ew.watcher.Add(eventDir); err != nil {
 		t.Fatalf("Failed to watch directory: %v", err)
 	}
 
 	// Create many files to generate many events
 	for i := 0; i < 1000; i++ {
-		filename := filepath.Join(tmpDir, fmt.Sprintf("event-%d.txt", i))
+		filename := filepath.Join(eventDir, fmt.Sprintf("event-%d.txt", i))
 		os.WriteFile(filename, []byte("test"), 0644)
 		if i%100 == 0 {
 			time.Sleep(10 * time.Millisecond) // Small delay to avoid overwhelming
@@ -339,20 +317,13 @@ func TestWatcher_LargeNumberOfEvents(t *testing.T) {
 
 // TestWatcher_ConcurrentHandleFileChange tests concurrent file change handling
 func TestWatcher_ConcurrentHandleFileChange(t *testing.T) {
-	tmpDir := setupWatcherTest(t)
-	defer os.RemoveAll(tmpDir)
-
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, _, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Call HandleFileChange concurrently
 	testutil.ConcurrentTest(t, 10, 5, func(id, iter int) error {
 		filepath := fmt.Sprintf("/fake/path/file-%d-%d.txt", id, iter)
-		w.HandleFileChange(filepath)
+		ew.HandleFileChange(filepath)
 		return nil
 	})
 
@@ -361,12 +332,8 @@ func TestWatcher_ConcurrentHandleFileChange(t *testing.T) {
 
 // TestWatcher_DeadlockPrevention tests that operations don't deadlock
 func TestWatcher_DeadlockPrevention(t *testing.T) {
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, _, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	done := make(chan bool)
 
@@ -375,11 +342,11 @@ func TestWatcher_DeadlockPrevention(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			challengeName := fmt.Sprintf("challenge-%d", i%10)
 
-			w.setUpdating(challengeName, true)
-			w.GetChallengeUpdateMutex(challengeName)
-			w.setPendingUpdate(challengeName, "/some/path")
-			w.getPendingUpdate(challengeName)
-			w.setUpdating(challengeName, false)
+			ew.setUpdating(challengeName, true)
+			ew.GetChallengeUpdateMutex(challengeName)
+			ew.setPendingUpdate(challengeName, "/some/path")
+			ew.getPendingUpdate(challengeName)
+			ew.setUpdating(challengeName, false)
 		}
 		done <- true
 	}()
@@ -398,22 +365,18 @@ func TestWatcher_MemoryLeakDetection(t *testing.T) {
 		t.Skip("Skipping memory leak test in short mode")
 	}
 
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, _, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
-	initialMutexCount := len(w.challengeMutexes)
+	initialMutexCount := len(ew.challengeMutexes)
 
 	// Create many mutexes
 	for i := 0; i < 1000; i++ {
 		challengeName := fmt.Sprintf("challenge-%d", i)
-		w.GetChallengeUpdateMutex(challengeName)
+		ew.GetChallengeUpdateMutex(challengeName)
 	}
 
-	finalMutexCount := len(w.challengeMutexes)
+	finalMutexCount := len(ew.challengeMutexes)
 
 	if finalMutexCount != 1000 {
 		t.Errorf("Expected 1000 mutexes, got %d", finalMutexCount)
@@ -425,15 +388,11 @@ func TestWatcher_MemoryLeakDetection(t *testing.T) {
 
 // TestWatcher_NilChallengeManager tests operations when challenge manager is nil
 func TestWatcher_NilChallengeManager(t *testing.T) {
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, _, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Challenge manager should be initialized
-	if w.challengeMgr == nil {
+	if ew.challengeMgr == nil {
 		t.Error("Challenge manager should not be nil")
 	}
 }
@@ -444,15 +403,8 @@ func TestWatcher_StressTest(t *testing.T) {
 		t.Skip("Skipping stress test in short mode")
 	}
 
-	tmpDir := setupWatcherTest(t)
-	defer os.RemoveAll(tmpDir)
-
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, eventDir, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	// Perform various operations concurrently
 	var wg sync.WaitGroup
@@ -462,7 +414,7 @@ func TestWatcher_StressTest(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 100; i++ {
-			filename := filepath.Join(tmpDir, fmt.Sprintf("stress-%d.txt", i))
+			filename := filepath.Join(eventDir, fmt.Sprintf("stress-%d.txt", i))
 			os.WriteFile(filename, []byte("test"), 0644)
 			time.Sleep(5 * time.Millisecond)
 		}
@@ -474,9 +426,9 @@ func TestWatcher_StressTest(t *testing.T) {
 		defer wg.Done()
 		for i := 0; i < 100; i++ {
 			challengeName := fmt.Sprintf("challenge-%d", i%10)
-			w.setUpdating(challengeName, true)
+			ew.setUpdating(challengeName, true)
 			time.Sleep(2 * time.Millisecond)
-			w.setUpdating(challengeName, false)
+			ew.setUpdating(challengeName, false)
 		}
 	}()
 
@@ -486,7 +438,7 @@ func TestWatcher_StressTest(t *testing.T) {
 		defer wg.Done()
 		for i := 0; i < 100; i++ {
 			challengeName := fmt.Sprintf("challenge-%d", i%10)
-			mutex := w.GetChallengeUpdateMutex(challengeName)
+			mutex := ew.GetChallengeUpdateMutex(challengeName)
 			mutex.Lock()
 			time.Sleep(1 * time.Millisecond)
 			mutex.Unlock()
@@ -497,23 +449,10 @@ func TestWatcher_StressTest(t *testing.T) {
 	t.Log("Stress test completed successfully")
 }
 
-// Helper functions
-func setupWatcherTest(t *testing.T) string {
-	tmpDir, err := os.MkdirTemp("", "watcher-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	return tmpDir
-}
-
 // TestWatcher_EdgeCases tests various edge cases
 func TestWatcher_EdgeCases(t *testing.T) {
-	api := &gzapi.GZAPI{}
-	w, err := New(api)
-	if err != nil {
-		t.Fatalf("Failed to create watcher: %v", err)
-	}
-	defer w.watcher.Close()
+	ew, _, cleanup := setupEventWatcherTest(t)
+	defer cleanup()
 
 	testCases := []struct {
 		name string
@@ -522,27 +461,27 @@ func TestWatcher_EdgeCases(t *testing.T) {
 		{
 			"Empty challenge name",
 			func() {
-				w.setUpdating("", true)
-				w.setUpdating("", false)
+				ew.setUpdating("", true)
+				ew.setUpdating("", false)
 			},
 		},
 		{
 			"Very long challenge name",
 			func() {
 				longName := string(make([]byte, 10000))
-				w.setUpdating(longName, true)
+				ew.setUpdating(longName, true)
 			},
 		},
 		{
 			"Special characters in challenge name",
 			func() {
-				w.setUpdating("challenge\x00with\x00nulls", true)
+				ew.setUpdating("challenge\x00with\x00nulls", true)
 			},
 		},
 		{
 			"Unicode challenge name",
 			func() {
-				w.setUpdating("チャレンジ-🚀", true)
+				ew.setUpdating("チャレンジ-🚀", true)
 			},
 		},
 	}

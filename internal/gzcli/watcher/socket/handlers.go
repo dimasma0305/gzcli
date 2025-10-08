@@ -16,6 +16,7 @@ type Handler interface {
 	HandleStopScriptCommand(cmd types.WatcherCommand) types.WatcherResponse
 	HandleRestartChallengeCommand(cmd types.WatcherCommand) types.WatcherResponse
 	HandleGetScriptExecutionsCommand(cmd types.WatcherCommand) types.WatcherResponse
+	HandleStopEventCommand(cmd types.WatcherCommand) types.WatcherResponse
 }
 
 // DefaultCommandHandler implements CommandHandler by routing to Handler methods
@@ -45,6 +46,8 @@ func (h *DefaultCommandHandler) HandleCommand(cmd types.WatcherCommand) types.Wa
 		return h.handler.HandleRestartChallengeCommand(cmd)
 	case "get_script_executions":
 		return h.handler.HandleGetScriptExecutionsCommand(cmd)
+	case "stop_event":
+		return h.handler.HandleStopEventCommand(cmd)
 	default:
 		return types.WatcherResponse{
 			Success: false,
