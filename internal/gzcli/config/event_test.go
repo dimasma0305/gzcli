@@ -87,8 +87,20 @@ func verifyPosterPath(t *testing.T, eventConfig *EventConfig, expectedPath strin
 	if !filepath.IsAbs(eventConfig.Poster) {
 		t.Errorf("Poster path should be absolute, got %q", eventConfig.Poster)
 	}
-	if eventConfig.Poster != expectedPath {
-		t.Errorf("Poster path = %q, want %q", eventConfig.Poster, expectedPath)
+
+	// Resolve symlinks in both paths for comparison (handles macOS /var -> /private/var)
+	actualPath := eventConfig.Poster
+	if canonical, err := filepath.EvalSymlinks(actualPath); err == nil {
+		actualPath = canonical
+	}
+
+	expectedCanonical := expectedPath
+	if canonical, err := filepath.EvalSymlinks(expectedPath); err == nil {
+		expectedCanonical = canonical
+	}
+
+	if actualPath != expectedCanonical {
+		t.Errorf("Poster path = %q, want %q", actualPath, expectedCanonical)
 	}
 }
 

@@ -42,12 +42,22 @@ func GetEventConfig(eventName string) (*EventConfig, error) {
 		resolvedPoster := filepath.Join(eventDir, game.Poster)
 		// Check if the resolved path exists, if not keep the original
 		if _, err := os.Stat(resolvedPoster); err == nil {
-			game.Poster = resolvedPoster
+			// Resolve symlinks to get canonical path
+			if canonical, err := filepath.EvalSymlinks(resolvedPoster); err == nil {
+				game.Poster = canonical
+			} else {
+				game.Poster = resolvedPoster
+			}
 		} else {
 			// Try resolving from workspace root
 			rootPoster := filepath.Join(dir, game.Poster)
 			if _, err := os.Stat(rootPoster); err == nil {
-				game.Poster = rootPoster
+				// Resolve symlinks to get canonical path
+				if canonical, err := filepath.EvalSymlinks(rootPoster); err == nil {
+					game.Poster = canonical
+				} else {
+					game.Poster = rootPoster
+				}
 			}
 		}
 	}

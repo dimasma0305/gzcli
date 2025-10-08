@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
-	repoPath := "/tmp/test-repo"
+	repoPath := filepath.Join(os.TempDir(), "test-repo")
 	interval := 1 * time.Minute
 	onUpdate := func() {}
 
