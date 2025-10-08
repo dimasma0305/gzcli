@@ -96,4 +96,3 @@ func BenchmarkPathOperations(b *testing.B) {
 		}
 	})
 }
-

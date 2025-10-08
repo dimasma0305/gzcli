@@ -6,16 +6,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/sethvargo/go-password/password"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/log"
-	"github.com/sethvargo/go-password/password"
 )
 
-// CreateTeamAndUser creates a team and user, ensuring the team name is unique and within the specified length.
-func CreateTeamAndUser(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error) {
-	log.Info("Creating user %s with team %s", teamCreds.Username, teamCreds.TeamName)
-	var api *gzapi.GZAPI
-	var currentCreds *TeamCreds
+// initializeCredentials initializes credentials for a new user
+func initializeCredentials(teamCreds *TeamCreds, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, generateUsername func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error) {
 	pass, err := password.Generate(24, 10, 0, false, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate password: %v", err)
@@ -31,81 +29,94 @@ func CreateTeamAndUser(teamCreds *TeamCreds, config ConfigInterface, existingTea
 	const maxTeamNameLength = 20
 	teamName := NormalizeTeamName(teamCreds.TeamName, maxTeamNameLength, existingTeamNames)
 
-	alreadyLogin := false
-
 	// If registration fails, attempt to initialize API with cached credentials
 	for _, creds := range credsCache {
 		if creds.Email == teamCreds.Email {
-			currentCreds = creds
+			return creds, nil
 		}
 	}
 
-	if currentCreds != nil {
-		api, err = gzapi.Init(config.GetUrl(), &gzapi.Creds{
+	// Return new credentials
+	currentCreds := teamCreds
+	currentCreds.Username = username
+	currentCreds.Password = pass
+	currentCreds.TeamName = teamName
+
+	return currentCreds, nil
+}
+
+// authenticateUser authenticates a user by logging in or registering
+func authenticateUser(currentCreds *TeamCreds, config ConfigInterface, isExistingCreds bool) (*gzapi.GZAPI, error) {
+	if isExistingCreds {
+		api, err := gzapi.Init(config.GetUrl(), &gzapi.Creds{
 			Username: currentCreds.Username,
 			Password: currentCreds.Password,
 		})
-		if err == nil {
-			alreadyLogin = true
-		} else {
+		if err != nil {
 			log.Error("error login using: %v", currentCreds)
 			return nil, err
 		}
-
-	} else {
-		currentCreds = teamCreds
-		currentCreds.Username = username
-		currentCreds.Password = pass
-		currentCreds.TeamName = teamName
+		return api, nil
 	}
 
-	if !alreadyLogin {
-		api, err = gzapi.Register(config.GetUrl(), &gzapi.RegisterForm{
-			Email:    currentCreds.Email,
-			Username: currentCreds.Username,
-			Password: currentCreds.Password,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to register: %v", err)
-		}
+	api, err := gzapi.Register(config.GetUrl(), &gzapi.RegisterForm{
+		Email:    currentCreds.Email,
+		Username: currentCreds.Username,
+		Password: currentCreds.Password,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to register: %v", err)
 	}
 
-	// Create the team
+	return api, nil
+}
+
+// ensureTeamCreated ensures a team is created for the user
+func ensureTeamCreated(api *gzapi.GZAPI, currentCreds *TeamCreds, username, teamName string) {
 	log.Info("Creating user %s with team %s", username, teamName)
-	if !currentCreds.IsTeamCreated {
-		err = api.CreateTeam(&gzapi.TeamForm{
-			Bio:  "",
-			Name: teamName,
-		})
-		if err != nil {
-			log.ErrorH2("Team %s already exist", teamName)
-		}
-	} else {
+
+	if currentCreds.IsTeamCreated {
 		log.InfoH2("Team %s already created", teamName)
+		return
+	}
+
+	err := api.CreateTeam(&gzapi.TeamForm{
+		Bio:  "",
+		Name: teamName,
+	})
+	if err != nil {
+		log.ErrorH2("Team %s already exist", teamName)
 	}
 	currentCreds.IsTeamCreated = true
+}
 
-	// get environt URL
+// sendCredentialsEmail sends credentials via email if needed
+func sendCredentialsEmail(teamCreds *TeamCreds, currentCreds *TeamCreds, config ConfigInterface, isSendEmail bool) {
+	if !isSendEmail || currentCreds.IsEmailAlreadySent {
+		log.ErrorH2("Email to %s already sended before", currentCreds.Email)
+		return
+	}
+
 	environtURL := os.Getenv("URL")
 	if environtURL == "" {
 		environtURL = config.GetUrl()
 	}
 
-	// Send credentials via email if enabled in the config
-	if isSendEmail && !currentCreds.IsEmailAlreadySent {
-		if err := SendEmail(teamCreds.Username, environtURL, currentCreds, config.GetAppSettings()); err != nil {
-			log.ErrorH2("Failed to send email to %s: %v", currentCreds.Email, err)
-		}
-		log.InfoH2("Successfully sending email to %s", currentCreds.Email)
-		currentCreds.IsEmailAlreadySent = true
-	} else {
-		log.ErrorH2("Email to %s already sended before", currentCreds.Email)
+	if err := SendEmail(teamCreds.Username, environtURL, currentCreds, config.GetAppSettings()); err != nil {
+		log.ErrorH2("Failed to send email to %s: %v", currentCreds.Email, err)
+		return
 	}
 
-	// get team info
+	log.InfoH2("Successfully sending email to %s", currentCreds.Email)
+	currentCreds.IsEmailAlreadySent = true
+}
+
+// joinTeamToGame joins a team to the game
+func joinTeamToGame(api *gzapi.GZAPI, config ConfigInterface) error {
 	team, err := api.GetTeams()
 	if err != nil {
 		log.Error("%s", err.Error())
+		return err
 	}
 
 	if err := api.JoinGame(config.GetEventId(), &gzapi.GameJoinModel{
@@ -113,8 +124,43 @@ func CreateTeamAndUser(teamCreds *TeamCreds, config ConfigInterface, existingTea
 		InviteCode: config.GetInviteCode(),
 	}); err != nil {
 		log.Error("%s", err.Error())
+		return err
 	}
+
 	log.InfoH2("Successfully joining team %s to game %s", team[0].Name, config.GetEventTitle())
+	return nil
+}
+
+// CreateTeamAndUser creates a team and user, ensuring the team name is unique and within the specified length.
+func CreateTeamAndUser(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error) {
+	log.Info("Creating user %s with team %s", teamCreds.Username, teamCreds.TeamName)
+
+	currentCreds, err := initializeCredentials(teamCreds, existingTeamNames, existingUserNames, credsCache, generateUsername)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if we found existing credentials in cache
+	isExistingCreds := false
+	for _, creds := range credsCache {
+		if creds.Email == teamCreds.Email && creds == currentCreds {
+			isExistingCreds = true
+			break
+		}
+	}
+
+	api, err := authenticateUser(currentCreds, config, isExistingCreds)
+	if err != nil {
+		return nil, err
+	}
+
+	ensureTeamCreated(api, currentCreds, currentCreds.Username, currentCreds.TeamName)
+	sendCredentialsEmail(teamCreds, currentCreds, config, isSendEmail)
+
+	if err := joinTeamToGame(api, config); err != nil {
+		// Log error but don't fail the entire operation
+		log.Error("Failed to join game: %v", err)
+	}
 
 	return currentCreds, nil
 }

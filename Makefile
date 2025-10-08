@@ -81,6 +81,18 @@ lint:
 		exit 1; \
 	fi
 
+## cyclo: Check cyclomatic complexity
+cyclo:
+	@echo "${BLUE}Checking cyclomatic complexity...${NC}"
+	@if command -v gocyclo > /dev/null; then \
+		gocyclo -over 15 -avg .; \
+		echo "${GREEN}Cyclomatic complexity check complete${NC}"; \
+	else \
+		echo "${RED}gocyclo not installed${NC}"; \
+		echo "Install with: go install github.com/fzipp/gocyclo/cmd/gocyclo@latest"; \
+		exit 1; \
+	fi
+
 ## vet: Run go vet
 vet:
 	@echo "${BLUE}Running go vet...${NC}"
@@ -210,6 +222,7 @@ tools:
 	@go install golang.org/x/tools/cmd/goimports@latest
 	@go install github.com/goreleaser/goreleaser@latest
 	@go install github.com/air-verse/air@latest
+	@go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
 	@echo "${GREEN}Tools installed${NC}"
 
 ##@ Git Hooks
@@ -225,12 +238,12 @@ hooks:
 
 ##@ Miscellaneous
 
-## check: Run all checks (fmt, vet, lint, test)
-check: fmt vet lint test
+## check: Run all checks (fmt, vet, lint, cyclo, test)
+check: fmt vet lint cyclo test
 	@echo "${GREEN}All checks passed!${NC}"
 
-## ci: Run CI checks (vet, lint, test, test-race)
-ci: vet lint test test-race
+## ci: Run CI checks (vet, lint, cyclo, test, test-race)
+ci: vet lint cyclo test test-race
 	@echo "${GREEN}CI checks complete!${NC}"
 
 ## doctor: Diagnose development environment issues

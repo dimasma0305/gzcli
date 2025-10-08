@@ -55,6 +55,76 @@ func (m *Manager) StartIntervalScript(challengeName, scriptName string, challeng
 	go m.runIntervalScript(ctx, challengeName, scriptName, command, interval, challenge.GetCwd())
 }
 
+// updateScriptMetricsStart updates metrics at the start of execution
+func (m *Manager) updateScriptMetricsStart(challengeName, scriptName string, start time.Time) {
+	m.scriptMetricsMu.Lock()
+	defer m.scriptMetricsMu.Unlock()
+
+	if m.scriptMetrics[challengeName] != nil && m.scriptMetrics[challengeName][scriptName] != nil {
+		m.scriptMetrics[challengeName][scriptName].LastExecution = start
+		m.scriptMetrics[challengeName][scriptName].ExecutionCount++
+	}
+}
+
+// updateScriptMetricsEnd updates metrics at the end of execution
+func (m *Manager) updateScriptMetricsEnd(challengeName, scriptName string, duration time.Duration, err error) {
+	m.scriptMetricsMu.Lock()
+	defer m.scriptMetricsMu.Unlock()
+
+	if m.scriptMetrics[challengeName] != nil && m.scriptMetrics[challengeName][scriptName] != nil {
+		metrics := m.scriptMetrics[challengeName][scriptName]
+		metrics.LastError = err
+		metrics.LastDuration = duration
+		metrics.TotalDuration += duration
+	}
+}
+
+// logScriptStart logs the start of a script execution
+func (m *Manager) logScriptStart(challengeName, scriptName, command string) {
+	if m.logger != nil {
+		m.logger.LogScriptExecution(challengeName, scriptName, "interval", command, "started", 0, "", "", 0)
+	}
+}
+
+// logScriptStop logs when a script is stopped
+func (m *Manager) logScriptStop(challengeName, scriptName, command string) {
+	if m.logger != nil {
+		m.logger.LogScriptExecution(challengeName, scriptName, "interval", command, "stopped", 0, "", "Context cancelled", 0)
+	}
+}
+
+// logScriptExecution logs a script execution attempt
+func (m *Manager) logScriptExecution(challengeName, scriptName, command string) {
+	if m.logger != nil {
+		m.logger.LogScriptExecution(challengeName, scriptName, "interval", command, "executing", 0, "", "", 0)
+	}
+}
+
+// logScriptCompletion logs the completion of a script execution
+func (m *Manager) logScriptCompletion(challengeName, scriptName, command, output, errorOutput string, duration time.Duration, exitCode int, success bool) {
+	status := "failed"
+	if success {
+		status = "completed"
+	}
+
+	if m.logger != nil {
+		m.logger.LogScriptExecution(challengeName, scriptName, "interval", command, status,
+			duration.Nanoseconds(), output, errorOutput, exitCode)
+	}
+}
+
+// executeIntervalScriptOnce executes an interval script once and returns the result
+func (m *Manager) executeIntervalScriptOnce(ctx context.Context, challengeName, scriptName, command, cwd string) (time.Duration, error) {
+	start := time.Now()
+	m.logScriptExecution(challengeName, scriptName, command)
+	m.updateScriptMetricsStart(challengeName, scriptName, start)
+
+	err := RunShellForInterval(ctx, command, cwd, DefaultScriptTimeout)
+	duration := time.Since(start)
+
+	return duration, err
+}
+
 // runIntervalScript runs an interval script with proper integration and database logging
 func (m *Manager) runIntervalScript(ctx context.Context, challengeName, scriptName, command string, interval time.Duration, cwd string) {
 	// Validate interval
@@ -67,87 +137,35 @@ func (m *Manager) runIntervalScript(ctx context.Context, challengeName, scriptNa
 	defer ticker.Stop()
 
 	log.InfoH3("Started interval script '%s' for challenge '%s' with interval %v", scriptName, challengeName, interval)
-
-	// Log initial start to database
-	if m.logger != nil {
-		m.logger.LogScriptExecution(challengeName, scriptName, "interval", command, "started", 0, "", "", 0)
-	}
+	m.logScriptStart(challengeName, scriptName, command)
 
 	for {
 		select {
 		case <-ctx.Done():
 			log.InfoH3("Stopped interval script '%s' for challenge '%s' (context cancelled)", scriptName, challengeName)
-			if m.logger != nil {
-				m.logger.LogScriptExecution(challengeName, scriptName, "interval", command, "stopped", 0, "", "Context cancelled", 0)
-			}
+			m.logScriptStop(challengeName, scriptName, command)
 			return
 		case <-ticker.C:
 			log.InfoH3("Executing interval script '%s' for challenge '%s'", scriptName, challengeName)
 
-			// Log execution start
-			start := time.Now()
-			if m.logger != nil {
-				m.logger.LogScriptExecution(challengeName, scriptName, "interval", command, "executing", 0, "", "", 0)
-			}
+			duration, err := m.executeIntervalScriptOnce(ctx, challengeName, scriptName, command, cwd)
 
-			// Update metrics
-			m.scriptMetricsMu.Lock()
-			if m.scriptMetrics[challengeName] != nil && m.scriptMetrics[challengeName][scriptName] != nil {
-				m.scriptMetrics[challengeName][scriptName].LastExecution = start
-				m.scriptMetrics[challengeName][scriptName].ExecutionCount++
-			}
-			m.scriptMetricsMu.Unlock()
-
-			// Execute the script with context-aware execution and proper timeout
-			var exitCode int
-			var success bool
-			var errorOutput string
-			var output string
-
-			err := RunShellForInterval(ctx, command, cwd, DefaultScriptTimeout)
-			duration := time.Since(start)
+			exitCode := 0
+			success := true
+			errorOutput := ""
+			output := ""
 
 			if err != nil {
 				log.Error("Interval script '%s' failed for challenge '%s' after %v: %v", scriptName, challengeName, duration, err)
 				success = false
 				exitCode = 1
 				errorOutput = err.Error()
-
-				// Update metrics with error
-				m.scriptMetricsMu.Lock()
-				if m.scriptMetrics[challengeName] != nil && m.scriptMetrics[challengeName][scriptName] != nil {
-					metrics := m.scriptMetrics[challengeName][scriptName]
-					metrics.LastError = err
-					metrics.LastDuration = duration
-					metrics.TotalDuration += duration
-				}
-				m.scriptMetricsMu.Unlock()
 			} else {
 				log.InfoH3("Interval script '%s' completed successfully for challenge '%s' in %v", scriptName, challengeName, duration)
-				success = true
-				exitCode = 0
-
-				// Update metrics with success
-				m.scriptMetricsMu.Lock()
-				if m.scriptMetrics[challengeName] != nil && m.scriptMetrics[challengeName][scriptName] != nil {
-					metrics := m.scriptMetrics[challengeName][scriptName]
-					metrics.LastError = nil
-					metrics.LastDuration = duration
-					metrics.TotalDuration += duration
-				}
-				m.scriptMetricsMu.Unlock()
 			}
 
-			// Log execution completion to database
-			status := "failed"
-			if success {
-				status = "completed"
-			}
-
-			if m.logger != nil {
-				m.logger.LogScriptExecution(challengeName, scriptName, "interval", command, status,
-					duration.Nanoseconds(), output, errorOutput, exitCode)
-			}
+			m.updateScriptMetricsEnd(challengeName, scriptName, duration, err)
+			m.logScriptCompletion(challengeName, scriptName, command, output, errorOutput, duration, exitCode, success)
 		}
 	}
 }

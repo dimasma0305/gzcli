@@ -144,6 +144,94 @@ func generateSlug(challengeConf ChallengeYaml) string {
 	return slugRegex.ReplaceAllString(slug, "")
 }
 
+// processChallengeFile processes a single challenge file
+func processChallengeFile(path string, category string, content []byte) (ChallengeYaml, error) {
+	var challenge ChallengeYaml
+	if err := utils.ParseYamlFromBytes(content, &challenge); err != nil {
+		return challenge, fmt.Errorf("yaml parse error: %w %s", err, path)
+	}
+
+	challenge.Category = category
+	challenge.Cwd = filepath.Dir(path)
+
+	if category == "Game Hacking" {
+		challenge.Category = "Reverse"
+		challenge.Name = "[Game Hacking] " + challenge.Name
+	}
+
+	return challenge, nil
+}
+
+// processChallengeTemplate processes challenge template and returns final challenge
+func processChallengeTemplate(content []byte, challenge ChallengeYaml, path string) (ChallengeYaml, error) {
+	t, err := template.New("chall").Parse(string(content))
+	if err != nil {
+		log.ErrorH2("template error: %v", err)
+		return challenge, nil
+	}
+
+	var buf bytes.Buffer
+	err = t.Execute(&buf, map[string]string{
+		"host": hostCache.host,
+		"slug": generateSlug(challenge),
+	})
+	if err != nil {
+		return challenge, fmt.Errorf("template execution error: %w", err)
+	}
+
+	if err := utils.ParseYamlFromBytes(buf.Bytes(), &challenge); err != nil {
+		return challenge, fmt.Errorf("yaml parse error: %w %s", err, path)
+	}
+
+	return challenge, nil
+}
+
+// walkCategoryPath walks a category directory and processes challenge files
+func walkCategoryPath(categoryPath, category string, challengeChan chan<- ChallengeYaml) error {
+	return filepath.Walk(categoryPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !challengeFileRegex.MatchString(info.Name()) {
+			return err
+		}
+
+		//nolint:gosec // G304: File paths come from validated challenges directory
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("reading file error: %w", err)
+		}
+
+		challenge, err := processChallengeFile(path, category, content)
+		if err != nil {
+			return err
+		}
+
+		challenge, err = processChallengeTemplate(content, challenge, path)
+		if err != nil {
+			return err
+		}
+
+		challengeChan <- challenge
+		return nil
+	})
+}
+
+// processCategoryAsync processes a category directory asynchronously
+func processCategoryAsync(dir, category string, challengeChan chan<- ChallengeYaml, errChan chan<- error, wg *sync.WaitGroup) {
+	defer wg.Done()
+	categoryPath := filepath.Join(dir, category)
+
+	if _, err := os.Stat(categoryPath); os.IsNotExist(err) {
+		return
+	}
+
+	err := walkCategoryPath(categoryPath, category, challengeChan)
+	if err != nil {
+		select {
+		case errChan <- fmt.Errorf("category %s: %w ", category, err):
+		default:
+		}
+	}
+}
+
 func GetChallengesYaml(config *Config) ([]ChallengeYaml, error) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -172,71 +260,7 @@ func GetChallengesYaml(config *Config) ([]ChallengeYaml, error) {
 	// Process categories in parallel
 	for _, category := range CHALLENGE_CATEGORY {
 		wg.Add(1)
-		go func(category string) {
-			defer wg.Done()
-			categoryPath := filepath.Join(dir, category)
-
-			if _, err := os.Stat(categoryPath); os.IsNotExist(err) {
-				return
-			}
-
-			err := filepath.Walk(categoryPath, func(path string, info os.FileInfo, err error) error {
-				if err != nil || info.IsDir() || !challengeFileRegex.MatchString(info.Name()) {
-					return err
-				}
-
-				//nolint:gosec // G304: File paths come from validated challenges directory
-				content, err := os.ReadFile(path)
-				if err != nil {
-					return fmt.Errorf("reading file error: %w", err)
-				}
-
-				var challenge ChallengeYaml
-				if err := utils.ParseYamlFromBytes(content, &challenge); err != nil {
-					return fmt.Errorf("yaml parse error: %w %s", err, path)
-				}
-
-				challenge.Category = category
-				challenge.Cwd = filepath.Dir(path)
-
-				if category == "Game Hacking" {
-					challenge.Category = "Reverse"
-					challenge.Name = "[Game Hacking] " + challenge.Name
-				}
-
-				t, err := template.New("chall").Parse(string(content))
-				if err != nil {
-					log.ErrorH2("template error: %v", err)
-					return nil
-				}
-
-				var buf bytes.Buffer
-				err = t.Execute(&buf, map[string]string{
-					"host": hostCache.host,
-					"slug": generateSlug(challenge),
-				})
-				if err != nil {
-					return fmt.Errorf("template execution error: %w", err)
-				}
-
-				if err := utils.ParseYamlFromBytes(buf.Bytes(), &challenge); err != nil {
-					return fmt.Errorf("yaml parse error: %w %s", err, path)
-				}
-
-				select {
-				case challengeChan <- challenge:
-				case <-errChan:
-				}
-				return nil
-			})
-
-			if err != nil {
-				select {
-				case errChan <- fmt.Errorf("category %s: %w ", category, err):
-				default:
-				}
-			}
-		}(category)
+		go processCategoryAsync(dir, category, challengeChan, errChan, &wg)
 	}
 
 	go func() {

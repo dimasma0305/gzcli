@@ -63,55 +63,97 @@ func (c *Client) StreamLiveLogs(limit int, interval time.Duration) error {
 	}
 }
 
+// formatTimestamp formats a timestamp interface value
+func formatTimestamp(ts interface{}) string {
+	t, ok := ts.(string)
+	if !ok {
+		return ""
+	}
+	if parsed, err := time.Parse("2006-01-02T15:04:05Z", t); err == nil {
+		return parsed.Format("15:04:05")
+	}
+	return t
+}
+
 // displayLogEntry formats and displays a single log entry
 func displayLogEntry(logMap map[string]interface{}) {
-	timestamp := ""
-	if t, ok := logMap["timestamp"].(string); ok {
-		if parsed, err := time.Parse("2006-01-02T15:04:05Z", t); err == nil {
-			timestamp = parsed.Format("15:04:05")
-		} else {
-			timestamp = t
-		}
-	}
-
-	level := ""
-	if l, ok := logMap["level"].(string); ok {
-		level = l
-	}
-
-	component := ""
-	if comp, ok := logMap["component"].(string); ok {
-		component = comp
-	}
-
-	challenge := ""
-	if ch, ok := logMap["challenge"].(string); ok && ch != "" {
-		challenge = fmt.Sprintf("[%s]", ch)
-	}
+	timestamp, level, component, challenge, message := extractLogData(logMap)
 
 	script := ""
 	if sc, ok := logMap["script"].(string); ok && sc != "" {
 		script = fmt.Sprintf("/%s", sc)
 	}
 
-	message := ""
-	if m, ok := logMap["message"].(string); ok {
-		message = m
-	}
-
-	levelIcon := "ℹ️"
-	switch level {
-	case "ERROR":
-		levelIcon = "❌"
-	case "WARN":
-		levelIcon = "⚠️"
-	case "INFO":
-		levelIcon = "ℹ️"
-	case "DEBUG":
-		levelIcon = "🔍"
-	}
-
+	levelIcon := getLevelIcon(level)
 	fmt.Printf("[%s] %s %s %s%s %s\n", timestamp, levelIcon, component, challenge, script, message)
+}
+
+// printStatusInfo prints basic status information
+func printStatusInfo(data map[string]interface{}) {
+	if status, ok := data["status"].(string); ok && status == "running" {
+		fmt.Println("🟢 Status: RUNNING")
+	} else {
+		fmt.Println("🔴 Status: UNKNOWN")
+	}
+
+	if challenges, ok := data["watched_challenges"].(float64); ok {
+		fmt.Printf("📁 Watched Challenges: %.0f\n", challenges)
+	}
+}
+
+// printFeatureStatus prints database and socket status
+func printFeatureStatus(data map[string]interface{}) {
+	if dbEnabled, ok := data["database_enabled"].(bool); ok {
+		status := "DISABLED"
+		if dbEnabled {
+			status = "ENABLED"
+		}
+		fmt.Printf("🗄️  Database: %s\n", status)
+	}
+
+	if socketEnabled, ok := data["socket_enabled"].(bool); ok {
+		status := "DISABLED"
+		if socketEnabled {
+			status = "ENABLED"
+		}
+		fmt.Printf("🔌 Socket Server: %s\n", status)
+	}
+}
+
+// printActiveScripts prints active interval scripts
+func printActiveScripts(data map[string]interface{}) {
+	activeScripts, ok := data["active_scripts"].(map[string]interface{})
+	if !ok || len(activeScripts) == 0 {
+		return
+	}
+
+	fmt.Println("\n🔄 Active Interval Scripts:")
+	for challengeName, scriptsInterface := range activeScripts {
+		scripts, ok := scriptsInterface.([]interface{})
+		if !ok || len(scripts) == 0 {
+			continue
+		}
+
+		fmt.Printf("  📦 %s:\n", challengeName)
+		for _, scriptInterface := range scripts {
+			if script, ok := scriptInterface.(string); ok {
+				fmt.Printf("    - %s\n", script)
+			}
+		}
+	}
+}
+
+// printAvailableCommands prints the list of available commands
+func printAvailableCommands() {
+	fmt.Println("\n🛠️  Available Commands:")
+	fmt.Println("   gzcli watcher-client status")
+	fmt.Println("   gzcli watcher-client list")
+	fmt.Println("   gzcli watcher-client logs [--watcher-limit N]")
+	fmt.Println("   gzcli watcher-client live-logs [--watcher-limit N] [--watcher-interval 2s]")
+	fmt.Println("   gzcli watcher-client metrics")
+	fmt.Println("   gzcli watcher-client executions [--watcher-challenge NAME]")
+	fmt.Println("   gzcli watcher-client stop-script --watcher-challenge NAME --watcher-script SCRIPT")
+	fmt.Println("   gzcli watcher-client restart --watcher-challenge NAME")
 }
 
 // PrintStatus prints a formatted status report
@@ -128,55 +170,10 @@ func (c *Client) PrintStatus() error {
 	fmt.Println("🔍 GZCTF Watcher Status")
 	fmt.Println("==========================================")
 
-	if data, ok := response.Data["status"].(string); ok && data == "running" {
-		fmt.Println("🟢 Status: RUNNING")
-	} else {
-		fmt.Println("🔴 Status: UNKNOWN")
-	}
-
-	if challenges, ok := response.Data["watched_challenges"].(float64); ok {
-		fmt.Printf("📁 Watched Challenges: %.0f\n", challenges)
-	}
-
-	if dbEnabled, ok := response.Data["database_enabled"].(bool); ok {
-		if dbEnabled {
-			fmt.Println("🗄️  Database: ENABLED")
-		} else {
-			fmt.Println("🗄️  Database: DISABLED")
-		}
-	}
-
-	if socketEnabled, ok := response.Data["socket_enabled"].(bool); ok {
-		if socketEnabled {
-			fmt.Println("🔌 Socket Server: ENABLED")
-		} else {
-			fmt.Println("🔌 Socket Server: DISABLED")
-		}
-	}
-
-	if activeScripts, ok := response.Data["active_scripts"].(map[string]interface{}); ok && len(activeScripts) > 0 {
-		fmt.Println("\n🔄 Active Interval Scripts:")
-		for challengeName, scriptsInterface := range activeScripts {
-			if scripts, ok := scriptsInterface.([]interface{}); ok && len(scripts) > 0 {
-				fmt.Printf("  📦 %s:\n", challengeName)
-				for _, scriptInterface := range scripts {
-					if script, ok := scriptInterface.(string); ok {
-						fmt.Printf("    - %s\n", script)
-					}
-				}
-			}
-		}
-	}
-
-	fmt.Println("\n🛠️  Available Commands:")
-	fmt.Println("   gzcli watcher-client status")
-	fmt.Println("   gzcli watcher-client list")
-	fmt.Println("   gzcli watcher-client logs [--watcher-limit N]")
-	fmt.Println("   gzcli watcher-client live-logs [--watcher-limit N] [--watcher-interval 2s]")
-	fmt.Println("   gzcli watcher-client metrics")
-	fmt.Println("   gzcli watcher-client executions [--watcher-challenge NAME]")
-	fmt.Println("   gzcli watcher-client stop-script --watcher-challenge NAME --watcher-script SCRIPT")
-	fmt.Println("   gzcli watcher-client restart --watcher-challenge NAME")
+	printStatusInfo(response.Data)
+	printFeatureStatus(response.Data)
+	printActiveScripts(response.Data)
+	printAvailableCommands()
 
 	return nil
 }
@@ -234,6 +231,36 @@ func (c *Client) PrintChallenges() error {
 	return nil
 }
 
+// extractLogData extracts log data from a log map
+func extractLogData(logMap map[string]interface{}) (timestamp, level, component, challenge, message string) {
+	timestamp = formatTimestamp(logMap["timestamp"])
+	level, _ = logMap["level"].(string)
+	component, _ = logMap["component"].(string)
+
+	if ch, ok := logMap["challenge"].(string); ok && ch != "" {
+		challenge = fmt.Sprintf("[%s]", ch)
+	}
+
+	message, _ = logMap["message"].(string)
+	return
+}
+
+// getLevelIcon returns the appropriate icon for a log level
+func getLevelIcon(level string) string {
+	switch level {
+	case "ERROR":
+		return "❌"
+	case "WARN":
+		return "⚠️"
+	case "INFO":
+		return "ℹ️"
+	case "DEBUG":
+		return "🔍"
+	default:
+		return "ℹ️"
+	}
+}
+
 // PrintLogs prints formatted recent logs
 func (c *Client) PrintLogs(limit int) error {
 	response, err := c.GetLogs(limit)
@@ -248,61 +275,115 @@ func (c *Client) PrintLogs(limit int) error {
 	fmt.Printf("📋 Recent Logs (last %d entries)\n", limit)
 	fmt.Println("==========================================")
 
-	if data, ok := response.Data["logs"].([]interface{}); ok {
-		if len(data) == 0 {
-			fmt.Println("No logs available.")
-			return nil
-		}
+	data, ok := response.Data["logs"].([]interface{})
+	if !ok {
+		return nil
+	}
 
-		for _, logInterface := range data {
-			if logMap, ok := logInterface.(map[string]interface{}); ok {
-				timestamp := ""
-				if t, ok := logMap["timestamp"].(string); ok {
-					if parsed, err := time.Parse("2006-01-02T15:04:05Z", t); err == nil {
-						timestamp = parsed.Format("15:04:05")
-					} else {
-						timestamp = t
-					}
-				}
+	if len(data) == 0 {
+		fmt.Println("No logs available.")
+		return nil
+	}
 
-				level := ""
-				if l, ok := logMap["level"].(string); ok {
-					level = l
-				}
-
-				component := ""
-				if cmp, ok := logMap["component"].(string); ok {
-					component = cmp
-				}
-
-				challenge := ""
-				if ch, ok := logMap["challenge"].(string); ok && ch != "" {
-					challenge = fmt.Sprintf("[%s]", ch)
-				}
-
-				message := ""
-				if m, ok := logMap["message"].(string); ok {
-					message = m
-				}
-
-				levelIcon := "ℹ️"
-				switch level {
-				case "ERROR":
-					levelIcon = "❌"
-				case "WARN":
-					levelIcon = "⚠️"
-				case "INFO":
-					levelIcon = "ℹ️"
-				case "DEBUG":
-					levelIcon = "🔍"
-				}
-
-				fmt.Printf("[%s] %s %s %s %s\n", timestamp, levelIcon, component, challenge, message)
-			}
+	for _, logInterface := range data {
+		if logMap, ok := logInterface.(map[string]interface{}); ok {
+			timestamp, level, component, challenge, message := extractLogData(logMap)
+			levelIcon := getLevelIcon(level)
+			fmt.Printf("[%s] %s %s %s %s\n", timestamp, levelIcon, component, challenge, message)
 		}
 	}
 
 	return nil
+}
+
+// formatDuration formats a duration in nanoseconds to a human-readable string
+func formatDuration(durationNs float64) string {
+	if durationNs == 0 {
+		return ""
+	}
+	switch {
+	case durationNs >= 1000000000: // >= 1 second
+		return fmt.Sprintf("%.1fs", durationNs/1000000000)
+	case durationNs >= 1000000: // >= 1 millisecond
+		return fmt.Sprintf("%.0fms", durationNs/1000000)
+	default:
+		return fmt.Sprintf("%.0fμs", durationNs/1000)
+	}
+}
+
+// formatInterval formats an interval duration
+func formatInterval(intervalNs float64) string {
+	if intervalNs == 0 {
+		return ""
+	}
+
+	intervalDuration := time.Duration(intervalNs)
+	switch {
+	case intervalDuration >= time.Hour:
+		return fmt.Sprintf(" [interval: %.0fh]", intervalDuration.Hours())
+	case intervalDuration >= time.Minute:
+		return fmt.Sprintf(" [interval: %.0fm]", intervalDuration.Minutes())
+	default:
+		return fmt.Sprintf(" [interval: %.0fs]", intervalDuration.Seconds())
+	}
+}
+
+// formatLastExecution formats a last execution timestamp
+func formatLastExecution(lastExecStr string) string {
+	if lastExecStr == "" {
+		return ""
+	}
+	if parsed, err := time.Parse("2006-01-02T15:04:05Z", lastExecStr); err == nil {
+		return parsed.Format("2006-01-02 15:04:05")
+	}
+	return lastExecStr
+}
+
+// extractScriptMetrics extracts script metrics from a map
+func extractScriptMetrics(scriptMetrics map[string]interface{}) (execCount float64, lastExecution, lastDuration string, isInterval bool, interval string) {
+	execCount, _ = scriptMetrics["ExecutionCount"].(float64)
+
+	if le, ok := scriptMetrics["LastExecution"].(string); ok {
+		lastExecution = formatLastExecution(le)
+	}
+
+	if ld, ok := scriptMetrics["LastDuration"].(float64); ok {
+		lastDuration = formatDuration(ld)
+	}
+
+	isInterval, _ = scriptMetrics["is_interval"].(bool)
+
+	if isInterval {
+		if iv, ok := scriptMetrics["interval"].(float64); ok && iv > 0 {
+			interval = formatInterval(iv)
+		}
+	}
+
+	return
+}
+
+// printScriptMetric prints metrics for a single script
+func printScriptMetric(scriptName string, execCount float64, lastExecution, lastDuration string, isInterval bool, interval string) {
+	scriptType := "▶️ "
+	if isInterval {
+		scriptType = "🔄 "
+	}
+
+	fmt.Printf("     %s%s: %.0f executions", scriptType, scriptName, execCount)
+
+	if lastExecution != "" && lastExecution != "0001-01-01 00:00:00" {
+		fmt.Printf(", last: %s", lastExecution)
+	}
+
+	if lastDuration != "" {
+		fmt.Printf(" (%s)", lastDuration)
+	}
+
+	if interval != "" {
+		fmt.Printf("%s", interval)
+	}
+
+	fmt.Println()
 }
 
 // PrintMetrics prints formatted script metrics
@@ -319,88 +400,33 @@ func (c *Client) PrintMetrics() error {
 	fmt.Println("📊 Script Execution Metrics")
 	fmt.Println("==========================================")
 
-	if data, ok := response.Data["metrics"].(map[string]interface{}); ok {
-		if len(data) == 0 {
-			fmt.Println("No metrics available.")
-			return nil
+	data, ok := response.Data["metrics"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	if len(data) == 0 {
+		fmt.Println("No metrics available.")
+		return nil
+	}
+
+	for challengeName, challengeInterface := range data {
+		challengeMetrics, ok := challengeInterface.(map[string]interface{})
+		if !ok {
+			continue
 		}
 
-		for challengeName, challengeInterface := range data {
-			if challengeMetrics, ok := challengeInterface.(map[string]interface{}); ok {
-				fmt.Printf("\n📦 Challenge: %s\n", challengeName)
-				fmt.Println("   Scripts:")
+		fmt.Printf("\n📦 Challenge: %s\n", challengeName)
+		fmt.Println("   Scripts:")
 
-				for scriptName, scriptInterface := range challengeMetrics {
-					if scriptMetrics, ok := scriptInterface.(map[string]interface{}); ok {
-						execCount := float64(0)
-						if ec, ok := scriptMetrics["ExecutionCount"].(float64); ok {
-							execCount = ec
-						}
-
-						lastExecution := ""
-						if le, ok := scriptMetrics["LastExecution"].(string); ok {
-							if parsed, err := time.Parse("2006-01-02T15:04:05Z", le); err == nil {
-								lastExecution = parsed.Format("2006-01-02 15:04:05")
-							} else {
-								lastExecution = le
-							}
-						}
-
-						lastDuration := ""
-						if ld, ok := scriptMetrics["LastDuration"].(float64); ok {
-							switch {
-							case ld >= 1000000000: // >= 1 second
-								lastDuration = fmt.Sprintf("%.1fs", ld/1000000000)
-							case ld >= 1000000: // >= 1 millisecond
-								lastDuration = fmt.Sprintf("%.0fms", ld/1000000)
-							case ld > 0:
-								lastDuration = fmt.Sprintf("%.0fμs", ld/1000)
-							}
-						}
-
-						// Check if this is an interval script
-						isInterval := false
-						if ii, ok := scriptMetrics["is_interval"].(bool); ok {
-							isInterval = ii
-						}
-
-						interval := ""
-						if isInterval {
-							if iv, ok := scriptMetrics["interval"].(float64); ok && iv > 0 {
-								intervalDuration := time.Duration(iv)
-								switch {
-								case intervalDuration >= time.Hour:
-									interval = fmt.Sprintf(" [interval: %.0fh]", intervalDuration.Hours())
-								case intervalDuration >= time.Minute:
-									interval = fmt.Sprintf(" [interval: %.0fm]", intervalDuration.Minutes())
-								default:
-									interval = fmt.Sprintf(" [interval: %.0fs]", intervalDuration.Seconds())
-								}
-							}
-						}
-
-						// Create script type indicator
-						scriptType := ""
-						if isInterval {
-							scriptType = "🔄 "
-						} else {
-							scriptType = "▶️ "
-						}
-
-						fmt.Printf("     %s%s: %.0f executions", scriptType, scriptName, execCount)
-						if lastExecution != "" && lastExecution != "0001-01-01 00:00:00" {
-							fmt.Printf(", last: %s", lastExecution)
-						}
-						if lastDuration != "" {
-							fmt.Printf(" (%s)", lastDuration)
-						}
-						if interval != "" {
-							fmt.Printf("%s", interval)
-						}
-						fmt.Println()
-					}
-				}
+		for scriptName, scriptInterface := range challengeMetrics {
+			scriptMetrics, ok := scriptInterface.(map[string]interface{})
+			if !ok {
+				continue
 			}
+
+			execCount, lastExecution, lastDuration, isInterval, interval := extractScriptMetrics(scriptMetrics)
+			printScriptMetric(scriptName, execCount, lastExecution, lastDuration, isInterval, interval)
 		}
 	}
 

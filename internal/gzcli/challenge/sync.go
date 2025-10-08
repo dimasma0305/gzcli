@@ -81,6 +81,100 @@ func MergeChallengeData(challengeConf *ChallengeYaml, challengeData *gzapi.Chall
 	return challengeData
 }
 
+// isDuplicateError checks if an error is a duplicate creation error
+func isDuplicateError(err error) bool {
+	errLower := strings.ToLower(err.Error())
+	return strings.Contains(errLower, "already exists") ||
+		strings.Contains(errLower, "duplicate") ||
+		strings.Contains(errLower, "conflict")
+}
+
+// createChallengeWithRetry attempts to create a challenge and handles duplicate errors
+func createChallengeWithRetry(config *Config, challengeConf ChallengeYaml, api *gzapi.GZAPI) (*gzapi.Challenge, error) {
+	log.InfoH2("Creating new challenge: %s", challengeConf.Name)
+	challengeData, err := config.Event.CreateChallenge(gzapi.CreateChallengeForm{
+		Title:    challengeConf.Name,
+		Category: challengeConf.Category,
+		Tag:      challengeConf.Category,
+		Type:     challengeConf.Type,
+	})
+
+	if err != nil {
+		if isDuplicateError(err) {
+			log.InfoH2("Challenge %s already exists (created by another process), fetching existing challenge", challengeConf.Name)
+			challengeData, err = config.Event.GetChallenge(challengeConf.Name)
+			if err != nil {
+				log.Error("Failed to get existing challenge %s after creation conflict: %v", challengeConf.Name, err)
+				return nil, fmt.Errorf("get existing challenge %s: %w", challengeConf.Name, err)
+			}
+			log.InfoH3("Successfully fetched existing challenge %s after creation conflict", challengeConf.Name)
+		} else {
+			log.Error("Failed to create challenge %s: %v", challengeConf.Name, err)
+			return nil, fmt.Errorf("create challenge %s: %w", challengeConf.Name, err)
+		}
+	} else {
+		log.InfoH2("Successfully created challenge: %s (ID: %d)", challengeConf.Name, challengeData.Id)
+	}
+
+	challengeData.CS = api
+	return challengeData, nil
+}
+
+// handleNewChallenge handles creation or fetching of a new challenge
+func handleNewChallenge(config *Config, challengeConf ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI) (*gzapi.Challenge, error) {
+	log.InfoH3("Challenge %s not found in initial list, fetching fresh challenges list", challengeConf.Name)
+	freshChallenges, err := config.Event.GetChallenges()
+	if err != nil {
+		log.Error("Failed to get fresh challenges list for %s: %v", challengeConf.Name, err)
+		freshChallenges = challenges
+	} else {
+		log.InfoH3("Fetched fresh challenges list for %s (%d challenges)", challengeConf.Name, len(freshChallenges))
+	}
+
+	// Final check to prevent duplicates
+	if !IsChallengeExist(challengeConf.Name, freshChallenges) {
+		return createChallengeWithRetry(config, challengeConf, api)
+	}
+
+	// Challenge was created by another goroutine, fetch it
+	log.InfoH2("Challenge %s was created by another process, fetching existing challenge", challengeConf.Name)
+	challengeData, err := config.Event.GetChallenge(challengeConf.Name)
+	if err != nil {
+		log.Error("Failed to get newly created challenge %s: %v", challengeConf.Name, err)
+		return nil, fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
+	}
+	log.InfoH3("Successfully fetched existing challenge %s", challengeConf.Name)
+
+	challengeData.CS = api
+	return challengeData, nil
+}
+
+// handleExistingChallenge handles fetching an existing challenge from cache or API
+func handleExistingChallenge(config *Config, challengeConf ChallengeYaml, api *gzapi.GZAPI, getCache func(string, interface{}) error) (*gzapi.Challenge, error) {
+	log.InfoH2("Updating existing challenge: %s", challengeConf.Name)
+	var challengeData *gzapi.Challenge
+
+	err := getCache(challengeConf.Category+"/"+challengeConf.Name+"/challenge", &challengeData)
+	if err != nil {
+		log.InfoH3("Cache miss for %s, fetching from API", challengeConf.Name)
+		challengeData, err = config.Event.GetChallenge(challengeConf.Name)
+		if err != nil {
+			log.Error("Failed to get challenge %s from API: %v", challengeConf.Name, err)
+			return nil, fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
+		}
+		log.InfoH3("Successfully fetched challenge %s from API", challengeConf.Name)
+	} else {
+		log.InfoH3("Found challenge %s in cache", challengeConf.Name)
+	}
+
+	// fix bug nill pointer because cache didn't return gzapi
+	challengeData.CS = api
+	// fix bug isEnable always be false after sync
+	challengeData.IsEnabled = nil
+
+	return challengeData, nil
+}
+
 func SyncChallenge(config *Config, challengeConf ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
 	var challengeData *gzapi.Challenge
 	var err error
@@ -89,83 +183,36 @@ func SyncChallenge(config *Config, challengeConf ChallengeYaml, challenges []gza
 
 	// Check existence using the original challenges list first to avoid unnecessary API calls
 	if !IsChallengeExist(challengeConf.Name, challenges) {
-		// Double-check with fresh challenges list to prevent race conditions
-		// This check happens inside the mutex-protected section in the calling function
-		log.InfoH3("Challenge %s not found in initial list, fetching fresh challenges list", challengeConf.Name)
-		freshChallenges, err := config.Event.GetChallenges()
+		challengeData, err = handleNewChallenge(config, challengeConf, challenges, api)
 		if err != nil {
-			log.Error("Failed to get fresh challenges list for %s: %v", challengeConf.Name, err)
-			// Fallback to original challenges list if fresh fetch fails
-			freshChallenges = challenges
-		} else {
-			log.InfoH3("Fetched fresh challenges list for %s (%d challenges)", challengeConf.Name, len(freshChallenges))
+			return err
 		}
-
-		// Final check to prevent duplicates
-		if !IsChallengeExist(challengeConf.Name, freshChallenges) {
-			log.InfoH2("Creating new challenge: %s", challengeConf.Name)
-			challengeData, err = config.Event.CreateChallenge(gzapi.CreateChallengeForm{
-				Title:    challengeConf.Name,
-				Category: challengeConf.Category,
-				Tag:      challengeConf.Category,
-				Type:     challengeConf.Type,
-			})
-			if err != nil {
-				// Check if this is a duplicate creation error (common with race conditions)
-				if strings.Contains(strings.ToLower(err.Error()), "already exists") ||
-					strings.Contains(strings.ToLower(err.Error()), "duplicate") ||
-					strings.Contains(strings.ToLower(err.Error()), "conflict") {
-					log.InfoH2("Challenge %s already exists (created by another process), fetching existing challenge", challengeConf.Name)
-					challengeData, err = config.Event.GetChallenge(challengeConf.Name)
-					if err != nil {
-						log.Error("Failed to get existing challenge %s after creation conflict: %v", challengeConf.Name, err)
-						return fmt.Errorf("get existing challenge %s: %w", challengeConf.Name, err)
-					}
-					challengeData.CS = api
-					log.InfoH3("Successfully fetched existing challenge %s after creation conflict", challengeConf.Name)
-				} else {
-					log.Error("Failed to create challenge %s: %v", challengeConf.Name, err)
-					return fmt.Errorf("create challenge %s: %w", challengeConf.Name, err)
-				}
-			} else {
-				challengeData.CS = api
-				log.InfoH2("Successfully created challenge: %s (ID: %d)", challengeConf.Name, challengeData.Id)
-			}
-		} else {
-			log.InfoH2("Challenge %s was created by another process, fetching existing challenge", challengeConf.Name)
-			// Challenge was created by another goroutine, fetch it
-			challengeData, err = config.Event.GetChallenge(challengeConf.Name)
-			if err != nil {
-				log.Error("Failed to get newly created challenge %s: %v", challengeConf.Name, err)
-				return fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
-			}
-			log.InfoH3("Successfully fetched existing challenge %s", challengeConf.Name)
-		}
-
-		// Ensure the API client is properly set for newly created/fetched challenges
-		challengeData.CS = api
 	} else {
-		log.InfoH2("Updating existing challenge: %s", challengeConf.Name)
-		if err = getCache(challengeConf.Category+"/"+challengeConf.Name+"/challenge", &challengeData); err != nil {
-			log.InfoH3("Cache miss for %s, fetching from API", challengeConf.Name)
-			challengeData, err = config.Event.GetChallenge(challengeConf.Name)
-			if err != nil {
-				log.Error("Failed to get challenge %s from API: %v", challengeConf.Name, err)
-				return fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
-			}
-			log.InfoH3("Successfully fetched challenge %s from API", challengeConf.Name)
-		} else {
-			log.InfoH3("Found challenge %s in cache", challengeConf.Name)
+		challengeData, err = handleExistingChallenge(config, challengeConf, api, getCache)
+		if err != nil {
+			return err
 		}
-
-		// fix bug nill pointer because cache didn't return gzapi
-		challengeData.CS = api
-		// fix bug isEnable always be false after sync
-		challengeData.IsEnabled = nil
 	}
 
+	if err := processAttachmentsAndFlags(config, challengeConf, challengeData, api); err != nil {
+		return err
+	}
+
+	log.InfoH2("Merging challenge data for %s", challengeConf.Name)
+	challengeData = MergeChallengeData(&challengeConf, challengeData)
+
+	if err := updateChallengeIfNeeded(config, &challengeConf, challengeData, getCache, setCache); err != nil {
+		return err
+	}
+
+	log.InfoH2("Successfully completed sync for challenge: %s", challengeConf.Name)
+	return nil
+}
+
+// processAttachmentsAndFlags handles attachments and flags for a challenge
+func processAttachmentsAndFlags(config *Config, challengeConf ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
 	log.InfoH2("Processing attachments for %s", challengeConf.Name)
-	err = HandleChallengeAttachments(challengeConf, challengeData, api)
+	err := HandleChallengeAttachments(challengeConf, challengeData, api)
 	if err != nil {
 		log.Error("Failed to handle attachments for %s: %v", challengeConf.Name, err)
 		return fmt.Errorf("attachment handling failed for %s: %w", challengeConf.Name, err)
@@ -180,46 +227,65 @@ func SyncChallenge(config *Config, challengeConf ChallengeYaml, challenges []gza
 	}
 	log.InfoH2("Flags updated successfully for %s", challengeConf.Name)
 
-	log.InfoH2("Merging challenge data for %s", challengeConf.Name)
-	challengeData = MergeChallengeData(&challengeConf, challengeData)
+	return nil
+}
 
-	if IsConfigEdited(&challengeConf, challengeData, getCache) {
-		log.InfoH2("Configuration changed for %s, updating...", challengeConf.Name)
-		if challengeData, err = challengeData.Update(*challengeData); err != nil {
-			log.Error("Update failed for %s: %v", challengeConf.Name, err.Error())
-			if strings.Contains(err.Error(), "404") {
-				log.InfoH3("Got 404 error, refreshing challenge data for %s", challengeConf.Name)
-				challengeData, err = config.Event.GetChallenge(challengeConf.Name)
-				if err != nil {
-					log.Error("Failed to get challenge %s after 404: %v", challengeConf.Name, err)
-					return fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
-				}
-				log.InfoH3("Retrying update for %s", challengeConf.Name)
-				challengeData, err = challengeData.Update(*challengeData)
-				if err != nil {
-					log.Error("Update retry failed for %s: %v", challengeConf.Name, err)
-					return fmt.Errorf("update challenge %s: %w", challengeConf.Name, err)
-				}
-			} else {
-				return fmt.Errorf("update challenge %s: %w", challengeConf.Name, err)
-			}
-		}
-		if challengeData == nil {
-			log.Error("Update returned nil challenge data for %s", challengeConf.Name)
-			return fmt.Errorf("update challenge failed for %s", challengeConf.Name)
-		}
-		log.InfoH2("Successfully updated challenge %s", challengeConf.Name)
-
-		log.InfoH3("Caching updated challenge data for %s", challengeConf.Name)
-		if err := setCache(challengeData.Category+"/"+challengeConf.Name+"/challenge", challengeData); err != nil {
-			log.Error("Failed to cache challenge data for %s: %v", challengeConf.Name, err)
-			return fmt.Errorf("cache error for %s: %w", challengeConf.Name, err)
-		}
-		log.InfoH3("Successfully cached challenge data for %s", challengeConf.Name)
-	} else {
-		log.InfoH2("Challenge %s is unchanged, skipping update", challengeConf.Name)
+// updateChallengeWithRetry attempts to update a challenge and retries on 404
+func updateChallengeWithRetry(config *Config, challengeConf *ChallengeYaml, challengeData *gzapi.Challenge) (*gzapi.Challenge, error) {
+	updatedData, err := challengeData.Update(*challengeData)
+	if err == nil {
+		return updatedData, nil
 	}
 
-	log.InfoH2("Successfully completed sync for challenge: %s", challengeConf.Name)
+	log.Error("Update failed for %s: %v", challengeConf.Name, err.Error())
+
+	if !strings.Contains(err.Error(), "404") {
+		return nil, fmt.Errorf("update challenge %s: %w", challengeConf.Name, err)
+	}
+
+	log.InfoH3("Got 404 error, refreshing challenge data for %s", challengeConf.Name)
+	challengeData, err = config.Event.GetChallenge(challengeConf.Name)
+	if err != nil {
+		log.Error("Failed to get challenge %s after 404: %v", challengeConf.Name, err)
+		return nil, fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
+	}
+
+	log.InfoH3("Retrying update for %s", challengeConf.Name)
+	updatedData, err = challengeData.Update(*challengeData)
+	if err != nil {
+		log.Error("Update retry failed for %s: %v", challengeConf.Name, err)
+		return nil, fmt.Errorf("update challenge %s: %w", challengeConf.Name, err)
+	}
+
+	return updatedData, nil
+}
+
+// updateChallengeIfNeeded updates the challenge if configuration has changed
+func updateChallengeIfNeeded(config *Config, challengeConf *ChallengeYaml, challengeData *gzapi.Challenge, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
+	if !IsConfigEdited(challengeConf, challengeData, getCache) {
+		log.InfoH2("Challenge %s is unchanged, skipping update", challengeConf.Name)
+		return nil
+	}
+
+	log.InfoH2("Configuration changed for %s, updating...", challengeConf.Name)
+	updatedData, err := updateChallengeWithRetry(config, challengeConf, challengeData)
+	if err != nil {
+		return err
+	}
+
+	if updatedData == nil {
+		log.Error("Update returned nil challenge data for %s", challengeConf.Name)
+		return fmt.Errorf("update challenge failed for %s", challengeConf.Name)
+	}
+
+	log.InfoH2("Successfully updated challenge %s", challengeConf.Name)
+
+	log.InfoH3("Caching updated challenge data for %s", challengeConf.Name)
+	if err := setCache(updatedData.Category+"/"+challengeConf.Name+"/challenge", updatedData); err != nil {
+		log.Error("Failed to cache challenge data for %s: %v", challengeConf.Name, err)
+		return fmt.Errorf("cache error for %s: %w", challengeConf.Name, err)
+	}
+	log.InfoH3("Successfully cached challenge data for %s", challengeConf.Name)
+
 	return nil
 }
