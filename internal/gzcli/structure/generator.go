@@ -1,4 +1,18 @@
-// Package structure provides utilities for generating challenge directory structures
+// Package structure provides utilities for generating challenge directory structures.
+//
+// This package helps maintain consistent directory layouts across challenges by
+// copying template structures from a .structure directory to challenge directories.
+//
+// Example usage:
+//
+//	challenges := []ChallengeData{
+//	    &Challenge{cwd: "./challenges/web/xss"},
+//	    &Challenge{cwd: "./challenges/crypto/rsa"},
+//	}
+//	
+//	if err := structure.GenerateStructure(challenges); err != nil {
+//	    log.Fatalf("Failed to generate structures: %v", err)
+//	}
 package structure
 
 import (
@@ -16,6 +30,11 @@ type ChallengeData interface {
 
 // GenerateStructure generates challenge structure from template
 func GenerateStructure(challenges []ChallengeData) error {
+	// Validate input
+	if len(challenges) == 0 {
+		return fmt.Errorf("no challenges provided")
+	}
+
 	// Read the .structure file
 	_, err := os.ReadDir(".structure")
 	if err != nil {
@@ -24,12 +43,23 @@ func GenerateStructure(challenges []ChallengeData) error {
 
 	// Iterate over each challenge in the challenges slice
 	for _, challenge := range challenges {
-		// Construct the challenge path using the challenge data
-		if err := template.TemplateToDestination(".structure", challenge, challenge.GetCwd()); err != nil {
-			log.Error("Failed to copy .structure to %s: %v", challenge.GetCwd(), err)
+		if challenge == nil {
+			log.Error("Nil challenge encountered, skipping")
 			continue
 		}
-		log.Info("Successfully copied .structure to %s", challenge.GetCwd())
+
+		cwd := challenge.GetCwd()
+		if cwd == "" {
+			log.Error("Challenge has empty working directory, skipping")
+			continue
+		}
+
+		// Construct the challenge path using the challenge data
+		if err := template.TemplateToDestination(".structure", challenge, cwd); err != nil {
+			log.Error("Failed to copy .structure to %s: %v", cwd, err)
+			continue
+		}
+		log.Info("Successfully copied .structure to %s", cwd)
 	}
 
 	return nil
