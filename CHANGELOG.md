@@ -1,3 +1,19 @@
+## [1.7.1](https://github.com/dimasma0305/gzcli/compare/v1.7.0...v1.7.1) (2025-10-08)
+
+### Bug Fixes
+
+* Improve error handling and test logic ([493a8b2](https://github.com/dimasma0305/gzcli/commit/493a8b26e04dcc8feb59d0667e41da7da7ca7012))
+* linting priblem ([464e67e](https://github.com/dimasma0305/gzcli/commit/464e67e7138bd57712cddfc8a54a41d5c7541dce))
+* Normalize paths in embeddedFS for Windows compatibility ([ba14f50](https://github.com/dimasma0305/gzcli/commit/ba14f5061d3432cf1b3a34b12f55db0bf28e5704))
+* Use 0600 permissions for test files ([a8ff1d5](https://github.com/dimasma0305/gzcli/commit/a8ff1d56e13eb62e33774d4b8a7d16028f6dfa0e))
+
+### Code Refactoring
+
+* Improve linting, testing, and error handling ([87f2510](https://github.com/dimasma0305/gzcli/commit/87f251082278b3629955feac93af5c8be65e77c4))
+* Improve test coverage and fix bugs ([fd38de7](https://github.com/dimasma0305/gzcli/commit/fd38de7a6ae0324504fc60753a5da463f26ce84c))
+* Improve test coverage and fix bugs ([019487f](https://github.com/dimasma0305/gzcli/commit/019487f61073f178fb4246e8c8c557005fe5c519))
+* Reduce file permissions in tests ([74b4963](https://github.com/dimasma0305/gzcli/commit/74b49636754791fe126e3af2354cede07bc453f5))
+
 ## [1.7.0](https://github.com/dimasma0305/gzcli/compare/v1.6.0...v1.7.0) (2025-10-08)
 
 ### Features
