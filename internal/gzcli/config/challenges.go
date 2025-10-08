@@ -126,22 +126,30 @@ func (sv *ScriptValue) HasInterval() bool {
 
 // Dashboard represents dashboard configuration
 type Dashboard struct {
-	Compose                  string `yaml:"compose"`
-	ChallengeDurationMinutes int    `yaml:"challengeDurationMinutes"`
-	ResetTimerMinutes        int    `yaml:"resetTimerMinutes"`
-	RestartCooldownMinutes   int    `yaml:"restartCooldownMinutes"`
+	Type   string `yaml:"type"`
+	Config string `yaml:"config"`
 }
 
-func generateSlug(challengeConf ChallengeYaml) string {
+func generateSlug(eventName string, challengeConf ChallengeYaml) string {
 	var b strings.Builder
-	b.Grow(len(challengeConf.Category) + len(challengeConf.Name) + 1)
+	b.Grow(len(eventName) + len(challengeConf.Category) + len(challengeConf.Name) + 2)
 
+	b.WriteString(strings.ToLower(eventName))
+	b.WriteByte('_')
 	b.WriteString(strings.ToLower(challengeConf.Category))
 	b.WriteByte('_')
 	b.WriteString(strings.ToLower(challengeConf.Name))
 
 	slug := strings.ReplaceAll(b.String(), " ", "_")
 	return slugRegex.ReplaceAllString(slug, "")
+}
+
+// GenerateSlug exports slug generation for use in other packages
+func GenerateSlug(eventName string, category string, challengeName string) string {
+	return generateSlug(eventName, ChallengeYaml{
+		Name:     challengeName,
+		Category: category,
+	})
 }
 
 // processChallengeFile processes a single challenge file
@@ -163,7 +171,7 @@ func processChallengeFile(path string, category string, content []byte) (Challen
 }
 
 // processChallengeTemplate processes challenge template and returns final challenge
-func processChallengeTemplate(content []byte, challenge ChallengeYaml, path string) (ChallengeYaml, error) {
+func processChallengeTemplate(eventName string, content []byte, challenge ChallengeYaml, path string) (ChallengeYaml, error) {
 	t, err := template.New("chall").Parse(string(content))
 	if err != nil {
 		log.ErrorH2("template error: %v", err)
@@ -173,7 +181,7 @@ func processChallengeTemplate(content []byte, challenge ChallengeYaml, path stri
 	var buf bytes.Buffer
 	err = t.Execute(&buf, map[string]string{
 		"host": hostCache.host,
-		"slug": generateSlug(challenge),
+		"slug": generateSlug(eventName, challenge),
 	})
 	if err != nil {
 		return challenge, fmt.Errorf("template execution error: %w", err)
@@ -187,7 +195,7 @@ func processChallengeTemplate(content []byte, challenge ChallengeYaml, path stri
 }
 
 // walkCategoryPath walks a category directory and processes challenge files
-func walkCategoryPath(categoryPath, category string, challengeChan chan<- ChallengeYaml) error {
+func walkCategoryPath(eventName, categoryPath, category string, challengeChan chan<- ChallengeYaml) error {
 	return filepath.Walk(categoryPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !challengeFileRegex.MatchString(info.Name()) {
 			return err
@@ -204,7 +212,7 @@ func walkCategoryPath(categoryPath, category string, challengeChan chan<- Challe
 			return err
 		}
 
-		challenge, err = processChallengeTemplate(content, challenge, path)
+		challenge, err = processChallengeTemplate(eventName, content, challenge, path)
 		if err != nil {
 			return err
 		}
@@ -215,7 +223,7 @@ func walkCategoryPath(categoryPath, category string, challengeChan chan<- Challe
 }
 
 // processCategoryAsync processes a category directory asynchronously
-func processCategoryAsync(dir, category string, challengeChan chan<- ChallengeYaml, errChan chan<- error, wg *sync.WaitGroup) {
+func processCategoryAsync(eventName, dir, category string, challengeChan chan<- ChallengeYaml, errChan chan<- error, wg *sync.WaitGroup) {
 	defer wg.Done()
 	categoryPath := filepath.Join(dir, category)
 
@@ -223,10 +231,10 @@ func processCategoryAsync(dir, category string, challengeChan chan<- ChallengeYa
 		return
 	}
 
-	err := walkCategoryPath(categoryPath, category, challengeChan)
+	err := walkCategoryPath(eventName, categoryPath, category, challengeChan)
 	if err != nil {
 		select {
-		case errChan <- fmt.Errorf("category %s: %w ", category, err):
+		case errChan <- fmt.Errorf("category %s: %w", category, err):
 		default:
 		}
 	}
@@ -261,7 +269,7 @@ func GetChallengesYaml(config *Config) ([]ChallengeYaml, error) {
 	// Process categories in parallel - now looking in events/[name]/
 	for _, category := range CHALLENGE_CATEGORY {
 		wg.Add(1)
-		go processCategoryAsync(eventPath, category, challengeChan, errChan, &wg)
+		go processCategoryAsync(config.EventName, eventPath, category, challengeChan, errChan, &wg)
 	}
 
 	go func() {

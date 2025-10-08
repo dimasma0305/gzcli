@@ -133,10 +133,8 @@ func convertDashboard(dashboard *config.Dashboard) *challenge.Dashboard {
 		return nil
 	}
 	return &challenge.Dashboard{
-		Compose:                  dashboard.Compose,
-		ChallengeDurationMinutes: dashboard.ChallengeDurationMinutes,
-		ResetTimerMinutes:        dashboard.ResetTimerMinutes,
-		RestartCooldownMinutes:   dashboard.RestartCooldownMinutes,
+		Type:   dashboard.Type,
+		Config: dashboard.Config,
 	}
 }
 

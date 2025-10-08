@@ -13,6 +13,7 @@ A high-performance command-line interface for [GZ::CTF](https://github.com/GZTim
 gzcli is a standalone CLI tool for managing GZ::CTF challenges, providing features such as:
 
 - **Multi-event management** - Manage multiple CTF events in one workspace
+- **Challenge launcher server** - Web-based control panel with voting system
 - Challenge synchronization
 - File watching with automatic redeployment
 - Team management and batch operations
@@ -159,6 +160,74 @@ gzcli watch stop
 # Custom configuration
 gzcli watch start --debounce 5s --ignore "*.tmp" --ignore "*.log"
 ```
+
+### Challenge Launcher Server
+
+Start a web server for managing challenge launchers with real-time control and voting system.
+
+```sh
+# Start server on default localhost:8080
+gzcli serve
+
+# Start server on custom host and port
+gzcli serve --host 0.0.0.0 --port 3000
+
+# Short flags
+gzcli serve -H 0.0.0.0 -p 3000
+```
+
+**Features:**
+- **Real-time WebSocket communication** - Instant status updates and control
+- **IP-based user tracking** - Track unique users by IP address
+- **Voting system** - 50% threshold voting for challenge restarts
+- **Auto-stop** - Automatically stop challenges when no users are connected
+- **Restart cooldown** - Prevent restart spam with configurable cooldown periods
+- **Rate limiting** - Protect against abuse with per-IP rate limits
+- **Health monitoring** - Automatic health checks every 30 seconds
+- **Browser notifications** - Get notified when challenges are ready
+
+**Supported Launcher Types:**
+- **Docker Compose** - Multi-container applications
+- **Dockerfile** - Single container deployments
+- **Kubernetes** - Advanced orchestration
+
+**Challenge Configuration Examples:**
+
+Docker Compose:
+```yaml
+# challenge.yml
+dashboard:
+  type: "compose"
+  config: "./docker-compose.yml"
+```
+
+Dockerfile:
+```yaml
+# challenge.yml
+dashboard:
+  type: "dockerfile"
+  config: "./Dockerfile"
+```
+
+Kubernetes:
+```yaml
+# challenge.yml
+dashboard:
+  type: "kubernetes"
+  config: "./k8s-manifest.yaml"
+```
+
+**Port Discovery**: Ports are automatically parsed from configuration files:
+- Docker Compose: Reads `ports` and `expose` from services
+- Dockerfile: Parses `EXPOSE` directives
+- Kubernetes: Extracts from Service port/nodePort definitions
+
+Once the server is running, access your challenges at:
+```
+http://localhost:8080/<event>_<category>_<challenge_name>
+```
+
+**Note:** Challenge URLs are kept secret (not listed on homepage) for security.
 
 ### Team Management
 

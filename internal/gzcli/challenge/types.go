@@ -82,10 +82,8 @@ func (sv *ScriptValue) HasInterval() bool {
 
 // Dashboard represents dashboard configuration
 type Dashboard struct {
-	Compose                  string `yaml:"compose"`
-	ChallengeDurationMinutes int    `yaml:"challengeDurationMinutes"`
-	ResetTimerMinutes        int    `yaml:"resetTimerMinutes"`
-	RestartCooldownMinutes   int    `yaml:"restartCooldownMinutes"`
+	Type   string `yaml:"type"`
+	Config string `yaml:"config"`
 }
 
 // Config represents the application configuration

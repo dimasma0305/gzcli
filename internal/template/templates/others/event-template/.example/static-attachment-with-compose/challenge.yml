@@ -1,6 +1,6 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/dimasma0305/ctfify/refs/heads/master/function/template/templates/others/ctf-template/.gzctf/challenge.schema.yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dimasma0305/gzcli/refs/heads/master/internal/template/templates/others/ctf-template/.gzctf/challenge.schema.yaml
 
-name: "static-attachment-with-compose-traefik"
+name: "static-attachment-with-compose"
 author: "dimas"
 description: |
   Example static attachment
@@ -20,5 +20,5 @@ scripts:
     start: cd src && docker compose -p {{.slug}} up --build -d
     stop: cd src && docker compose -p {{.slug}} down --volumes
     restart:
-        interval: 15m
-        execute: cd src && docker compose -p {{.slug}} restart
+      interval: 15m
+      execute: cd src && docker compose -p {{.slug}} restart

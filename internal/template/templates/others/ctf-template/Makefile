@@ -1,16 +1,16 @@
-BIN=`which ctfify`
+BIN=`which gzcli`
 CSV="https://docs.google.com/spreadsheets/d/<id>/gviz/tq?tqx=out:csv"
-SUDO ?= 
+SUDO ?=
 WATCHER_PID_FILE=.gzctf/.watcher.pid
 GITPULL_PID_FILE=.gzctf/.gitpull.pid
 WATCHER_LOG_FILE=.gzctf/watcher.log
 PUBLIC_URL="<public-url>"
 
 sync:
-	${SUDO} ${BIN} gzcli --sync
+	${SUDO} ${BIN} sync
 
 sync-and-update-game:
-	${SUDO} ${BIN} gzcli --sync --update-game
+	${SUDO} ${BIN} sync --update-game
 
 setup:
 	@echo "Setting up CTF environment with Traefik..."
@@ -26,75 +26,28 @@ platform-down:
 	(cd .gzctf && ${SUDO} docker compose down)
 
 gzcli-start:
-	${SUDO} ${BIN} gzcli --run-script start
+	${SUDO} ${BIN} script start
 
 gzcli-stop:
-	${SUDO} ${BIN} gzcli --run-script stop
+	${SUDO} ${BIN} script stop
 
 watch:
-	${SUDO} ${BIN} gzcli --watch --watch-git-pull --watch-git-pull-interval 30s --watch-git-repository .
+	${SUDO} ${BIN} watch start
 
 watch-stop:
-	${SUDO} ${BIN} gzcli --watch-stop
+	${SUDO} ${BIN} watch stop
 
 watch-status:
-	${SUDO} ${BIN} gzcli --watch-status
+	${SUDO} ${BIN} watch status
 
 watch-logs:
-	${SUDO} ${BIN} gzcli --watch-logs
-
-# Watcher Client Commands (for interacting with running daemon)
-watcher-status:
-	${SUDO} ${BIN} gzcli --watcher-client status
-
-watcher-list:
-	${SUDO} ${BIN} gzcli --watcher-client list
-
-watcher-logs:
-	${SUDO} ${BIN} gzcli --watcher-client logs --watcher-limit 50
-
-watcher-logs-all:
-	${SUDO} ${BIN} gzcli --watcher-client logs --watcher-limit 200
-
-watcher-live-logs:
-	${SUDO} ${BIN} gzcli --watcher-client live-logs --watcher-limit 50 --watcher-interval 2s
-
-watcher-live-logs-fast:
-	${SUDO} ${BIN} gzcli --watcher-client live-logs --watcher-limit 50 --watcher-interval 1s
-
-watcher-metrics:
-	${SUDO} ${BIN} gzcli --watcher-client metrics
-
-watcher-executions:
-	${SUDO} ${BIN} gzcli --watcher-client executions --watcher-limit 100
-
-# Challenge-specific watcher operations (requires CHALLENGE= parameter)
-watcher-restart-challenge:
-ifndef CHALLENGE
-	$(error CHALLENGE is not set. Use: make watcher-restart-challenge CHALLENGE=challenge-name)
-endif
-	${SUDO} ${BIN} gzcli --watcher-client restart --watcher-challenge $(CHALLENGE)
-
-watcher-stop-script:
-ifndef CHALLENGE
-	$(error CHALLENGE is not set. Use: make watcher-stop-script CHALLENGE=challenge-name SCRIPT=script-name)
-endif
-ifndef SCRIPT
-	$(error SCRIPT is not set. Use: make watcher-stop-script CHALLENGE=challenge-name SCRIPT=script-name)  
-endif
-	${SUDO} ${BIN} gzcli --watcher-client stop-script --watcher-challenge $(CHALLENGE) --watcher-script $(SCRIPT)
-
-watcher-challenge-executions:
-ifndef CHALLENGE
-	$(error CHALLENGE is not set. Use: make watcher-challenge-executions CHALLENGE=challenge-name)
-endif
-	${SUDO} ${BIN} gzcli --watcher-client executions --watcher-challenge $(CHALLENGE) --watcher-limit 50
+	${SUDO} ${BIN} watch logs
 
 register-all-user:
-	${SUDO} URL=${PUBLIC_URL} ${BIN} gzcli --create-teams ${CSV}
+	${SUDO} ${BIN} team create ${CSV}
 
 register-all-user-and-send-email:
-	${SUDO} URL=${PUBLIC_URL} ${BIN} gzcli --create-teams-and-send-email ${CSV}
+	${SUDO} ${BIN} team create ${CSV} --send-email
 
 flush-cache:
 	(cd .gzctf && ${SUDO} docker compose exec -uroot cache redis-cli FLUSHALL)
@@ -133,7 +86,7 @@ down: platform-down
 clean: platform-clean
 
 help:
-	@echo "CTFify Makefile - Traefik Edition"
+	@echo "GZCLI Makefile"
 	@echo ""
 	@echo "Setup & Platform Management:"
 	@echo "  setup               - Initial setup (no manual network creation)"
@@ -150,29 +103,14 @@ help:
 	@echo "  sync-and-update-game - Sync challenges and update game"
 	@echo ""
 	@echo "File Watcher:"
-	@echo "  watch               - Start file watcher with git pull"
-	@echo "  watch-stop          - Stop the watcher"
+	@echo "  watch               - Start file watcher daemon"
+	@echo "  watch-stop          - Stop the watcher daemon"
 	@echo "  watch-status        - Check watcher status"
 	@echo "  watch-logs          - View watcher logs"
 	@echo ""
-	@echo "Watcher Client (interact with running daemon):"
-	@echo "  watcher-status      - Get watcher daemon status"
-	@echo "  watcher-list        - List watched challenges"
-	@echo "  watcher-logs        - View database logs (last 50)"
-	@echo "  watcher-logs-all    - View database logs (last 200)"
-	@echo "  watcher-live-logs   - Stream live database logs (2s refresh)"
-	@echo "  watcher-live-logs-fast - Stream live database logs (1s refresh)"
-	@echo "  watcher-metrics     - View script execution metrics"
-	@echo "  watcher-executions  - View script execution history"
-	@echo ""
-	@echo "Watcher Challenge Operations:"
-	@echo "  watcher-restart-challenge CHALLENGE=name - Restart challenge"
-	@echo "  watcher-stop-script CHALLENGE=name SCRIPT=name - Stop interval script"
-	@echo "  watcher-challenge-executions CHALLENGE=name - View challenge executions"
-	@echo ""
 	@echo "User Management:"
 	@echo "  register-all-user   - Register users from CSV"
-	@echo "  send-email          - Create teams and send emails from CSV"
+	@echo "  register-all-user-and-send-email - Create teams and send emails from CSV"
 	@echo ""
 	@echo "Traefik Operations:"
 	@echo "  traefik-logs        - View Traefik logs"

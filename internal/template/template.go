@@ -11,7 +11,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/dimasma0305/gzcli/internal/log"
 	"github.com/dimasma0305/gzcli/internal/utils"
 )
 
@@ -120,7 +119,7 @@ func processFile(fsys fileSystem, file string, info interface{}, destination str
 
 	content, err := processTemplate(fsys, file, info)
 	if err != nil {
-		log.Error("Falling back to raw file copy for %q: %v", file, err)
+		// Template processing failed, fall back to raw copy
 		errs = append(errs, fmt.Errorf("template processing error for %q: %w", file, err))
 
 		rawFile, openErr := fsys.Open(file)
@@ -136,8 +135,6 @@ func processFile(fsys fileSystem, file string, info interface{}, destination str
 
 	if err := writeContent(destination, content); err != nil {
 		errs = append(errs, fmt.Errorf("write error for %q: %w", destination, err))
-	} else {
-		log.Info("File processed successfully: %s", destination)
 	}
 
 	return errs

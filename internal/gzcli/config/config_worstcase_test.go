@@ -412,34 +412,39 @@ func TestScriptValue_EdgeCases(t *testing.T) {
 func TestGenerateSlug_EdgeCases(t *testing.T) {
 	testCases := []struct {
 		name      string
+		eventName string
 		challenge ChallengeYaml
 		want      string
 	}{
 		{
 			"empty category and name",
+			"ctf2024",
 			ChallengeYaml{Category: "", Name: ""},
-			"_",
+			"ctf2024__",
 		},
 		{
 			"only special characters",
+			"ctf2024",
 			ChallengeYaml{Category: "!@#$", Name: "%^&*"},
-			"_",
+			"ctf2024__",
 		},
 		{
 			"unicode characters",
+			"ctf2024",
 			ChallengeYaml{Category: "日本語", Name: "チャレンジ"},
-			"_",
+			"ctf2024__",
 		},
 		{
 			"very long names",
+			"ctf2024",
 			ChallengeYaml{Category: strings.Repeat("a", 500), Name: strings.Repeat("b", 500)},
-			strings.Repeat("a", 500) + "_" + strings.Repeat("b", 500),
+			"ctf2024_" + strings.Repeat("a", 500) + "_" + strings.Repeat("b", 500),
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateSlug(tt.challenge)
+			got := generateSlug(tt.eventName, tt.challenge)
 			if got != tt.want {
 				t.Logf("generateSlug() = %s (length: %d)", got, len(got))
 			}

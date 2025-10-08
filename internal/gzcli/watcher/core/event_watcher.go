@@ -724,10 +724,8 @@ func convertDashboardToChallengePkg(dashboard *config.Dashboard) *challengepkg.D
 		return nil
 	}
 	return &challengepkg.Dashboard{
-		Compose:                  dashboard.Compose,
-		ChallengeDurationMinutes: dashboard.ChallengeDurationMinutes,
-		ResetTimerMinutes:        dashboard.ResetTimerMinutes,
-		RestartCooldownMinutes:   dashboard.RestartCooldownMinutes,
+		Type:   dashboard.Type,
+		Config: dashboard.Config,
 	}
 }
 

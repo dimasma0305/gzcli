@@ -85,46 +85,51 @@ func TestScriptValue_UnmarshalYAML_Invalid(t *testing.T) {
 func TestGenerateSlug(t *testing.T) {
 	tests := []struct {
 		name      string
+		eventName string
 		challenge ChallengeYaml
 		want      string
 	}{
 		{
-			name: "simple slug",
+			name:      "simple slug",
+			eventName: "ctf2024",
 			challenge: ChallengeYaml{
 				Category: "Web",
 				Name:     "Challenge1",
 			},
-			want: "web_challenge1",
+			want: "ctf2024_web_challenge1",
 		},
 		{
-			name: "with spaces",
+			name:      "with spaces",
+			eventName: "ctf2024",
 			challenge: ChallengeYaml{
 				Category: "Web Security",
 				Name:     "SQL Injection",
 			},
-			want: "web_security_sql_injection",
+			want: "ctf2024_web_security_sql_injection",
 		},
 		{
-			name: "with special characters",
+			name:      "with special characters",
+			eventName: "ctf2024",
 			challenge: ChallengeYaml{
 				Category: "Crypto",
 				Name:     "RSA-2048",
 			},
-			want: "crypto_rsa2048",
+			want: "ctf2024_crypto_rsa2048",
 		},
 		{
-			name: "uppercase to lowercase",
+			name:      "uppercase to lowercase",
+			eventName: "CTF-2024",
 			challenge: ChallengeYaml{
 				Category: "PWN",
 				Name:     "Buffer Overflow",
 			},
-			want: "pwn_buffer_overflow",
+			want: "ctf2024_pwn_buffer_overflow",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateSlug(tt.challenge)
+			got := generateSlug(tt.eventName, tt.challenge)
 			if got != tt.want {
 				t.Errorf("generateSlug() = %s, want %s", got, tt.want)
 			}
