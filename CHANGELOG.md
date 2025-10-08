@@ -1,3 +1,13 @@
+## [1.4.0](https://github.com/dimasma0305/gzcli/compare/v1.3.0...v1.4.0) (2025-10-08)
+
+### Features
+
+* add multi-event management and enhance configuration structure ([5701ffe](https://github.com/dimasma0305/gzcli/commit/5701ffe3257f02d94f691f5aeaad8483e5d99a56))
+
+### Documentation
+
+* update documentation for clarity and consistency ([22ece4f](https://github.com/dimasma0305/gzcli/commit/22ece4f9b005d1a92e3486ca16a0ecb61f37176c))
+
 ## [1.3.0](https://github.com/dimasma0305/gzcli/compare/v1.2.0...v1.3.0) (2025-10-08)
 
 ### Features
