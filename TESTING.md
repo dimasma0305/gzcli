@@ -19,7 +19,7 @@ This guide provides comprehensive information about writing, running, and mainta
 gzcli uses Go's built-in testing framework along with table-driven tests for comprehensive test coverage. We aim for:
 
 - **>80% code coverage** for core packages
-- **Fast unit tests** (<5 seconds for the full suite)
+- **Fast unit tests:** <5 seconds for the full suite
 - **Comprehensive integration tests** for critical paths
 - **Clear test names** that describe what is being tested
 
@@ -39,9 +39,9 @@ We follow the testing pyramid approach:
   /____________\
 ```
 
-- **Unit Tests**: Test individual functions and methods in isolation
-- **Integration Tests**: Test interactions between components
-- **E2E Tests**: Test complete workflows (manual or CI-only)
+- **Unit Tests:** Test individual functions and methods in isolation
+- **Integration Tests:** Test interactions between components
+- **E2E Tests:** Test complete workflows (manual or CI-only)
 
 ### Test Naming
 
@@ -53,7 +53,7 @@ func TestGZAPI_Login_WithInvalidCredentials_ReturnsError(t *testing.T)
 func TestConfig_Load_WithMissingFile_ReturnsError(t *testing.T)
 ```
 
-Format: `Test<Component>_<Method>_<Scenario>_<ExpectedResult>`
+**Format:** `Test<Component>_<Method>_<Scenario>_<ExpectedResult>`
 
 ## Running Tests
 
@@ -259,12 +259,12 @@ func TestDivide(t *testing.T) {
 ```
 package/
 ├── handler.go
-├── handler_test.go          # Unit tests
-├── handler_integration_test.go  # Integration tests
-├── testdata/                # Test fixtures
+├── handler_test.go                  # Unit tests
+├── handler_integration_test.go      # Integration tests
+├── testdata/                        # Test fixtures
 │   ├── valid_input.json
 │   └── invalid_input.json
-└── testutil/                # Test helpers
+└── testutil/                        # Test helpers
     └── mocks.go
 ```
 
@@ -320,7 +320,7 @@ func TestAPICall(t *testing.T) {
 
 ### Using testutil Package
 
-See `internal/gzcli/testutil/README.md` for available test utilities.
+See [testutil README](internal/gzcli/testutil/README.md) for available test utilities.
 
 ## Integration Tests
 
@@ -369,9 +369,9 @@ go tool cover -func=coverage.out
 ### Coverage Goals
 
 - **Critical packages** (watcher, challenge, API): >85%
-- **Command handlers**: >70%
-- **Utilities**: >80%
-- **Overall project**: >80%
+- **Command handlers:** >70%
+- **Utilities:** >80%
+- **Overall project:** >80%
 
 ### Improving Coverage
 
@@ -469,10 +469,10 @@ benchcmp old.txt new.txt
 ## Continuous Integration
 
 Tests run automatically in CI on:
-- Every push to main/develop
+- Every push to `main` or `develop`
 - Every pull request
-- Multiple Go versions (1.23, 1.24)
-- Multiple OS (Linux, macOS, Windows)
+- Multiple Go versions (1.23+)
+- Multiple operating systems (Linux, macOS, Windows)
 
 See `.github/workflows/ci.yml` for CI configuration.
 
@@ -506,22 +506,22 @@ If tests are flaky:
 # Run with race detector
 go test -race ./...
 
-# Fix race conditions by:
-# - Using mutexes
+# Fix race conditions by using:
+# - Mutexes
 # - Proper channel usage
 # - Avoiding shared state
 ```
 
 ## Resources
 
-- [Go Testing Package](https://golang.org/pkg/testing/)
-- [Table Driven Tests](https://github.com/golang/go/wiki/TableDrivenTests)
-- [Go Test Comments](https://github.com/golang/go/wiki/CodeReviewComments#tests)
-- [Advanced Testing in Go](https://www.youtube.com/watch?v=8hQG7QlcLBk)
+- [Go Testing Package](https://pkg.go.dev/testing)
+- [Table-Driven Tests](https://github.com/golang/go/wiki/TableDrivenTests)
+- [Go Code Review Comments: Tests](https://github.com/golang/go/wiki/CodeReviewComments#tests)
+- [Advanced Testing with Go](https://www.youtube.com/watch?v=8hQG7QlcLBk)
 
 ## Getting Help
 
 - Check existing tests for examples
-- Review `internal/gzcli/testutil/README.md` for available helpers
-- Ask in GitHub Discussions
-- Open an issue for testing-related questions
+- Review [testutil README](internal/gzcli/testutil/README.md) for available helpers
+- Ask in [GitHub Discussions](https://github.com/dimasma0305/gzcli/discussions)
+- Open an [issue](https://github.com/dimasma0305/gzcli/issues) for testing-related questions

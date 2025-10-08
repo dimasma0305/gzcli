@@ -20,7 +20,7 @@ This document provides reference documentation for gzcli's internal packages and
 
 ```
 internal/gzcli/
-├── gzapi/          # API client for GZCTF
+├── gzapi/          # API client for GZ::CTF
 ├── watcher/        # File watching system
 ├── challenge/      # Challenge management
 ├── team/           # Team operations
@@ -686,21 +686,21 @@ if errors.Is(err, gzapi.ErrUnauthorized) {
 
 ### Configuration Management
 
-1. **Validate before use**
+1. **Validate before use:**
    ```go
    if err := config.Validate(cfg); err != nil {
        log.Fatal(err)
    }
    ```
 
-2. **Use environment variables for sensitive data**
+2. **Use environment variables for sensitive data:**
    ```go
    password := os.Getenv("GZCTF_PASSWORD")
    ```
 
 ### File Operations
 
-1. **Always close files**
+1. **Always close files:**
    ```go
    f, err := os.Open("file.txt")
    if err != nil {
@@ -709,7 +709,7 @@ if errors.Is(err, gzapi.ErrUnauthorized) {
    defer f.Close()
    ```
 
-2. **Check file existence before operations**
+2. **Check file existence before operations:**
    ```go
    if !utils.FileExists(path) {
        return fmt.Errorf("file not found: %s", path)

@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/dimasma0305/gzcli)](https://github.com/dimasma0305/gzcli/releases)
 
-High-performance command-line interface for [GZ::CTF](https://github.com/GZTimeWalker/GZCTF) operations with file watching capabilities.
+A high-performance command-line interface for [GZ::CTF](https://github.com/GZTimeWalker/GZCTF) operations with file watching capabilities.
 
 ## Description
 
@@ -23,10 +23,10 @@ gzcli is a standalone CLI tool for managing GZ::CTF challenges, providing featur
 
 ### Quick Install (Recommended)
 
-Use the install script which will:
+Use the install script, which will:
 - Automatically download the latest pre-built binary for your platform
-- Fallback to building from source if binary not available
-- Detect your shell and setup autocompletion
+- Fall back to building from source if a binary is not available
+- Detect your shell and set up autocompletion
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/dimasma0305/gzcli/main/install.sh | bash
@@ -49,7 +49,7 @@ Pre-built binaries are available for multiple platforms:
 
 Download from the [releases page](https://github.com/dimasma0305/gzcli/releases/latest).
 
-**Size:** Linux/Windows binaries are optimized and compressed with UPX, resulting in ~5-6 MB downloads. macOS binaries are ~18 MB (uncompressed for code signing compatibility). See [Binary Optimization](docs/BINARY_OPTIMIZATION.md) for details.
+**Size:** Linux and Windows binaries are optimized and compressed with UPX, resulting in ~5-6 MB downloads. macOS binaries are ~18 MB (uncompressed for code signing compatibility). See [Binary Optimization](docs/BINARY_OPTIMIZATION.md) for details.
 
 ### Homebrew (macOS/Linux)
 
@@ -71,7 +71,20 @@ go install github.com/dimasma0305/gzcli@latest
 
 ### Shell Completion
 
-After installation, enable shell completion for your shell:
+**Automatic Setup (Recommended)**
+
+The installation script can automatically set up completions for all available shells:
+
+```sh
+bash <(curl -s https://raw.githubusercontent.com/dimasma0305/gzcli/main/install.sh)
+# When prompted, choose 'y' to install shell completions
+```
+
+The script will detect and configure completions for all installed shells (Bash, Zsh, Fish, PowerShell).
+
+**Manual Setup**
+
+Alternatively, you can manually set up completion for your preferred shell:
 
 **Bash:**
 ```sh
@@ -98,6 +111,28 @@ gzcli completion fish > ~/.config/fish/completions/gzcli.fish
 ```powershell
 gzcli completion powershell | Out-String | Invoke-Expression
 ```
+
+### Uninstallation
+
+To completely remove gzcli and all shell completions:
+
+```sh
+bash <(curl -s https://raw.githubusercontent.com/dimasma0305/gzcli/main/uninstall.sh)
+```
+
+Or download and run manually:
+
+```sh
+wget https://raw.githubusercontent.com/dimasma0305/gzcli/main/uninstall.sh
+chmod +x uninstall.sh
+./uninstall.sh
+```
+
+The uninstall script will:
+- Remove the gzcli binary from all standard installation locations
+- Remove shell completions for Bash, Zsh, Fish, and PowerShell
+- Clean up shell configuration files (with automatic backups)
+- Provide clear feedback about what was removed
 
 ## Usage
 
@@ -144,10 +179,10 @@ gzcli sync --update-game
 The file watcher automatically redeploys challenges when files change.
 
 ```sh
-# Start watcher as daemon
+# Start watcher as a daemon
 gzcli watch start
 
-# Start in foreground (see logs in terminal)
+# Start in foreground (view logs in terminal)
 gzcli watch start --foreground
 
 # Check watcher status
@@ -222,14 +257,18 @@ event:
   title: "Your CTF Name"
 ```
 
+For more configuration options, see the examples in the repository.
+
 ## Documentation
 
-- **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to the project
-- **[Development Guide](DEVELOPMENT.md)** - Setup and development workflow
-- **[Binary Optimization](docs/BINARY_OPTIMIZATION.md)** - Binary size optimizations and compression details
-- **[Testing Guide](TESTING.md)** - Writing and running tests
-- **[Architecture](docs/architecture.md)** - System architecture and design
-- **[API Reference](docs/api-reference.md)** - Internal API documentation
+- [Contributing Guidelines](CONTRIBUTING.md) - How to contribute to the project
+- [Development Guide](DEVELOPMENT.md) - Setup and development workflow
+- [Binary Optimization](docs/BINARY_OPTIMIZATION.md) - Binary size optimizations and compression details
+- [Testing Guide](TESTING.md) - Writing and running tests
+- [Versioning Guide](docs/VERSIONING.md) - Automated semantic versioning
+- [Performance Guide](docs/PERFORMANCE.md) - Performance optimizations
+- [Architecture](docs/architecture.md) - System architecture and design
+- [API Reference](docs/api-reference.md) - Internal API documentation
 
 ## Development
 
@@ -241,12 +280,12 @@ event:
    cd gzcli
    ```
 
-2. **Run setup script:**
+2. **Run the setup script:**
    ```bash
    ./scripts/setup.sh
    ```
 
-3. **Verify environment:**
+3. **Verify your environment:**
    ```bash
    make doctor
    ```
@@ -299,13 +338,13 @@ The project includes VS Code configuration for optimal Go development:
 - Test explorer
 - Recommended extensions
 
-Open the project in VS Code and install recommended extensions.
+Open the project in VS Code and install the recommended extensions when prompted.
 
 #### GitHub Codespaces
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=dimasma0305/gzcli)
 
-Everything pre-configured and ready to code in the cloud.
+Everything is pre-configured and ready for coding in the cloud.
 
 ### Testing
 
@@ -328,7 +367,7 @@ make test-coverage
 make coverage-browse
 ```
 
-See [TESTING.md](TESTING.md) for comprehensive testing guide.
+See [TESTING.md](TESTING.md) for a comprehensive testing guide.
 
 ## Contributing
 
@@ -337,21 +376,21 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ### Quick Contribution Guide
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
 3. Make your changes
-4. Run tests (`make test`)
-5. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
+4. Run tests: `make test`
+5. Commit your changes: `git commit -m 'feat: add amazing feature'`
+6. Push to the branch: `git push origin feature/amazing-feature`
 7. Open a Pull Request
 
 ## Community
 
-- **Issues**: [GitHub Issues](https://github.com/dimasma0305/gzcli/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/dimasma0305/gzcli/discussions)
-- **Security**: Report vulnerabilities privately via [Security Advisories](https://github.com/dimasma0305/gzcli/security/advisories/new)
+- **Issues:** [GitHub Issues](https://github.com/dimasma0305/gzcli/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/dimasma0305/gzcli/discussions)
+- **Security:** Report vulnerabilities privately via [Security Advisories](https://github.com/dimasma0305/gzcli/security/advisories/new)
 
 ## License
 
-Copyright © 2023 dimas maulana dimasmaulana0305@gmail.com
+Copyright © 2023 Dimas Maulana <dimasmaulana0305@gmail.com>
 
 Licensed under the MIT License. See [LICENSE](LICENSE) for details.

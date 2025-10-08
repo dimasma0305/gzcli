@@ -60,8 +60,8 @@ Responsible for:
 - Command execution coordination
 
 **Key Files:**
-- `root.go`: Root command and global configuration
-- `init.go`, `sync.go`, `watch.go`, etc.: Individual commands
+- `root.go` - Root command and global configuration
+- `init.go`, `sync.go`, `watch.go`, etc. - Individual commands
 - Each command follows Cobra's command pattern
 
 ### 2. Business Logic Layer (`internal/gzcli/`)
@@ -73,34 +73,34 @@ Contains core application logic:
 - Configuration management
 - API client initialization
 
-#### Packages:
+#### Packages
 
-**`gzapi/`**: API client for GZ::CTF
+**`gzapi/` - API client for GZ::CTF**
 - Authentication and session management
 - Resource operations (games, challenges, teams)
 - Request/response handling
 
-**`watcher/`**: File watcher system
+**`watcher/` - File watcher system**
 - File change detection
 - Debouncing logic
 - Challenge redeployment
 
-**`challenge/`**: Challenge management
+**`challenge/` - Challenge management**
 - Challenge parsing and validation
 - Synchronization logic
 - File operations
 
-**`team/`**: Team management
+**`team/` - Team management**
 - Team creation and deletion
 - CSV parsing
 - Bulk operations
 
-**`config/`**: Configuration handling
+**`config/` - Configuration handling**
 - YAML parsing
 - Validation
 - Environment-specific configs
 
-**`event/`**: Event system
+**`event/` - Event system**
 - Webhooks (Discord, etc.)
 - Event notifications
 - Logging
@@ -155,7 +155,7 @@ HTTP client for GZ::CTF API:
 └──────────────────────┘
 ```
 
-Features:
+**Features:**
 - Session management
 - Rate limiting
 - Retry logic
@@ -298,11 +298,11 @@ The watcher is a critical component for development workflow:
 
 ### Key Features
 
-1. **Recursive Watching**: Monitors all subdirectories
-2. **Debouncing**: Groups rapid changes to avoid redundant syncs
-3. **Ignore Patterns**: Filters out unwanted file changes
-4. **Error Recovery**: Continues watching after sync failures
-5. **Daemon Mode**: Runs in background with logging
+1. **Recursive Watching:** Monitors all subdirectories
+2. **Debouncing:** Groups rapid changes to avoid redundant syncs
+3. **Ignore Patterns:** Filters out unwanted file changes
+4. **Error Recovery:** Continues watching after sync failures
+5. **Daemon Mode:** Runs in background with logging
 
 ### Implementation Details
 
@@ -385,7 +385,7 @@ File Changed: /challenges/web/xss/src/index.html
 └─────────────────────┘
 ```
 
-Features:
+**Features:**
 - Automatic login on first request
 - Token storage and reuse
 - Automatic refresh on expiry
@@ -472,33 +472,33 @@ scripts:
 
 ### Why Cobra for CLI?
 
-- **Pros**: Rich feature set, widely used, good documentation
-- **Cons**: Some overhead for simple commands
-- **Decision**: Benefits outweigh complexity for multi-command CLI
+- **Pros:** Rich feature set, widely used, good documentation
+- **Cons:** Some overhead for simple commands
+- **Decision:** Benefits outweigh complexity for multi-command CLI
 
 ### Why fsnotify for File Watching?
 
-- **Pros**: Cross-platform, efficient, well-tested
-- **Cons**: Platform-specific quirks
-- **Decision**: Best available option for Go
+- **Pros:** Cross-platform, efficient, well-tested
+- **Cons:** Platform-specific quirks
+- **Decision:** Best available option for Go
 
 ### Why No External DB?
 
-- **Decision**: File-based configuration is simpler
-- **Benefits**: Easy deployment, no dependencies
-- **Tradeoff**: Not suitable for multi-user scenarios
+- **Decision:** File-based configuration is simpler
+- **Benefits:** Easy deployment, no dependencies
+- **Trade-off:** Not suitable for multi-user scenarios
 
 ### Channel-Based Concurrency
 
-- **Pattern**: Use channels for event communication
-- **Benefit**: Idiomatic Go, easier to reason about
-- **Alternative**: Callbacks/mutexes (more complex)
+- **Pattern:** Use channels for event communication
+- **Benefit:** Idiomatic Go, easier to reason about
+- **Alternative:** Callbacks/mutexes (more complex)
 
 ### Daemon vs Foreground Watch
 
-- **Support Both**: Different use cases
-- **Daemon**: Production use, CI/CD
-- **Foreground**: Development, debugging
+- **Support Both:** Different use cases
+- **Daemon:** Production use, CI/CD
+- **Foreground:** Development, debugging
 
 ## Error Handling Strategy
 
@@ -585,12 +585,12 @@ See [TESTING.md](../TESTING.md) for detailed testing guide.
 
 ### Potential Improvements
 
-1. **Plugin System**: Support external plugins
-2. **Database Backend**: Optional DB for large deployments
-3. **Web UI**: Optional web interface for management
-4. **Multi-tenancy**: Support multiple CTF instances
-5. **Advanced Caching**: Reduce API calls
-6. **Parallel Operations**: Speed up bulk operations
+1. **Plugin System:** Support external plugins
+2. **Database Backend:** Optional DB for large deployments
+3. **Web UI:** Optional web interface for management
+4. **Multi-tenancy:** Support multiple CTF instances
+5. **Advanced Caching:** Reduce API calls
+6. **Parallel Operations:** Speed up bulk operations
 
 ### Migration Paths
 

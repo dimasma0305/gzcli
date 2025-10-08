@@ -41,31 +41,31 @@ The commit type determines the version bump:
 ### 3. Workflow
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Developer                                                       │
-│  ├─ Write code                                                   │
-│  ├─ Commit with conventional format: "feat: add feature"        │
-│  └─ Push to main branch                                         │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  GitHub Actions (Release Workflow)                               │
-│  ├─ Runs tests                                                  │
-│  ├─ Analyzes commits since last release                         │
-│  ├─ Determines version bump (major/minor/patch)                 │
-│  ├─ Creates git tag (e.g., v1.2.3)                              │
-│  ├─ Generates CHANGELOG.md                                      │
-│  ├─ Builds binaries for all platforms with GoReleaser          │
-│  │   - Linux (amd64, arm64, arm)                               │
-│  │   - macOS (Universal Binary)                                │
-│  │   - Windows (amd64)                                         │
-│  ├─ Injects version metadata into binaries                     │
-│  │   - Version: v1.2.3                                         │
-│  │   - Commit: abc1234                                         │
-│  │   - BuildTime: 2025-10-07_12:34:56                         │
-│  └─ Publishes GitHub release with changelog and binaries       │
-└─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│  Developer                                                     │
+│  ├─ Write code                                                 │
+│  ├─ Commit with conventional format: "feat: add feature"      │
+│  └─ Push to main branch                                       │
+└─────────────────────────┬─────────────────────────────────────┘
+                          │
+                          ▼
+┌───────────────────────────────────────────────────────────────┐
+│  GitHub Actions (Release Workflow)                            │
+│  ├─ Runs tests                                                │
+│  ├─ Analyzes commits since last release                       │
+│  ├─ Determines version bump (major/minor/patch)               │
+│  ├─ Creates git tag (e.g., v1.2.3)                            │
+│  ├─ Generates CHANGELOG.md                                    │
+│  ├─ Builds binaries for all platforms with GoReleaser        │
+│  │   - Linux (amd64, arm64, arm)                             │
+│  │   - macOS (Universal Binary)                              │
+│  │   - Windows (amd64)                                       │
+│  ├─ Injects version metadata into binaries                   │
+│  │   - Version: v1.2.3                                       │
+│  │   - Commit: abc1234                                       │
+│  │   - BuildTime: 2025-10-07_12:34:56                       │
+│  └─ Publishes GitHub release with changelog and binaries     │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ## Version Metadata
@@ -136,7 +136,7 @@ This allows users to exclude temporary files and build artifacts.
 Closes #123"
 ```
 
-**Result**: Version bumps from `1.2.3` → `1.3.0`
+**Result:** Version bumps from `1.2.3` → `1.3.0`
 
 ### Bug Fix (Patch Version Bump)
 
@@ -149,7 +149,7 @@ challenge directories. Now it skips them with a warning.
 Fixes #456"
 ```
 
-**Result**: Version bumps from `1.3.0` → `1.3.1`
+**Result:** Version bumps from `1.3.0` → `1.3.1`
 
 ### Breaking Change (Major Version Bump)
 
@@ -162,7 +162,7 @@ All users must migrate to OAuth2 authentication.
 Refs #789"
 ```
 
-**Result**: Version bumps from `1.3.1` → `2.0.0`
+**Result:** Version bumps from `1.3.1` → `2.0.0`
 
 ### Documentation Update (No Version Bump)
 
@@ -172,7 +172,7 @@ git commit -m "docs: update installation instructions
 Add clarification about Go version requirements."
 ```
 
-**Result**: No version bump, no release
+**Result:** No version bump, no release
 
 ## Manual Release (Alternative)
 
@@ -231,19 +231,19 @@ make build VERSION=v1.2.3
 
 ## Best Practices
 
-1. **Commit often with proper types**: Each logical change should be a separate commit
-2. **Use descriptive scopes**: Helps organize changelog (e.g., `feat(watch):`, `fix(api):`)
-3. **Reference issues**: Link commits to issues using `Fixes #123`, `Closes #456`
-4. **Squash feature branches**: When merging PRs, ensure the squashed commit message follows conventions
-5. **Review before merging to main**: Remember that every merge to main can trigger a release
+1. **Commit often with proper types:** Each logical change should be a separate commit
+2. **Use descriptive scopes:** Helps organize changelog (e.g., `feat(watch):`, `fix(api):`)
+3. **Reference issues:** Link commits to issues using `Fixes #123`, `Closes #456`
+4. **Squash feature branches:** When merging PRs, ensure the squashed commit message follows conventions
+5. **Review before merging to main:** Remember that every merge to main can trigger a release
 
 ## Configuration Files
 
-- **`.github/workflows/semantic-release.yml`**: Combined semantic release automation and GoReleaser build/publish
-- **`.goreleaser.yml`**: GoReleaser configuration
-- **`CONTRIBUTING.md`**: Commit message guidelines for contributors
-- **`cmd/root.go`**: Version variables definition
-- **`Makefile`**: Local build with version injection
+- `.github/workflows/semantic-release.yml` - Combined semantic release automation and GoReleaser build/publish
+- `.goreleaser.yml` - GoReleaser configuration
+- `CONTRIBUTING.md` - Commit message guidelines for contributors
+- `cmd/root.go` - Version variables definition
+- `Makefile` - Local build with version injection
 
 ## Further Reading
 

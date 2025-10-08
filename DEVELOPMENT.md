@@ -71,52 +71,52 @@ gzcli is built with a clean architecture pattern:
 
 ```
 gzcli/
-├── cmd/                    # Command implementations
-│   ├── root.go            # Root command
-│   ├── init.go            # Init command
-│   ├── sync.go            # Sync command
-│   ├── watch.go           # Watch parent command
-│   ├── watch_start.go     # Start watcher
-│   ├── watch_stop.go      # Stop watcher
-│   ├── watch_status.go    # Watcher status
-│   ├── watch_logs.go      # View watcher logs
-│   ├── team.go            # Team parent command
-│   ├── team_create.go     # Create teams
-│   ├── team_delete.go     # Delete teams
-│   ├── script.go          # Script command
-│   ├── scoreboard.go      # Scoreboard command
-│   └── structure.go       # Structure command
+├── cmd/                     # Command implementations
+│   ├── root.go             # Root command
+│   ├── init.go             # Init command
+│   ├── sync.go             # Sync command
+│   ├── watch.go            # Watch parent command
+│   ├── watch_start.go      # Start watcher
+│   ├── watch_stop.go       # Stop watcher
+│   ├── watch_status.go     # Watcher status
+│   ├── watch_logs.go       # View watcher logs
+│   ├── team.go             # Team parent command
+│   ├── team_create.go      # Create teams
+│   ├── team_delete.go      # Delete teams
+│   ├── script.go           # Script command
+│   ├── scoreboard.go       # Scoreboard command
+│   └── structure.go        # Structure command
 │
-├── internal/              # Private application code
-│   ├── gzcli/            # Core logic
-│   │   ├── gzapi/        # API client
-│   │   ├── watcher/      # File watcher system
-│   │   │   ├── core/     # Core watcher logic
+├── internal/               # Private application code
+│   ├── gzcli/             # Core logic
+│   │   ├── gzapi/         # API client
+│   │   ├── watcher/       # File watcher system
+│   │   │   ├── core/      # Core watcher logic
 │   │   │   └── ...
-│   │   ├── challenge/    # Challenge management
-│   │   ├── team/         # Team management
-│   │   ├── config/       # Configuration
-│   │   ├── event/        # Event handling
-│   │   ├── structure/    # Structure management
-│   │   ├── script/       # Script execution
-│   │   ├── gzcli.go      # Main GZ type
+│   │   ├── challenge/     # Challenge management
+│   │   ├── team/          # Team management
+│   │   ├── config/        # Configuration
+│   │   ├── event/         # Event handling
+│   │   ├── structure/     # Structure management
+│   │   ├── script/        # Script execution
+│   │   ├── gzcli.go       # Main GZ type
 │   │   └── ...
-│   ├── log/              # Logging
-│   ├── utils/            # Utilities
-│   └── template/         # Templates
+│   ├── log/               # Logging
+│   ├── utils/             # Utilities
+│   └── template/          # Templates
 │
-├── scripts/              # Development scripts
-│   ├── setup.sh          # Environment setup
-│   ├── test.sh           # Test runner
-│   ├── lint.sh           # Linter runner
-│   └── install-hooks.sh  # Git hooks installer
+├── scripts/               # Development scripts
+│   ├── setup.sh           # Environment setup
+│   ├── test.sh            # Test runner
+│   ├── lint.sh            # Linter runner
+│   └── install-hooks.sh   # Git hooks installer
 │
-├── Makefile              # Build automation
-├── .golangci.yml         # Linter configuration
-├── .goreleaser.yml       # Release configuration
-├── go.mod                # Go module
-├── main.go               # Entry point
-└── README.md             # Documentation
+├── Makefile               # Build automation
+├── .golangci.yml          # Linter configuration
+├── .goreleaser.yml        # Release configuration
+├── go.mod                 # Go module
+├── main.go                # Entry point
+└── README.md              # Documentation
 ```
 
 ## Development Setup
@@ -153,7 +153,7 @@ The project includes pre-configured VS Code settings in `.vscode/`:
 - `launch.json`: Debug configurations
 - `tasks.json`: Quick build/test tasks
 
-Simply open the project in VS Code and install recommended extensions when prompted.
+Simply open the project in VS Code and install the recommended extensions when prompted.
 
 #### GitHub Codespaces
 
@@ -191,8 +191,8 @@ make release
 
 The project uses aggressive build optimizations to reduce binary size:
 
-- **Standard build**: ~18 MB (with `-trimpath`, `-s`, `-w` flags)
-- **UPX compressed**: ~5-6 MB (Linux/Windows release builds only)
+- **Standard build:** ~18 MB (with `-trimpath`, `-s`, `-w` flags)
+- **UPX compressed:** ~5-6 MB (Linux/Windows release builds only)
 
 For more details on binary optimization, see [Binary Optimization](docs/BINARY_OPTIMIZATION.md).
 
@@ -202,7 +202,7 @@ To manually create a UPX-compressed binary:
 # Build normally
 make build
 
-# Compress with UPX (requires upx installed)
+# Compress with UPX (requires UPX to be installed)
 upx --best --lzma gzcli
 ```
 
@@ -421,7 +421,7 @@ go test -bench=. -benchmem ./...
 1. **Error Handling**
    - Always handle errors
    - Provide context in error messages
-   - Use `fmt.Errorf` with `%w` for wrapping
+   - Use `fmt.Errorf` with `%w` for wrapping errors
 
 2. **Logging**
    - Use appropriate log levels
@@ -429,7 +429,7 @@ go test -bench=. -benchmem ./...
    - Don't log sensitive information
 
 3. **Testing**
-   - Aim for >70% coverage
+   - Aim for >70% code coverage
    - Test edge cases
    - Use table-driven tests
 
@@ -441,7 +441,7 @@ go test -bench=. -benchmem ./...
 5. **Performance**
    - Avoid premature optimization
    - Profile before optimizing
-   - Use sync.Pool for frequently allocated objects
+   - Use `sync.Pool` for frequently allocated objects
 
 ## Test Environment
 
@@ -453,7 +453,7 @@ make test-env-init
 
 # Edit .test/.gzctf/conf.yaml with your settings
 
-# Note: You'll need a running GZCTF instance for integration testing
+# Note: You'll need a running GZ::CTF instance for integration testing
 # Configure the URL in .test/.gzctf/conf.yaml
 ```
 
@@ -461,7 +461,7 @@ make test-env-init
 
 ### Common Issues
 
-**Build Fails**
+**Build Fails:**
 ```bash
 # Clear cache
 go clean -cache -modcache
@@ -469,7 +469,7 @@ go mod download
 go build
 ```
 
-**Tests Fail**
+**Tests Fail:**
 ```bash
 # Run verbose
 go test -v ./...
@@ -478,13 +478,13 @@ go test -v ./...
 go test -v ./path -run TestName
 ```
 
-**Import Issues**
+**Import Issues:**
 ```bash
 # Tidy modules
 go mod tidy
 ```
 
-**Development Tools Missing**
+**Development Tools Missing:**
 ```bash
 # Install all development tools
 make tools
@@ -531,10 +531,12 @@ Run `make help` to see all available targets. Key targets include:
 
 ## Additional Documentation
 
-- **[TESTING.md](TESTING.md)**: Comprehensive testing guide
-- **[Architecture](docs/architecture.md)**: System architecture and design decisions
-- **[API Reference](docs/api-reference.md)**: Internal API documentation
-- **[CONTRIBUTING.md](CONTRIBUTING.md)**: Contribution guidelines
+- [TESTING.md](TESTING.md) - Comprehensive testing guide
+- [Architecture](docs/architecture.md) - System architecture and design decisions
+- [API Reference](docs/api-reference.md) - Internal API documentation
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- [Performance Guide](docs/PERFORMANCE.md) - Performance optimization details
+- [Binary Optimization](docs/BINARY_OPTIMIZATION.md) - Binary size reduction techniques
 
 ## Resources
 
@@ -549,4 +551,4 @@ Run `make help` to see all available targets. Key targets include:
 
 - Open an [issue](https://github.com/dimasma0305/gzcli/issues) on GitHub
 - Check existing [discussions](https://github.com/dimasma0305/gzcli/discussions)
-- Read the [CONTRIBUTING.md](CONTRIBUTING.md) guide
+- Read the [Contributing Guide](CONTRIBUTING.md)

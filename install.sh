@@ -423,12 +423,53 @@ detect_shell() {
         esac
     fi
 
-    print_info "Detected shell: $CURRENT_SHELL"
+    print_info "Detected current shell: $CURRENT_SHELL"
 }
 
-# Setup shell completion
-setup_completion() {
-    print_info "Setting up shell completion for $CURRENT_SHELL..."
+# Detect all available shells on the system
+detect_available_shells() {
+    AVAILABLE_SHELLS=()
+
+    print_info "Detecting available shells..."
+
+    # Check for bash
+    if command -v bash &> /dev/null; then
+        AVAILABLE_SHELLS+=("bash")
+        print_info "  ✓ bash detected"
+    fi
+
+    # Check for zsh
+    if command -v zsh &> /dev/null; then
+        AVAILABLE_SHELLS+=("zsh")
+        print_info "  ✓ zsh detected"
+    fi
+
+    # Check for fish
+    if command -v fish &> /dev/null; then
+        AVAILABLE_SHELLS+=("fish")
+        print_info "  ✓ fish detected"
+    fi
+
+    # Check for PowerShell (pwsh)
+    if command -v pwsh &> /dev/null; then
+        AVAILABLE_SHELLS+=("powershell")
+        print_info "  ✓ powershell detected"
+    fi
+
+    if [ ${#AVAILABLE_SHELLS[@]} -eq 0 ]; then
+        print_warning "No supported shells detected"
+        return 1
+    fi
+
+    print_info "Found ${#AVAILABLE_SHELLS[@]} supported shell(s)"
+    return 0
+}
+
+# Setup shell completion for a specific shell
+setup_completion_for_shell() {
+    local shell_name="$1"
+
+    print_info "Setting up shell completion for $shell_name..."
 
     # Verify gzcli is in PATH
     if ! command -v gzcli &> /dev/null; then
@@ -436,64 +477,157 @@ setup_completion() {
         return 1
     fi
 
-    case "$CURRENT_SHELL" in
+    case "$shell_name" in
         bash)
             # Create bash completion directory if it doesn't exist
             COMPLETION_DIR="$HOME/.bash_completion.d"
-            mkdir -p "$COMPLETION_DIR"
+            mkdir -p "$COMPLETION_DIR" 2>/dev/null
 
             # Generate completion script
-            gzcli completion bash > "$COMPLETION_DIR/gzcli"
+            print_info "  Generating bash completion script..."
+            if gzcli completion bash > "$COMPLETION_DIR/gzcli" 2>/dev/null; then
+                # Add to bashrc if not already there
+                SHELL_CONFIG="$HOME/.bashrc"
+                # Create bashrc if it doesn't exist
+                touch "$SHELL_CONFIG" 2>/dev/null || true
 
-            # Add to bashrc if not already there
-            if ! grep -q "bash_completion.d/gzcli" "$SHELL_CONFIG" 2>/dev/null; then
-                echo "" >> "$SHELL_CONFIG"
-                echo "# gzcli completion" >> "$SHELL_CONFIG"
-                echo "source $COMPLETION_DIR/gzcli" >> "$SHELL_CONFIG"
+                print_info "  Updating $SHELL_CONFIG..."
+                if ! grep -q "bash_completion.d/gzcli" "$SHELL_CONFIG" 2>/dev/null; then
+                    {
+                        echo ""
+                        echo "# gzcli completion"
+                        echo "source $COMPLETION_DIR/gzcli"
+                    } >> "$SHELL_CONFIG" 2>/dev/null || {
+                        print_warning "  Could not update $SHELL_CONFIG automatically"
+                    }
+                fi
+                print_success "  ✓ Bash completion installed!"
+                print_info "    Run 'source ~/.bashrc' or restart bash to enable completion"
+            else
+                print_error "  ✗ Failed to generate bash completion"
+                return 1
             fi
-
-            print_success "Bash completion installed!"
-            print_info "Run 'source ~/.bashrc' or restart your shell to enable completion"
             ;;
 
         zsh)
             # Create zsh completion directory if it doesn't exist
             COMPLETION_DIR="$HOME/.zsh/completion"
-            mkdir -p "$COMPLETION_DIR"
+            mkdir -p "$COMPLETION_DIR" 2>/dev/null
 
             # Generate completion script
-            gzcli completion zsh > "$COMPLETION_DIR/_gzcli"
+            print_info "  Generating zsh completion script..."
+            if gzcli completion zsh > "$COMPLETION_DIR/_gzcli" 2>/dev/null; then
+                # Add to zshrc if not already there
+                SHELL_CONFIG="$HOME/.zshrc"
+                # Create zshrc if it doesn't exist
+                touch "$SHELL_CONFIG" 2>/dev/null || true
 
-            # Add to zshrc if not already there
-            if ! grep -q "fpath.*zsh/completion" "$SHELL_CONFIG" 2>/dev/null; then
-                echo "" >> "$SHELL_CONFIG"
-                echo "# gzcli completion" >> "$SHELL_CONFIG"
-                echo "fpath=($COMPLETION_DIR \$fpath)" >> "$SHELL_CONFIG"
-                echo "autoload -Uz compinit && compinit" >> "$SHELL_CONFIG"
+                print_info "  Updating $SHELL_CONFIG..."
+                if ! grep -q "fpath.*zsh/completion" "$SHELL_CONFIG" 2>/dev/null; then
+                    {
+                        echo ""
+                        echo "# gzcli completion"
+                        echo "fpath=($COMPLETION_DIR \$fpath)"
+                        echo "autoload -Uz compinit && compinit"
+                    } >> "$SHELL_CONFIG" 2>/dev/null || {
+                        print_warning "  Could not update $SHELL_CONFIG automatically"
+                    }
+                fi
+                print_success "  ✓ Zsh completion installed!"
+                print_info "    Run 'source ~/.zshrc' or restart zsh to enable completion"
+            else
+                print_error "  ✗ Failed to generate zsh completion"
+                return 1
             fi
-
-            print_success "Zsh completion installed!"
-            print_info "Run 'source ~/.zshrc' or restart your shell to enable completion"
             ;;
 
         fish)
             # Create fish completion directory if it doesn't exist
             COMPLETION_DIR="$HOME/.config/fish/completions"
-            mkdir -p "$COMPLETION_DIR"
+            mkdir -p "$COMPLETION_DIR" 2>/dev/null
 
             # Generate completion script
-            gzcli completion fish > "$COMPLETION_DIR/gzcli.fish"
+            print_info "  Generating fish completion script..."
+            if gzcli completion fish > "$COMPLETION_DIR/gzcli.fish" 2>/dev/null; then
+                print_success "  ✓ Fish completion installed!"
+                print_info "    Restart fish or run 'source ~/.config/fish/config.fish' to enable completion"
+            else
+                print_error "  ✗ Failed to generate fish completion"
+                return 1
+            fi
+            ;;
 
-            print_success "Fish completion installed!"
-            print_info "Restart your fish shell to enable completion"
+        powershell)
+            # Create PowerShell profile directory if it doesn't exist
+            PWSH_PROFILE_DIR="$HOME/.config/powershell"
+            mkdir -p "$PWSH_PROFILE_DIR" 2>/dev/null
+
+            # Generate completion script
+            print_info "  Generating PowerShell completion script..."
+            if gzcli completion powershell > "$PWSH_PROFILE_DIR/gzcli-completion.ps1" 2>/dev/null; then
+                # Add to PowerShell profile if it exists
+                PWSH_PROFILE="$PWSH_PROFILE_DIR/Microsoft.PowerShell_profile.ps1"
+                if [ ! -f "$PWSH_PROFILE" ]; then
+                    touch "$PWSH_PROFILE" 2>/dev/null || true
+                fi
+
+                print_info "  Updating PowerShell profile..."
+                if ! grep -q "gzcli-completion.ps1" "$PWSH_PROFILE" 2>/dev/null; then
+                    {
+                        echo ""
+                        echo "# gzcli completion"
+                        echo ". $PWSH_PROFILE_DIR/gzcli-completion.ps1"
+                    } >> "$PWSH_PROFILE" 2>/dev/null || {
+                        print_warning "  Could not update PowerShell profile automatically"
+                    }
+                fi
+                print_success "  ✓ PowerShell completion installed!"
+                print_info "    Restart PowerShell to enable completion"
+            else
+                print_error "  ✗ Failed to generate PowerShell completion"
+                return 1
+            fi
             ;;
 
         *)
-            print_warning "Shell completion not available for $CURRENT_SHELL"
-            print_info "Supported shells: bash, zsh, fish"
+            print_warning "Shell completion not available for $shell_name"
+            print_info "Supported shells: bash, zsh, fish, powershell"
             return 1
             ;;
     esac
+}
+
+# Setup shell completion for all available shells
+setup_all_completions() {
+    if ! detect_available_shells; then
+        return 1
+    fi
+
+    echo ""
+    print_info "Installing shell completions for all available shells..."
+    echo ""
+
+    local success_count=0
+    local fail_count=0
+
+    for shell in "${AVAILABLE_SHELLS[@]}"; do
+        if setup_completion_for_shell "$shell"; then
+            ((success_count++))
+        else
+            ((fail_count++))
+        fi
+        echo ""
+    done
+
+    if [ $success_count -gt 0 ]; then
+        print_success "Successfully installed completions for $success_count shell(s)"
+    fi
+
+    if [ $fail_count -gt 0 ]; then
+        print_warning "Failed to install completions for $fail_count shell(s)"
+    fi
+
+    return 0
 }
 
 # Main installation flow
@@ -568,13 +702,12 @@ main() {
         fi
     fi
 
-    # Setup shell completion
-    if detect_shell; then
-        read -p "Do you want to setup shell completion for $CURRENT_SHELL? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            setup_completion
-        fi
+    # Setup shell completion for all available shells
+    echo ""
+    read -p "Do you want to setup shell completion for all available shells? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        setup_all_completions
     fi
 
     echo ""

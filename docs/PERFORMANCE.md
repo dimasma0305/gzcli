@@ -6,63 +6,63 @@ This document describes the performance optimizations implemented in gzcli and p
 
 gzcli has undergone comprehensive performance optimization targeting all aspects of the application:
 
-- **Runtime Speed**: HTTP/2 connection pooling, worker pools, O(1) path lookups
-- **Memory Usage**: Two-tier caching, buffer pooling, optimized allocations
-- **Binary Size**: Build tags, UPX compression (already implemented)
-- **Startup Time**: Lazy initialization, minimal imports
+- **Runtime Speed:** HTTP/2 connection pooling, worker pools, O(1) path lookups
+- **Memory Usage:** Two-tier caching, buffer pooling, optimized allocations
+- **Binary Size:** Build tags, UPX compression (already implemented)
+- **Startup Time:** Lazy initialization, minimal imports
 
 ## Implemented Optimizations
 
 ### 1. API Client Performance
 
-**HTTP/2 and Connection Pooling**
+**HTTP/2 and Connection Pooling:**
 - Enabled HTTP/2 with `ForceAttemptHTTP2`
 - Connection pool: 100 max idle connections, 10 per host
 - Keep-alive timeout: 90 seconds
 - Reduces latency for bulk operations
 
-**String Optimization**
+**String Optimization:**
 - Uses `strings.Builder` for URL construction
 - Pre-allocates buffer capacity with `Grow()`
 - Reduces allocations in hot paths
 
-**Location**: `internal/gzcli/gzapi/gzapi.go`
+**Location:** `internal/gzcli/gzapi/gzapi.go`
 
 ### 2. Two-Tier Cache System
 
-**Architecture**:
-- **Memory Layer**: LRU cache with 100-entry capacity
-- **Disk Layer**: YAML files with atomic writes
-- **TTL**: 5-minute expiration for memory entries
+**Architecture:**
+- **Memory Layer:** LRU cache with 100-entry capacity
+- **Disk Layer:** YAML files with atomic writes
+- **TTL:** 5-minute expiration for memory entries
 
-**Performance Impact**:
+**Performance Impact:**
 - Memory cache hit: ~50μs (10x faster than disk)
 - LRU eviction prevents unbounded growth
 - Automatic cache warming on disk reads
 
-**Location**: `internal/gzcli/cache.go`
+**Location:** `internal/gzcli/cache.go`
 
 ### 3. File Watcher Optimizations
 
-**Worker Pool**:
+**Worker Pool:**
 - Configurable workers (default: 4)
 - Buffered event channel (40 events)
 - Non-blocking event submission
 - Parallel event processing
 
-**Path Index**:
+**Path Index:**
 - O(1) challenge lookups (vs O(n) linear search)
 - Pre-built hash map: filepath → challenge
 - Parent directory fallback for new files
 - ~1000 paths pre-allocated
 
-**Regex Pattern Matching**:
+**Regex Pattern Matching:**
 - Pre-compiled ignore/watch patterns
 - Glob-to-regex conversion at init
 - Shared singleton filter matcher
 - Fast pattern matching without repeated compilation
 
-**Locations**:
+**Locations:**
 - `internal/gzcli/watcher/filesystem/workerpool.go`
 - `internal/gzcli/watcher/challenge/manager.go`
 - `internal/gzcli/watcher/filesystem/filters.go`
@@ -97,7 +97,7 @@ BenchmarkURLConstruction_Builder-8      50000000        28.5 ns/op       48 B/op
 BenchmarkURLConstruction_Concat-8       100000000       11.2 ns/op       32 B/op      1 allocs/op
 ```
 
-**Improvement**: String concatenation is actually faster for simple cases, but Builder is better for loops.
+**Improvement:** String concatenation is actually faster for simple cases, but Builder is better for loops.
 
 #### Cache Operations
 
@@ -107,7 +107,7 @@ BenchmarkGetCache-8 (memory hit)        200000           5500 ns/op       512 B/
 BenchmarkGetCache-8 (disk)              50000           25000 ns/op      2048 B/op     22 allocs/op
 ```
 
-**Improvement**: Memory cache provides 4-5x speedup over disk reads.
+**Improvement:** Memory cache provides 4-5x speedup over disk reads.
 
 #### File Watcher
 
@@ -119,7 +119,7 @@ BenchmarkFindChallengeForFile-8
   - Linear search (fallback):           100000         12500 ns/op        0 B/op      0 allocs/op
 ```
 
-**Improvement**: Path index provides ~15x speedup for challenge lookups.
+**Improvement:** Path index provides ~15x speedup for challenge lookups.
 
 ## Performance Targets
 
@@ -136,47 +136,47 @@ BenchmarkFindChallengeForFile-8
 
 ### For Contributors
 
-1. **Run benchmarks before and after changes**:
+1. **Run benchmarks before and after changes:**
    ```bash
    make bench-compare
    ```
 
-2. **Profile hot paths**:
+2. **Profile hot paths:**
    ```bash
    make profile-cpu
    make profile-mem
    ```
 
-3. **Use appropriate data structures**:
+3. **Use appropriate data structures:**
    - `sync.Pool` for frequently allocated objects
    - `strings.Builder` for string concatenation in loops
    - Pre-allocate slices/maps when size is known
 
-4. **Minimize allocations**:
+4. **Minimize allocations:**
    - Use stack allocation when possible
    - Reuse buffers with `sync.Pool`
    - Avoid string concatenation in hot paths
 
-5. **Optimize hot paths first**:
+5. **Optimize hot paths first:**
    - Focus on code executed frequently
    - Profile to identify bottlenecks
    - Measure impact of optimizations
 
 ### For Operators
 
-1. **Adjust worker pool size** based on your workload:
+1. **Adjust worker pool size based on your workload:**
    ```bash
    # Start watcher with custom worker count
    gzcli watch start --workers 8
    ```
 
-2. **Monitor memory usage**:
+2. **Monitor memory usage:**
    ```bash
    # Memory usage should be stable around 10-15 MB
    ps aux | grep gzcli
    ```
 
-3. **Use UPX-compressed binaries** for smaller deployments:
+3. **Use UPX-compressed binaries for smaller deployments:**
    ```bash
    # Linux/Windows binaries are automatically compressed
    # macOS binaries are uncompressed for code signing
@@ -223,11 +223,11 @@ jobs:
 
 ### Metrics to Track
 
-1. **Binary Size**: Track size of release artifacts
-2. **Memory Usage**: Monitor RSS during operation
-3. **Latency**: Measure API call duration
-4. **Throughput**: Track operations per second
-5. **Cache Hit Rate**: Monitor memory vs disk cache hits
+1. **Binary Size:** Track size of release artifacts
+2. **Memory Usage:** Monitor RSS during operation
+3. **Latency:** Measure API call duration
+4. **Throughput:** Track operations per second
+5. **Cache Hit Rate:** Monitor memory vs disk cache hits
 
 ## Troubleshooting
 
@@ -254,7 +254,7 @@ Current binary sizes (with UPX):
 - Linux/Windows: ~5.4 MB (compressed)
 - macOS: ~18 MB (uncompressed)
 
-To further reduce:
+To further reduce size:
 1. Use build tags to exclude features
 2. Review dependencies with `go mod graph`
 3. Consider static linking alternatives
@@ -270,10 +270,10 @@ To further reduce:
 
 When optimizing performance:
 
-1. **Measure first**: Profile before optimizing
-2. **Document**: Explain the optimization and expected impact
-3. **Benchmark**: Include before/after benchmarks
-4. **Test**: Ensure correctness is maintained
-5. **Review**: Consider readability vs performance tradeoffs
+1. **Measure first:** Profile before optimizing
+2. **Document:** Explain the optimization and expected impact
+3. **Benchmark:** Include before/after benchmarks
+4. **Test:** Ensure correctness is maintained
+5. **Review:** Consider readability vs performance trade-offs
 
 For questions or suggestions, open an issue or discussion on GitHub.

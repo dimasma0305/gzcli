@@ -257,7 +257,7 @@ package/
 Use descriptive names that indicate the test scenario:
 
 - `valid_*.yaml` - Valid test data
-- `invalid_*.yaml` - Invalid/malformed data
+- `invalid_*.yaml` - Invalid or malformed data
 - `empty_*.yaml` - Empty or minimal data
 - `complex_*.yaml` - Complex scenarios
 
@@ -421,10 +421,10 @@ When adding new test utilities:
 2. Include usage examples
 3. Write tests for the utility itself
 4. Follow existing patterns and naming conventions
-5. Update TESTING.md if adding major new functionality
+5. Update [TESTING.md](../../../TESTING.md) if adding major new functionality
 
 ## Resources
 
 - [TESTING.md](../../../TESTING.md) - Overall testing guide
-- [Go Testing Package](https://golang.org/pkg/testing/)
+- [Go Testing Package](https://pkg.go.dev/testing)
 - [Testify Package](https://github.com/stretchr/testify) - External assertion library (if we add it)

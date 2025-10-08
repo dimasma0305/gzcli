@@ -14,11 +14,11 @@ This document describes the binary size optimizations applied to gzcli and their
 
 ### 1. Build Flags
 
-The following build flags are now used to reduce binary size:
+The following build flags are used to reduce binary size:
 
-- **`-trimpath`**: Removes file system paths from the compiled executable, making it more reproducible and smaller
-- **`-s`**: Omits the symbol table and debug information
-- **`-w`**: Omits the DWARF symbol table
+- **`-trimpath`:** Removes file system paths from the compiled executable, making it more reproducible and smaller
+- **`-s`:** Omits the symbol table and debug information
+- **`-w`:** Omits the DWARF symbol table
 
 These flags are applied in:
 - `.goreleaser.yml` (for releases)
@@ -28,10 +28,10 @@ These flags are applied in:
 
 UPX (Ultimate Packer for eXecutables) compression is configured in `.goreleaser.yml` for release builds:
 
-- **Compression level**: `best` with LZMA
-- **Platforms**: Linux and Windows (all architectures)
-- **macOS**: Excluded due to code signing complications
-- **Size reduction**: ~70% additional reduction
+- **Compression level:** `best` with LZMA
+- **Platforms:** Linux and Windows (all architectures)
+- **macOS:** Excluded due to code signing complications
+- **Size reduction:** ~70% additional reduction
 
 #### UPX Trade-offs
 
@@ -41,7 +41,7 @@ UPX (Ultimate Packer for eXecutables) compression is configured in `.goreleaser.
 - No functional changes to the program
 
 **Cons:**
-- Adds ~10-20ms to startup time (decompression overhead)
+- Adds ~10-20 ms to startup time (decompression overhead)
 - May trigger false positives in some antivirus software
 - Not compatible with macOS code signing without additional steps
 
@@ -112,14 +112,14 @@ Additional optimizations that could be explored:
    - `gzcli-lite`: Core features only
    - `gzcli-full`: All features including proxy, email, etc.
 
-2. **Dependency Analysis**: Review and potentially replace heavy dependencies
-   - `github.com/lqqyt2423/go-mitmproxy`: ✅ **Removed** (~3MB savings, dead code eliminated)
+2. **Dependency Analysis:** Review and potentially replace heavy dependencies
+   - `github.com/lqqyt2423/go-mitmproxy`: ✅ **Removed** (~3 MB savings, dead code eliminated)
    - `github.com/mattn/go-sqlite3`: Evaluate pure-Go alternatives like `modernc.org/sqlite`
    - QUIC libraries: Check if needed for all use cases (used by req/v3)
 
-3. **Dead Code Elimination**: Use `-tags` to exclude unused code paths
+3. **Dead Code Elimination:** Use `-tags` to exclude unused code paths
 
-4. **Further Compression**: Experiment with alternative compression tools
+4. **Further Compression:** Experiment with alternative compression tools
    - `gzexe`: GNU compression wrapper
    - `appimage`: Self-contained application format
 
@@ -156,7 +156,7 @@ UPX-compressed binaries cannot be code-signed on macOS. Options:
 
 ### Startup Time Concerns
 
-If the ~10-20ms startup overhead from UPX is problematic:
+If the ~10-20 ms startup overhead from UPX is problematic:
 
 1. Use non-UPX builds for time-critical applications
 2. Consider the trade-off: 5.4 MB vs 18 MB

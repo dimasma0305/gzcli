@@ -52,7 +52,7 @@ This will check all prerequisites and provide guidance for any missing tools.
 # Complete automated setup
 make setup-complete
 
-# Or step by step:
+# Or step-by-step:
 
 # Install dependencies
 make deps
@@ -159,35 +159,35 @@ Then create a Pull Request on GitHub.
 
 ```
 gzcli/
-├── cmd/                # Command implementations
-│   ├── root.go        # Root command
-│   ├── init.go        # Init command
-│   ├── sync.go        # Sync command
-│   ├── watch*.go      # Watch commands
-│   ├── team*.go       # Team commands
-│   ├── script.go      # Script command
-│   ├── scoreboard.go  # Scoreboard command
-│   ├── structure.go   # Structure command
+├── cmd/                 # Command implementations
+│   ├── root.go         # Root command
+│   ├── init.go         # Init command
+│   ├── sync.go         # Sync command
+│   ├── watch*.go       # Watch commands
+│   ├── team*.go        # Team commands
+│   ├── script.go       # Script command
+│   ├── scoreboard.go   # Scoreboard command
+│   ├── structure.go    # Structure command
 │   └── ...
-├── internal/          # Private application code
-│   ├── gzcli/         # Core logic
-│   │   ├── gzapi/     # API client
-│   │   ├── watcher/   # File watcher system
-│   │   ├── challenge/ # Challenge management
-│   │   ├── team/      # Team management
-│   │   ├── config/    # Configuration
-│   │   ├── event/     # Event handling
+├── internal/           # Private application code
+│   ├── gzcli/          # Core logic
+│   │   ├── gzapi/      # API client
+│   │   ├── watcher/    # File watcher system
+│   │   ├── challenge/  # Challenge management
+│   │   ├── team/       # Team management
+│   │   ├── config/     # Configuration
+│   │   ├── event/      # Event handling
 │   │   └── ...
-│   ├── log/           # Logging utilities
-│   ├── utils/         # Utility functions
-│   └── template/      # Template system
-├── scripts/           # Development scripts
-│   ├── setup.sh       # Environment setup
-│   ├── test.sh        # Test runner
-│   ├── lint.sh        # Linter runner
+│   ├── log/            # Logging utilities
+│   ├── utils/          # Utility functions
+│   └── template/       # Template system
+├── scripts/            # Development scripts
+│   ├── setup.sh        # Environment setup
+│   ├── test.sh         # Test runner
+│   ├── lint.sh         # Linter runner
 │   └── install-hooks.sh # Git hooks installer
-├── main.go            # Application entry point
-├── Makefile           # Build automation
+├── main.go             # Application entry point
+├── Makefile            # Build automation
 └── ...
 ```
 
@@ -222,7 +222,7 @@ For comprehensive testing guidelines, see [TESTING.md](TESTING.md).
 - Use meaningful test names that describe what is being tested
 - Test both success and failure cases
 - Mock external dependencies
-- Use test utilities in `internal/gzcli/testutil/` (see [testutil/README.md](internal/gzcli/testutil/README.md))
+- Use test utilities in `internal/gzcli/testutil/` (see [testutil README](internal/gzcli/testutil/README.md))
 
 Example test:
 
@@ -293,20 +293,20 @@ go test -v ./internal/gzcli/... -run TestSpecificFunction
 
 ## Test Environment
 
-For integration testing, you can set up a local GZCTF test environment:
+For integration testing, you can set up a local GZ::CTF test environment:
 
 ```bash
 # Initialize test environment
 make test-env-init
 
 # Configure .test/.gzctf/conf.yaml with your platform settings
-# Point the URL to your running GZCTF instance
+# Point the URL to your running GZ::CTF instance
 
 # Clean test data when done
 make test-env-clean
 ```
 
-Note: You'll need a running GZCTF instance for integration testing. Configure the URL in `.test/.gzctf/conf.yaml` to point to your test server.
+**Note:** You'll need a running GZ::CTF instance for integration testing. Configure the URL in `.test/.gzctf/conf.yaml` to point to your test server.
 
 ## Submitting Changes
 
@@ -356,16 +356,16 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) specifica
 
 ### Types
 
-- **feat**: New feature (triggers **minor** version bump: 1.x.0)
-- **fix**: Bug fix (triggers **patch** version bump: 1.0.x)
-- **perf**: Performance improvements (triggers **patch** version bump)
-- **refactor**: Code refactoring (triggers **patch** version bump)
-- **docs**: Documentation changes (no version bump)
-- **style**: Code style changes (no version bump)
-- **test**: Adding or updating tests (no version bump)
-- **chore**: Maintenance tasks (no version bump)
-- **ci**: CI/CD changes (no version bump)
-- **build**: Build system changes (no version bump)
+- **feat:** New feature (triggers **minor** version bump: 1.x.0)
+- **fix:** Bug fix (triggers **patch** version bump: 1.0.x)
+- **perf:** Performance improvements (triggers **patch** version bump)
+- **refactor:** Code refactoring (triggers **patch** version bump)
+- **docs:** Documentation changes (no version bump)
+- **style:** Code style changes (no version bump)
+- **test:** Adding or updating tests (no version bump)
+- **chore:** Maintenance tasks (no version bump)
+- **ci:** CI/CD changes (no version bump)
+- **build:** Build system changes (no version bump)
 
 ### Breaking Changes
 
@@ -393,7 +393,7 @@ Our project uses **automated semantic versioning** via GitHub Actions:
 4. A GitHub release is published with automatically generated changelog
 5. Binaries are built with version metadata embedded
 
-**Important**: Only commits to `main` trigger releases. Feature branches don't create releases.
+**Important:** Only commits to `main` trigger releases. Feature branches don't create releases.
 
 ### Examples
 
@@ -437,12 +437,12 @@ Add clarification about Go version requirements.
 
 ### Best Practices
 
-1. **Be specific**: Use clear, descriptive commit messages
-2. **Use scopes**: Add scope for better categorization (e.g., `feat(watch):`)
-3. **One change per commit**: Each commit should represent one logical change
-4. **Reference issues**: Link to issues using `Fixes #123`, `Closes #456`, `Refs #789`
-5. **Keep subject short**: Max 72 characters for the subject line
-6. **Explain why**: Use the body to explain why the change was needed
+1. **Be specific:** Use clear, descriptive commit messages
+2. **Use scopes:** Add scope for better categorization (e.g., `feat(watch):`)
+3. **One change per commit:** Each commit should represent one logical change
+4. **Reference issues:** Link to issues using `Fixes #123`, `Closes #456`, `Refs #789`
+5. **Keep subject short:** Max 72 characters for the subject line
+6. **Explain why:** Use the body to explain why the change was needed
 
 ## Code of Conduct
 
@@ -463,16 +463,17 @@ Add clarification about Go version requirements.
 
 ## Additional Resources
 
-- **[Testing Guide](TESTING.md)**: Comprehensive testing documentation
-- **[Architecture Documentation](docs/architecture.md)**: System design and architecture
-- **[API Reference](docs/api-reference.md)**: Internal API documentation
-- **[Development Guide](DEVELOPMENT.md)**: Detailed development information
+- [Testing Guide](TESTING.md) - Comprehensive testing documentation
+- [Architecture Documentation](docs/architecture.md) - System design and architecture
+- [API Reference](docs/api-reference.md) - Internal API documentation
+- [Development Guide](DEVELOPMENT.md) - Detailed development information
+- [Versioning Guide](docs/VERSIONING.md) - Automated semantic versioning
 
 ## Getting Help
 
-- **Questions**: Open a [GitHub Discussion](https://github.com/dimasma0305/gzcli/discussions)
-- **Bugs**: File a [GitHub Issue](https://github.com/dimasma0305/gzcli/issues)
-- **Security**: Report via [Security Advisories](https://github.com/dimasma0305/gzcli/security/advisories/new)
+- **Questions:** Open a [GitHub Discussion](https://github.com/dimasma0305/gzcli/discussions)
+- **Bugs:** File a [GitHub Issue](https://github.com/dimasma0305/gzcli/issues)
+- **Security:** Report via [Security Advisories](https://github.com/dimasma0305/gzcli/security/advisories/new)
 
 ## Recognition
 
@@ -481,4 +482,4 @@ Contributors will be recognized in:
 - Release notes
 - Project README
 
-Thank you for contributing to gzcli! 🚀
+Thank you for contributing to gzcli!
