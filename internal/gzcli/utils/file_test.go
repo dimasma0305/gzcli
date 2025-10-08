@@ -1,4 +1,3 @@
-//nolint:revive,gosec // utils is a common and acceptable package name; test files use 0644 permissions
 package utils
 
 import (
@@ -363,7 +362,11 @@ func TestZipSource_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open zip file: %v", err)
 	}
-	defer r.Close()
+	defer func() {
+		if err := r.Close(); err != nil {
+			t.Errorf("Failed to close zip reader: %v", err)
+		}
+	}()
 
 	if len(r.File) != len(testFiles) {
 		t.Errorf("Zip contains %d files, want %d", len(r.File), len(testFiles))
@@ -425,7 +428,11 @@ func TestZipSource_NestedDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open zip file: %v", err)
 	}
-	defer r.Close()
+	defer func() {
+		if err := r.Close(); err != nil {
+			t.Errorf("Failed to close zip reader: %v", err)
+		}
+	}()
 
 	if len(r.File) < 2 {
 		t.Errorf("Zip contains %d files, want at least 2", len(r.File))

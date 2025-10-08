@@ -38,10 +38,13 @@ func TestRemoveAllEvent_Success(t *testing.T) {
 		case "/api/edit/games/1", "/api/edit/games/2", "/api/edit/games/3":
 			if r.Method == "DELETE" {
 				// Mark game as deleted
-				gameID := 1
-				if r.URL.Path == "/api/edit/games/2" {
+				var gameID int
+				switch r.URL.Path {
+				case "/api/edit/games/1":
+					gameID = 1
+				case "/api/edit/games/2":
 					gameID = 2
-				} else if r.URL.Path == "/api/edit/games/3" {
+				case "/api/edit/games/3":
 					gameID = 3
 				}
 				mu.Lock()
