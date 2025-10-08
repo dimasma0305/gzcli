@@ -1,12 +1,11 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/log"
+	"github.com/dimasma0305/gzcli/internal/template/other"
 )
 
 var eventCmd = &cobra.Command{
@@ -103,6 +102,13 @@ This creates/updates the .gzcli/current-event file.`,
 	},
 }
 
+var (
+	eventCreateTitle      string
+	eventCreateStart      string
+	eventCreateEnd        string
+	eventCreateSetCurrent bool
+)
+
 var eventCreateCmd = &cobra.Command{
 	Use:   "create [event-name]",
 	Short: "Create a new event",
@@ -112,14 +118,56 @@ This command will:
   • Create events/[name]/ directory
   • Create a template .gzevent file
   • Initialize challenge category directories
-  • Optionally initialize a git repository`,
+  • Optionally set as the current event`,
 	Args: cobra.ExactArgs(1),
 	Run: func(_ *cobra.Command, args []string) {
 		eventName := args[0]
 
 		log.Info("Creating new event: %s", eventName)
-		log.Error("Event creation not yet implemented. Use 'gzcli init' for now")
-		fmt.Printf("TODO: Implement event creation for: %s\n", eventName)
+
+		// Prepare event info from flags or prompt user
+		eventInfo := map[string]string{
+			"title": eventCreateTitle,
+			"start": eventCreateStart,
+			"end":   eventCreateEnd,
+		}
+
+		// Create the event structure
+		if errors := other.EventTemplate(".", eventName, eventInfo); errors != nil {
+			for _, err := range errors {
+				if err != nil {
+					log.Error("%s", err)
+				}
+			}
+			return
+		}
+
+		log.Info("✅ Event '%s' created successfully!", eventName)
+
+		// Set as current event if flag is set or if it's the only event
+		shouldSetCurrent := eventCreateSetCurrent
+		if !shouldSetCurrent {
+			// Auto-set as current if this is the only event
+			events, err := config.ListEvents()
+			if err == nil && len(events) == 1 {
+				shouldSetCurrent = true
+			}
+		}
+
+		if shouldSetCurrent {
+			if err := config.SetCurrentEvent(eventName); err != nil {
+				log.Error("Failed to set as current event: %v", err)
+			} else {
+				log.Info("✅ Set as current event")
+			}
+		} else {
+			log.Info("Run 'gzcli event switch %s' to set it as the current event", eventName)
+		}
+
+		log.Info("\nNext steps:")
+		log.Info("  1. Review the event configuration: events/%s/.gzevent", eventName)
+		log.Info("  2. Add challenges to category directories")
+		log.Info("  3. Run 'gzcli structure' to generate challenge structure")
 	},
 }
 
@@ -129,4 +177,10 @@ func init() {
 	eventCmd.AddCommand(eventCurrentCmd)
 	eventCmd.AddCommand(eventSwitchCmd)
 	eventCmd.AddCommand(eventCreateCmd)
+
+	// Add flags for event create command
+	eventCreateCmd.Flags().StringVar(&eventCreateTitle, "title", "", "Event title (default: prompt user)")
+	eventCreateCmd.Flags().StringVar(&eventCreateStart, "start", "", "Start date in RFC3339 format (default: prompt user)")
+	eventCreateCmd.Flags().StringVar(&eventCreateEnd, "end", "", "End date in RFC3339 format (default: prompt user)")
+	eventCreateCmd.Flags().BoolVar(&eventCreateSetCurrent, "set-current", false, "Set as current event (default: auto if only event)")
 }
