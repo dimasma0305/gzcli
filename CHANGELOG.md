@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/dimasma0305/gzcli/compare/v1.1.3...v1.2.0) (2025-10-08)
+
+### Features
+
+* fix cyclo test ([0da1f56](https://github.com/dimasma0305/gzcli/commit/0da1f56751130dc53cec28593a736e81e430a162))
+
 ## [1.1.3](https://github.com/dimasma0305/gzcli/compare/v1.1.2...v1.1.3) (2025-10-07)
 
 ### Bug Fixes
