@@ -17,7 +17,12 @@ the specified directory structure and placeholder files.`,
 	Example: `  # Generate structure for all challenges
   gzcli structure`,
 	Run: func(_ *cobra.Command, _ []string) {
-		gz := gzcli.MustInit()
+		// Use event from flag if provided
+		gz, err := gzcli.InitWithEvent(GetEventFlag())
+		if err != nil {
+			log.Error("Failed to initialize: %v", err)
+			return
+		}
 
 		if err := gz.GenerateStructure(); err != nil {
 			log.Fatal("Failed to generate structure: ", err)

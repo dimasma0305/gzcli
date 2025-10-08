@@ -30,7 +30,12 @@ Example:
 	Args: cobra.ExactArgs(1),
 	Run: func(_ *cobra.Command, args []string) {
 		csvFile := args[0]
-		gz := gzcli.MustInit()
+		// Use event from flag if provided
+		gz, err := gzcli.InitWithEvent(GetEventFlag())
+		if err != nil {
+			log.Error("Failed to initialize: %v", err)
+			return
+		}
 
 		if err := gz.CreateTeams(csvFile, createSendEmail); err != nil {
 			log.Fatal(err)

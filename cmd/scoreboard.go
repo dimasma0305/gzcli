@@ -23,7 +23,12 @@ The output can be used to submit your CTF scoreboard to CTFTime.org.`,
   # Save to file
   gzcli scoreboard > scoreboard.json`,
 	Run: func(_ *cobra.Command, _ []string) {
-		gz := gzcli.MustInit()
+		// Use event from flag if provided
+		gz, err := gzcli.InitWithEvent(GetEventFlag())
+		if err != nil {
+			log.Error("Failed to initialize: %v", err)
+			return
+		}
 		feed := gz.MustScoreboard2CTFTimeFeed()
 
 		enc := json.NewEncoder(os.Stdout)

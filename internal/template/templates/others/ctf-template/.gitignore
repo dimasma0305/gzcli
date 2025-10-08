@@ -1,0 +1,30 @@
+# GZCLI Tool Data
+.gzcli/cache/
+.gzcli/watcher/
+.gzcli/current-event
+
+# GZCTF Server Data
+.gzctf/appsettings.json
+.gzctf/conf.yaml
+
+# Event State (runtime data)
+**/.gzevent.state
+
+# Docker
+.gzctf/docker-compose.yml
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp

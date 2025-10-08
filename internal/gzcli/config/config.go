@@ -3,11 +3,8 @@ package config
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
-	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -16,18 +13,26 @@ const (
 	CONFIG_FILE = "conf.yaml"
 )
 
-// Config represents the application configuration
+// Config represents the combined application configuration (server + event)
 type Config struct {
 	Url         string       `yaml:"url"`
 	Creds       gzapi.Creds  `yaml:"creds"`
 	Event       gzapi.Game   `yaml:"event"`
 	Appsettings *AppSettings `yaml:"-"`
+	EventName   string       `yaml:"-"` // Current event name
 }
 
-// loadConfigFromCache loads cached config data
+// loadConfigFromCache loads cached config data (backward compatibility wrapper)
+//
+//nolint:unused // Kept for backward compatibility
 func loadConfigFromCache(config *Config, getCache func(string, interface{}) error) {
+	loadConfigFromCacheWithKey(config, getCache, "config")
+}
+
+// loadConfigFromCacheWithKey loads cached config data with a specific cache key
+func loadConfigFromCacheWithKey(config *Config, getCache func(string, interface{}) error, cacheKey string) {
 	var configCache Config
-	cacheErr := getCache("config", &configCache)
+	cacheErr := getCache(cacheKey, &configCache)
 
 	// If we have cached game info, use it as the starting point
 	if cacheErr == nil && configCache.Event.Id != 0 {
@@ -37,8 +42,15 @@ func loadConfigFromCache(config *Config, getCache func(string, interface{}) erro
 	}
 }
 
-// validateCachedGame validates if a cached game ID still exists on the server
+// validateCachedGame validates if a cached game ID still exists on the server (backward compatibility wrapper)
+//
+//nolint:unused // Kept for backward compatibility
 func validateCachedGame(config *Config, api *gzapi.GZAPI, deleteCache func(string)) error {
+	return validateCachedGameWithKey(config, api, deleteCache, "config")
+}
+
+// validateCachedGameWithKey validates if a cached game ID still exists on the server with a specific cache key
+func validateCachedGameWithKey(config *Config, api *gzapi.GZAPI, deleteCache func(string), cacheKey string) error {
 	if config.Event.Id == 0 {
 		return nil
 	}
@@ -62,15 +74,22 @@ func validateCachedGame(config *Config, api *gzapi.GZAPI, deleteCache func(strin
 
 	// If cached game doesn't exist, clear cache and try to find by title
 	log.Info("Cached game ID %d not found on server, searching by title...", config.Event.Id)
-	deleteCache("config")
+	deleteCache(cacheKey)
 	config.Event.Id = 0
 	config.Event.PublicKey = ""
 
 	return nil
 }
 
-// ensureGameExists ensures a game exists by title or creates a new one
+// ensureGameExists ensures a game exists by title or creates a new one (backward compatibility wrapper)
+//
+//nolint:unused // Kept for backward compatibility
 func ensureGameExists(config *Config, api *gzapi.GZAPI, setCache func(string, interface{}) error, createNewGame func(*Config, *gzapi.GZAPI) (*gzapi.Game, error)) error {
+	return ensureGameExistsWithKey(config, api, setCache, createNewGame, "config")
+}
+
+// ensureGameExistsWithKey ensures a game exists by title or creates a new one with a specific cache key
+func ensureGameExistsWithKey(config *Config, api *gzapi.GZAPI, setCache func(string, interface{}) error, createNewGame func(*Config, *gzapi.GZAPI) (*gzapi.Game, error), cacheKey string) error {
 	if config.Event.Id != 0 {
 		return nil
 	}
@@ -90,7 +109,7 @@ func ensureGameExists(config *Config, api *gzapi.GZAPI, setCache func(string, in
 	config.Event.PublicKey = game.PublicKey
 
 	// Update cache with found game
-	if err := setCache("config", config); err != nil {
+	if err := setCache(cacheKey, config); err != nil {
 		log.Error("Failed to update cache with found game: %v", err)
 	}
 
@@ -98,25 +117,52 @@ func ensureGameExists(config *Config, api *gzapi.GZAPI, setCache func(string, in
 }
 
 func GetConfig(api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error, deleteCache func(string), createNewGame func(*Config, *gzapi.GZAPI) (*gzapi.Game, error)) (*Config, error) {
-	dir, err := os.Getwd()
+	return GetConfigWithEvent(api, "", getCache, setCache, deleteCache, createNewGame)
+}
+
+// GetConfigWithEvent loads configuration for a specific event
+// If eventName is empty, it will be auto-detected
+func GetConfigWithEvent(api *gzapi.GZAPI, eventName string, getCache func(string, interface{}) error, setCache func(string, interface{}) error, deleteCache func(string), createNewGame func(*Config, *gzapi.GZAPI) (*gzapi.Game, error)) (*Config, error) {
+	// Determine current event
+	if eventName == "" {
+		var err error
+		eventName, err = GetCurrentEvent("")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Load server config
+	serverConfig, err := GetServerConfig()
 	if err != nil {
 		return nil, err
 	}
-	var config Config
-	confPath := filepath.Join(dir, GZCTF_DIR, CONFIG_FILE)
-	if err := utils.ParseYamlFromFile(confPath, &config); err != nil {
+
+	// Load event config
+	eventConfig, err := GetEventConfig(eventName)
+	if err != nil {
 		return nil, err
 	}
 
-	loadConfigFromCache(&config, getCache)
+	// Merge into unified Config struct
+	config := &Config{
+		Url:       serverConfig.Url,
+		Creds:     serverConfig.Creds,
+		Event:     eventConfig.Game,
+		EventName: eventName,
+	}
+
+	// Load cache for this specific event
+	cacheKey := fmt.Sprintf("config-%s", eventName)
+	loadConfigFromCacheWithKey(config, getCache, cacheKey)
 
 	// Only interact with API if provided and we need to validate/create game
 	if api != nil && api.Client != nil {
-		if err := validateCachedGame(&config, api, deleteCache); err != nil {
+		if err := validateCachedGameWithKey(config, api, deleteCache, cacheKey); err != nil {
 			return nil, err
 		}
 
-		if err := ensureGameExists(&config, api, setCache, createNewGame); err != nil {
+		if err := ensureGameExistsWithKey(config, api, setCache, createNewGame, cacheKey); err != nil {
 			return nil, err
 		}
 	}
@@ -131,7 +177,7 @@ func GetConfig(api *gzapi.GZAPI, getCache func(string, interface{}) error, setCa
 		config.Event.CS = api
 	}
 
-	return &config, nil
+	return config, nil
 }
 
 // GetAppSettingsField returns the Appsettings field

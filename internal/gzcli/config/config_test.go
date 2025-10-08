@@ -200,19 +200,29 @@ func TestGetConfig_WithValidCache(t *testing.T) {
 		t.Fatalf("Failed to create .gzctf dir: %v", err)
 	}
 
-	// Create conf.yaml
+	// Create conf.yaml (server config only - new structure)
 	confPath := filepath.Join(gzctfDir, "conf.yaml")
 	confData := `url: "http://test.com"
 creds:
   username: "admin"
   password: "testpass"
-event:
-  title: "Test CTF"
-  start: "2024-01-01T00:00:00Z"
-  end: "2024-01-02T00:00:00Z"
 `
 	if err := os.WriteFile(confPath, []byte(confData), 0600); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	// Create events/test-event directory and .gzevent file (new structure)
+	eventDir := filepath.Join(tmpDir, "events", "test-event")
+	if err := os.MkdirAll(eventDir, 0750); err != nil {
+		t.Fatalf("Failed to create event directory: %v", err)
+	}
+
+	eventData := `title: "Test CTF"
+start: "2024-01-01T00:00:00Z"
+end: "2024-01-02T00:00:00Z"
+`
+	if err := os.WriteFile(filepath.Join(eventDir, ".gzevent"), []byte(eventData), 0600); err != nil {
+		t.Fatalf("Failed to write .gzevent file: %v", err)
 	}
 
 	// Create appsettings.json
@@ -235,7 +245,7 @@ event:
 	}
 
 	cacheData := map[string]interface{}{
-		"config": Config{
+		"config-test-event": Config{
 			Event: gzapi.Game{
 				Id:        123,
 				PublicKey: "cached-key",

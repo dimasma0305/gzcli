@@ -77,7 +77,20 @@ func Execute() {
 	}
 }
 
+var (
+	// Global event flag - shared across all commands
+	globalEventFlag string
+)
+
 func init() {
 	// Add debug flag to root command
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug logging")
+
+	// Add global event selection flag
+	rootCmd.PersistentFlags().StringVarP(&globalEventFlag, "event", "e", "", "Specify which event to use (overrides GZCLI_EVENT env var)")
+}
+
+// GetEventFlag returns the current event flag value
+func GetEventFlag() string {
+	return globalEventFlag
 }

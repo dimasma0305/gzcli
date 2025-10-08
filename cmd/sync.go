@@ -27,7 +27,11 @@ This command:
   # Sync and update game configuration
   gzcli sync --update-game`,
 	Run: func(_ *cobra.Command, _ []string) {
-		gz := gzcli.MustInit()
+		// Use event from flag if provided
+		gz, err := gzcli.InitWithEvent(GetEventFlag())
+		if err != nil {
+			panic(err)
+		}
 		gz.UpdateGame = syncUpdateGame
 		gz.MustSync()
 	},

@@ -33,15 +33,15 @@ var DefaultWatcherConfig = WatcherConfig{
 	WatchPatterns:             []string{},       // Empty means watch all files
 	NewChallengeCheckInterval: 10 * time.Second, // Check for new challenges every 10 seconds
 	DaemonMode:                true,             // Default to daemon mode
-	PidFile:                   "/tmp/gzctf-watcher.pid",
-	LogFile:                   "/tmp/gzctf-watcher.log",
+	PidFile:                   ".gzcli/watcher/watcher.pid",
+	LogFile:                   ".gzcli/watcher/watcher.log",
 	GitPullEnabled:            true,            // Enable git pull by default
 	GitPullInterval:           1 * time.Minute, // Pull every minute
 	GitRepository:             ".",             // Current directory
 	// Database defaults
 	DatabaseEnabled: true, // Enable database logging by default
-	DatabasePath:    "/tmp/gzctf-watcher.db",
+	DatabasePath:    ".gzcli/watcher/watcher.db",
 	// Socket defaults
 	SocketEnabled: true, // Enable socket server by default
-	SocketPath:    "/tmp/gzctf-watcher.sock",
+	SocketPath:    ".gzcli/watcher/watcher.sock",
 }

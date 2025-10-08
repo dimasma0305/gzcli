@@ -15,7 +15,7 @@ import (
 // cacheDir caches the working directory to avoid repeated lookups
 var cacheDir = func() string {
 	dir, _ := os.Getwd()
-	return filepath.Join(dir, ".gzcli")
+	return filepath.Join(dir, ".gzcli", "cache")
 }()
 
 // Cache configuration constants

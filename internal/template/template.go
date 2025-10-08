@@ -185,3 +185,19 @@ func writeContent(destination string, content io.Reader) error {
 
 	return nil
 }
+
+// WriteFile writes data to a file, creating parent directories if needed
+func WriteFile(path string, data []byte) error {
+	// Create parent directory if it doesn't exist
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0750); err != nil {
+		return fmt.Errorf("failed to create directory %q: %w", dir, err)
+	}
+
+	// Write file
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return fmt.Errorf("failed to write file %q: %w", path, err)
+	}
+
+	return nil
+}

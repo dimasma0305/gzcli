@@ -6,12 +6,13 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/dimasma0305/gzcli)](https://github.com/dimasma0305/gzcli/releases)
 
-A high-performance command-line interface for [GZ::CTF](https://github.com/GZTimeWalker/GZCTF) operations with file watching capabilities.
+A high-performance command-line interface for [GZ::CTF](https://github.com/GZTimeWalker/GZCTF) operations with multi-event management and file watching capabilities.
 
 ## Description
 
 gzcli is a standalone CLI tool for managing GZ::CTF challenges, providing features such as:
 
+- **Multi-event management** - Manage multiple CTF events in one workspace
 - Challenge synchronization
 - File watching with automatic redeployment
 - Team management and batch operations
@@ -246,15 +247,68 @@ gzcli i          # same as: gzcli init
 
 ## Configuration
 
-gzcli expects a `.gzctf/conf.yaml` file in your CTF repository with the following structure:
+### Multi-Event Structure
+
+gzcli now supports managing multiple CTF events in a single workspace:
+
+```
+root/
+├── .gzcli/          # Tool data (cache, watcher state) - git-ignored
+├── .gzctf/          # Server configuration (shared)
+│   └── conf.yaml    # Server URL and credentials
+└── events/          # Your CTF events
+    ├── ctf2024/
+    │   ├── .gzevent # Event-specific configuration
+    │   ├── web/     # Challenge categories
+    │   ├── crypto/
+    │   └── ...
+    └── ctf2025/
+        └── ...
+```
+
+### Server Configuration (`.gzctf/conf.yaml`)
 
 ```yaml
 url: https://ctf.example.com
 creds:
   username: admin
   password: your_password
-event:
-  title: "Your CTF Name"
+```
+
+### Event Configuration (`events/[name]/.gzevent`)
+
+```yaml
+title: "Your CTF 2024"
+start: "2024-10-11T12:00:00+00:00"
+end: "2024-10-13T12:00:00+00:00"
+# ... more event settings
+```
+
+### Event Selection
+
+Select events using:
+
+```bash
+# Via command flag
+gzcli sync --event ctf2024
+
+# Via environment variable
+export GZCLI_EVENT=ctf2024
+gzcli sync
+
+# Set default event
+gzcli event switch ctf2024
+gzcli sync  # Uses default
+```
+
+For detailed information about multi-event management, see [docs/MULTI_EVENT.md](docs/MULTI_EVENT.md).
+
+### Migration from Old Structure
+
+If you have an existing gzcli project, migrate it to the new structure:
+
+```bash
+gzcli migrate
 ```
 
 For more configuration options, see the examples in the repository.

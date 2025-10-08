@@ -43,7 +43,12 @@ The watcher runs as a daemon by default. Use --foreground to run in the current 
   # Start with custom ignore patterns
   gzcli watch start --ignore "*.tmp" --ignore "*.log"`,
 	Run: func(_ *cobra.Command, _ []string) {
-		gz := gzcli.MustInit()
+		// Use event from flag if provided
+		gz, err := gzcli.InitWithEvent(GetEventFlag())
+		if err != nil {
+			log.Error("Failed to initialize: %v", err)
+			os.Exit(1)
+		}
 
 		config := gzcli.WatcherConfig{
 			PollInterval:              watchPollInterval,

@@ -154,23 +154,28 @@ func TestGetConfig_ConcurrentAccess(t *testing.T) {
 	tmpDir := setupConfigTest(t)
 	defer os.RemoveAll(tmpDir)
 
-	// Create valid config
+	// Create valid server config (new structure)
 	confPath := filepath.Join(tmpDir, ".gzctf", "conf.yaml")
 	confData := `url: "http://test.com"
 creds:
   username: "admin"
   password: "testpass"
-event:
-  title: "Test CTF"
-  start: "2024-01-01T00:00:00Z"
-  end: "2024-01-02T00:00:00Z"
 `
-	os.WriteFile(confPath, []byte(confData), 0644)
+	os.WriteFile(confPath, []byte(confData), 0600)
+
+	// Create event directory and .gzevent file (new structure)
+	eventDir := filepath.Join(tmpDir, "events", "test-event")
+	os.MkdirAll(eventDir, 0750)
+	eventData := `title: "Test CTF"
+start: "2024-01-01T00:00:00Z"
+end: "2024-01-02T00:00:00Z"
+`
+	os.WriteFile(filepath.Join(eventDir, ".gzevent"), []byte(eventData), 0600)
 
 	// Create appsettings
 	appSettingsPath := filepath.Join(tmpDir, ".gzctf", "appsettings.json")
 	appSettingsData := `{"ContainerProvider": {"PublicEntry": "http://test.com"}}`
-	os.WriteFile(appSettingsPath, []byte(appSettingsData), 0644)
+	os.WriteFile(appSettingsPath, []byte(appSettingsData), 0600)
 
 	// Read concurrently
 	testutil.ConcurrentTest(t, 10, 5, func(id, iter int) error {

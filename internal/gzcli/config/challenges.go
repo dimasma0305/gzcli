@@ -233,9 +233,10 @@ func processCategoryAsync(dir, category string, challengeChan chan<- ChallengeYa
 }
 
 func GetChallengesYaml(config *Config) ([]ChallengeYaml, error) {
-	dir, err := os.Getwd()
+	// Get event path from config
+	eventPath, err := GetEventPath(config.EventName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get event path: %w", err)
 	}
 
 	// Pre-parse URL once
@@ -257,10 +258,10 @@ func GetChallengesYaml(config *Config) ([]ChallengeYaml, error) {
 		resultChan <- challenges
 	}()
 
-	// Process categories in parallel
+	// Process categories in parallel - now looking in events/[name]/
 	for _, category := range CHALLENGE_CATEGORY {
 		wg.Add(1)
-		go processCategoryAsync(dir, category, challengeChan, errChan, &wg)
+		go processCategoryAsync(eventPath, category, challengeChan, errChan, &wg)
 	}
 
 	go func() {

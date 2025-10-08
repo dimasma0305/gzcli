@@ -172,48 +172,45 @@ func runDBQuery(query string) error {
 	return nil
 }
 
-// Concurrent-safe initialization with memoization
-var initOnce sync.Once
-var initGZ *GZ
-var initErr error
-
 // Init initializes the GZ instance with configuration and API client
+// Uses the default event selection mechanism
 func Init() (*GZ, error) {
-	initOnce.Do(func() {
-		conf, err := config.GetConfig(&gzapi.GZAPI{}, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
-		if err != nil {
-			initErr = fmt.Errorf("config error: %w", err)
-			return
-		}
+	return InitWithEvent("")
+}
 
-		api, err := gzapi.Init(conf.Url, &conf.Creds)
-		if err == nil {
-			initGZ = &GZ{api: api}
-			return
-		}
+// InitWithEvent initializes the GZ instance with a specific event
+// If eventName is empty, it will be auto-detected
+func InitWithEvent(eventName string) (*GZ, error) {
+	// Note: Since we're using memoization, we create fresh instances
+	// This allows commands to work with different events
+	conf, err := config.GetConfigWithEvent(&gzapi.GZAPI{}, eventName, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
+	if err != nil {
+		return nil, fmt.Errorf("config error: %w", err)
+	}
 
-		// Fallback to registration
-		api, err = gzapi.Register(conf.Url, &gzapi.RegisterForm{
-			Email:    "admin@localhost",
-			Username: conf.Creds.Username,
-			Password: conf.Creds.Password,
-		})
-		if err != nil {
-			initErr = fmt.Errorf("registration failed: %w", err)
-			return
-		}
+	api, err := gzapi.Init(conf.Url, &conf.Creds)
+	if err == nil {
+		return &GZ{api: api}, nil
+	}
 
-		if err := runDBQuery(fmt.Sprintf(
-			`UPDATE "AspNetUsers" SET "Role"=3 WHERE "UserName"='%s';`,
-			conf.Creds.Username,
-		)); err != nil {
-			initErr = err
-			return
-		}
-
-		initGZ = &GZ{api: api}
+	// Fallback to registration
+	api, err = gzapi.Register(conf.Url, &gzapi.RegisterForm{
+		Email:    "admin@localhost",
+		Username: conf.Creds.Username,
+		Password: conf.Creds.Password,
 	})
-	return initGZ, initErr
+	if err != nil {
+		return nil, fmt.Errorf("registration failed: %w", err)
+	}
+
+	if err := runDBQuery(fmt.Sprintf(
+		`UPDATE "AspNetUsers" SET "Role"=3 WHERE "UserName"='%s';`,
+		conf.Creds.Username,
+	)); err != nil {
+		return nil, err
+	}
+
+	return &GZ{api: api}, nil
 }
 
 // GenerateStructure generates challenge directory structure from templates

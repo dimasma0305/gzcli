@@ -1,4 +1,4 @@
-//nolint:revive // Package types provides type definitions for the watcher
+//nolint:revive // Package name "types" is standard for type definitions
 package types
 
 import (
