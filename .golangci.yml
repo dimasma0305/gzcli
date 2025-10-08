@@ -11,18 +11,12 @@ linters:
     - unused
     - ineffassign
     - misspell
+    - gocritic
+    - gocyclo
     - gosec
     - unconvert
+    - dupl
     - prealloc
+    - nolintlint
     - revive
-  disable:
-    - nolintlint  # Disabled to allow defensive nolint directives
-    - dupl        # Disabled to allow similar test patterns
-    - gocritic    # Disabled to reduce noise for now
-    - gocyclo     # Disabled to reduce noise for now
-    - unparam     # Disabled to reduce noise for now
-
-linters-settings:
-  govet:
-    enable:
-      - shadow
+    - unparam
