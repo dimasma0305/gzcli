@@ -1,3 +1,15 @@
+## [1.5.0](https://github.com/dimasma0305/gzcli/compare/v1.4.1...v1.5.0) (2025-10-08)
+
+### Features
+
+* enhance event command functionality with multi-event support ([59f1b2c](https://github.com/dimasma0305/gzcli/commit/59f1b2cded71b5d0dda51ba22deff88e10bc4b6f))
+* enhance event management with multi-event support and command improvements ([e954f1d](https://github.com/dimasma0305/gzcli/commit/e954f1de00afd9f675aa6540f1a247812911742d))
+* implement event creation command with structured directory setup ([c1d0628](https://github.com/dimasma0305/gzcli/commit/c1d0628ed3094ae1d8fe6836bc56bbabb257d1b6))
+
+### Code Refactoring
+
+* enhance shell configuration handling in install script ([eb93393](https://github.com/dimasma0305/gzcli/commit/eb93393e88ec16439cbc545349e59ff0f65e1718))
+
 ## [1.4.1](https://github.com/dimasma0305/gzcli/compare/v1.4.0...v1.4.1) (2025-10-08)
 
 ### Code Refactoring
