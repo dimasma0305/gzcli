@@ -227,38 +227,57 @@ install_binary() {
 
 # Add ~/.local/bin to PATH
 add_user_bin_to_path() {
-    # Detect shell config file
-    if [ -n "$BASH_VERSION" ]; then
+    print_info "Adding ~/.local/bin to PATH for all available shells..."
+
+    # Export for current session
+    export PATH=$PATH:$HOME/.local/bin
+
+    # Add to bash if available
+    if command -v bash &> /dev/null; then
         SHELL_CONFIG="$HOME/.bashrc"
-    elif [ -n "$ZSH_VERSION" ]; then
-        SHELL_CONFIG="$HOME/.zshrc"
-    else
-        case "$SHELL" in
-            */bash)
-                SHELL_CONFIG="$HOME/.bashrc"
-                ;;
-            */zsh)
-                SHELL_CONFIG="$HOME/.zshrc"
-                ;;
-            */fish)
-                SHELL_CONFIG="$HOME/.config/fish/config.fish"
-                ;;
-            *)
-                SHELL_CONFIG="$HOME/.profile"
-                ;;
-        esac
+        if ! grep -q ".local/bin" "$SHELL_CONFIG" 2>/dev/null; then
+            print_info "  Adding to $SHELL_CONFIG"
+            touch "$SHELL_CONFIG" 2>/dev/null || true
+            echo "" >> "$SHELL_CONFIG"
+            echo "# User binaries" >> "$SHELL_CONFIG"
+            echo 'export PATH=$PATH:$HOME/.local/bin' >> "$SHELL_CONFIG"
+        fi
     fi
 
-    # Check if ~/.local/bin is already in PATH config
+    # Add to zsh if available
+    if command -v zsh &> /dev/null; then
+        SHELL_CONFIG="$HOME/.zshrc"
+        if ! grep -q ".local/bin" "$SHELL_CONFIG" 2>/dev/null; then
+            print_info "  Adding to $SHELL_CONFIG"
+            touch "$SHELL_CONFIG" 2>/dev/null || true
+            echo "" >> "$SHELL_CONFIG"
+            echo "# User binaries" >> "$SHELL_CONFIG"
+            echo 'export PATH=$PATH:$HOME/.local/bin' >> "$SHELL_CONFIG"
+        fi
+    fi
+
+    # Add to fish if available
+    if command -v fish &> /dev/null; then
+        SHELL_CONFIG="$HOME/.config/fish/config.fish"
+        if ! grep -q ".local/bin" "$SHELL_CONFIG" 2>/dev/null; then
+            print_info "  Adding to $SHELL_CONFIG"
+            mkdir -p "$HOME/.config/fish" 2>/dev/null || true
+            touch "$SHELL_CONFIG" 2>/dev/null || true
+            echo "" >> "$SHELL_CONFIG"
+            echo "# User binaries" >> "$SHELL_CONFIG"
+            echo 'set -gx PATH $PATH $HOME/.local/bin' >> "$SHELL_CONFIG"
+        fi
+    fi
+
+    # Add to profile as fallback
+    SHELL_CONFIG="$HOME/.profile"
     if ! grep -q ".local/bin" "$SHELL_CONFIG" 2>/dev/null; then
-        print_info "Adding ~/.local/bin to PATH in $SHELL_CONFIG"
+        print_info "  Adding to $SHELL_CONFIG"
+        touch "$SHELL_CONFIG" 2>/dev/null || true
         echo "" >> "$SHELL_CONFIG"
         echo "# User binaries" >> "$SHELL_CONFIG"
         echo 'export PATH=$PATH:$HOME/.local/bin' >> "$SHELL_CONFIG"
     fi
-
-    # Export for current session
-    export PATH=$PATH:$HOME/.local/bin
 }
 
 # Check if Go is installed and get version
@@ -345,40 +364,62 @@ add_go_to_path() {
     GO_PATH="/usr/local/go/bin"
     GOPATH_BIN="$HOME/go/bin"
 
-    # Detect shell config file
-    if [ -n "$BASH_VERSION" ]; then
+    print_info "Adding Go to PATH for all available shells..."
+
+    # Export for current session
+    export PATH=$PATH:/usr/local/go/bin
+    export PATH=$PATH:$HOME/go/bin
+
+    # Add to bash if available
+    if command -v bash &> /dev/null; then
         SHELL_CONFIG="$HOME/.bashrc"
-    elif [ -n "$ZSH_VERSION" ]; then
-        SHELL_CONFIG="$HOME/.zshrc"
-    else
-        case "$SHELL" in
-            */bash)
-                SHELL_CONFIG="$HOME/.bashrc"
-                ;;
-            */zsh)
-                SHELL_CONFIG="$HOME/.zshrc"
-                ;;
-            */fish)
-                SHELL_CONFIG="$HOME/.config/fish/config.fish"
-                ;;
-            *)
-                SHELL_CONFIG="$HOME/.profile"
-                ;;
-        esac
+        if ! grep -q "/usr/local/go/bin" "$SHELL_CONFIG" 2>/dev/null; then
+            print_info "  Adding to $SHELL_CONFIG"
+            touch "$SHELL_CONFIG" 2>/dev/null || true
+            echo "" >> "$SHELL_CONFIG"
+            echo "# Go environment" >> "$SHELL_CONFIG"
+            echo 'export PATH=$PATH:/usr/local/go/bin' >> "$SHELL_CONFIG"
+            echo 'export PATH=$PATH:$HOME/go/bin' >> "$SHELL_CONFIG"
+        fi
     fi
 
-    # Check if Go paths are already in config
+    # Add to zsh if available
+    if command -v zsh &> /dev/null; then
+        SHELL_CONFIG="$HOME/.zshrc"
+        if ! grep -q "/usr/local/go/bin" "$SHELL_CONFIG" 2>/dev/null; then
+            print_info "  Adding to $SHELL_CONFIG"
+            touch "$SHELL_CONFIG" 2>/dev/null || true
+            echo "" >> "$SHELL_CONFIG"
+            echo "# Go environment" >> "$SHELL_CONFIG"
+            echo 'export PATH=$PATH:/usr/local/go/bin' >> "$SHELL_CONFIG"
+            echo 'export PATH=$PATH:$HOME/go/bin' >> "$SHELL_CONFIG"
+        fi
+    fi
+
+    # Add to fish if available
+    if command -v fish &> /dev/null; then
+        SHELL_CONFIG="$HOME/.config/fish/config.fish"
+        if ! grep -q "/usr/local/go/bin" "$SHELL_CONFIG" 2>/dev/null; then
+            print_info "  Adding to $SHELL_CONFIG"
+            mkdir -p "$HOME/.config/fish" 2>/dev/null || true
+            touch "$SHELL_CONFIG" 2>/dev/null || true
+            echo "" >> "$SHELL_CONFIG"
+            echo "# Go environment" >> "$SHELL_CONFIG"
+            echo 'set -gx PATH $PATH /usr/local/go/bin' >> "$SHELL_CONFIG"
+            echo 'set -gx PATH $PATH $HOME/go/bin' >> "$SHELL_CONFIG"
+        fi
+    fi
+
+    # Add to profile as fallback
+    SHELL_CONFIG="$HOME/.profile"
     if ! grep -q "/usr/local/go/bin" "$SHELL_CONFIG" 2>/dev/null; then
-        print_info "Adding Go to PATH in $SHELL_CONFIG"
+        print_info "  Adding to $SHELL_CONFIG"
+        touch "$SHELL_CONFIG" 2>/dev/null || true
         echo "" >> "$SHELL_CONFIG"
         echo "# Go environment" >> "$SHELL_CONFIG"
         echo 'export PATH=$PATH:/usr/local/go/bin' >> "$SHELL_CONFIG"
         echo 'export PATH=$PATH:$HOME/go/bin' >> "$SHELL_CONFIG"
     fi
-
-    # Export for current session
-    export PATH=$PATH:/usr/local/go/bin
-    export PATH=$PATH:$HOME/go/bin
 }
 
 # Install gzcli from source
@@ -473,7 +514,7 @@ setup_completion_for_shell() {
 
     # Verify gzcli is in PATH
     if ! command -v gzcli &> /dev/null; then
-        print_warning "gzcli not found in PATH, skipping completion setup"
+        print_error "  ✗ gzcli not found in PATH, skipping $shell_name completion"
         return 1
     fi
 
@@ -485,7 +526,7 @@ setup_completion_for_shell() {
 
             # Generate completion script
             print_info "  Generating bash completion script..."
-            if gzcli completion bash > "$COMPLETION_DIR/gzcli" 2>/dev/null; then
+            if gzcli completion bash > "$COMPLETION_DIR/gzcli" 2>&1; then
                 # Add to bashrc if not already there
                 SHELL_CONFIG="$HOME/.bashrc"
                 # Create bashrc if it doesn't exist
@@ -503,6 +544,7 @@ setup_completion_for_shell() {
                 fi
                 print_success "  ✓ Bash completion installed!"
                 print_info "    Run 'source ~/.bashrc' or restart bash to enable completion"
+                return 0
             else
                 print_error "  ✗ Failed to generate bash completion"
                 return 1
@@ -516,7 +558,7 @@ setup_completion_for_shell() {
 
             # Generate completion script
             print_info "  Generating zsh completion script..."
-            if gzcli completion zsh > "$COMPLETION_DIR/_gzcli" 2>/dev/null; then
+            if gzcli completion zsh > "$COMPLETION_DIR/_gzcli" 2>&1; then
                 # Add to zshrc if not already there
                 SHELL_CONFIG="$HOME/.zshrc"
                 # Create zshrc if it doesn't exist
@@ -535,6 +577,7 @@ setup_completion_for_shell() {
                 fi
                 print_success "  ✓ Zsh completion installed!"
                 print_info "    Run 'source ~/.zshrc' or restart zsh to enable completion"
+                return 0
             else
                 print_error "  ✗ Failed to generate zsh completion"
                 return 1
@@ -548,9 +591,10 @@ setup_completion_for_shell() {
 
             # Generate completion script
             print_info "  Generating fish completion script..."
-            if gzcli completion fish > "$COMPLETION_DIR/gzcli.fish" 2>/dev/null; then
+            if gzcli completion fish > "$COMPLETION_DIR/gzcli.fish" 2>&1; then
                 print_success "  ✓ Fish completion installed!"
                 print_info "    Restart fish or run 'source ~/.config/fish/config.fish' to enable completion"
+                return 0
             else
                 print_error "  ✗ Failed to generate fish completion"
                 return 1
@@ -564,7 +608,7 @@ setup_completion_for_shell() {
 
             # Generate completion script
             print_info "  Generating PowerShell completion script..."
-            if gzcli completion powershell > "$PWSH_PROFILE_DIR/gzcli-completion.ps1" 2>/dev/null; then
+            if gzcli completion powershell > "$PWSH_PROFILE_DIR/gzcli-completion.ps1" 2>&1; then
                 # Add to PowerShell profile if it exists
                 PWSH_PROFILE="$PWSH_PROFILE_DIR/Microsoft.PowerShell_profile.ps1"
                 if [ ! -f "$PWSH_PROFILE" ]; then
@@ -583,6 +627,7 @@ setup_completion_for_shell() {
                 fi
                 print_success "  ✓ PowerShell completion installed!"
                 print_info "    Restart PowerShell to enable completion"
+                return 0
             else
                 print_error "  ✗ Failed to generate PowerShell completion"
                 return 1
@@ -595,12 +640,15 @@ setup_completion_for_shell() {
             return 1
             ;;
     esac
+
+    return 0
 }
 
 # Setup shell completion for all available shells
 setup_all_completions() {
     if ! detect_available_shells; then
-        return 1
+        print_warning "No supported shells detected, skipping completion setup"
+        return 0
     fi
 
     echo ""
@@ -609,23 +657,37 @@ setup_all_completions() {
 
     local success_count=0
     local fail_count=0
+    local total_shells=${#AVAILABLE_SHELLS[@]}
+
+    print_info "Found $total_shells shell(s) to configure: ${AVAILABLE_SHELLS[*]}"
+    echo ""
 
     for shell in "${AVAILABLE_SHELLS[@]}"; do
+        # Always attempt installation, continue even if one fails
         if setup_completion_for_shell "$shell"; then
-            ((success_count++))
+            success_count=$((success_count + 1))
         else
-            ((fail_count++))
+            fail_count=$((fail_count + 1))
+            print_warning "  (Continuing with next shell...)"
         fi
         echo ""
     done
 
+    # Summary
+    echo ""
+    print_info "═══════════════════════════════════════"
     if [ $success_count -gt 0 ]; then
-        print_success "Successfully installed completions for $success_count shell(s)"
+        print_success "✓ Successfully installed completions for $success_count of $total_shells shell(s)"
     fi
 
     if [ $fail_count -gt 0 ]; then
-        print_warning "Failed to install completions for $fail_count shell(s)"
+        print_warning "✗ Failed to install completions for $fail_count of $total_shells shell(s)"
     fi
+
+    if [ $success_count -eq $total_shells ]; then
+        print_success "All shell completions installed successfully!"
+    fi
+    print_info "═══════════════════════════════════════"
 
     return 0
 }
