@@ -1,3 +1,13 @@
+## [1.7.0](https://github.com/dimasma0305/gzcli/compare/v1.6.0...v1.7.0) (2025-10-08)
+
+### Features
+
+* add Challenge Launcher Server and WebSocket support ([90dd69f](https://github.com/dimasma0305/gzcli/commit/90dd69f49ecab510aa9d59983db4189798d8fd1c))
+
+### Bug Fixes
+
+* Ensure directory is restored before cleanup in tests ([156cf24](https://github.com/dimasma0305/gzcli/commit/156cf249b2089bc8f18fd0398739c7c63ff61098))
+
 ## [1.6.0](https://github.com/dimasma0305/gzcli/compare/v1.5.2...v1.6.0) (2025-10-08)
 
 ### Features
