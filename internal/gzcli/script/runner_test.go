@@ -1,3 +1,4 @@
+//nolint:revive // Test file with intentionally unused parameters for interface compatibility
 package script
 
 import (
@@ -226,6 +227,7 @@ func TestRunScripts_Concurrency(t *testing.T) {
 
 	wg.Wait()
 
+	//nolint:gosec // G115: Test code, conversion is safe for test data
 	if atomic.LoadInt32(&executionCount) != int32(len(challenges)) {
 		t.Errorf("Expected %d executions, got %d", len(challenges), executionCount)
 	}
@@ -384,16 +386,16 @@ func TestRunScripts_MaxParallelScripts(t *testing.T) {
 		t.Errorf("RunScripts() failed: %v", err)
 	}
 
-	max := atomic.LoadInt32(&maxConcurrent)
-	if max > maxParallelScripts {
-		t.Errorf("Max concurrent executions (%d) exceeded limit (%d)", max, maxParallelScripts)
+	maxObserved := atomic.LoadInt32(&maxConcurrent)
+	if maxObserved > maxParallelScripts {
+		t.Errorf("Max concurrent executions (%d) exceeded limit (%d)", maxObserved, maxParallelScripts)
 	}
 
-	if max < 1 {
+	if maxObserved < 1 {
 		t.Error("No concurrent execution detected")
 	}
 
-	t.Logf("Max concurrent executions: %d (limit: %d)", max, maxParallelScripts)
+	t.Logf("Max concurrent executions: %d (limit: %d)", maxObserved, maxParallelScripts)
 }
 
 // TestChallengeConf_Interface tests the ChallengeConf interface

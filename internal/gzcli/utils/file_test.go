@@ -1,4 +1,4 @@
-//nolint:revive // utils is a common and acceptable package name
+//nolint:revive,gosec // utils is a common and acceptable package name; test files use 0644 permissions
 package utils
 
 import (

@@ -75,9 +75,12 @@ lint:
 	@if command -v golangci-lint > /dev/null; then \
 		golangci-lint run ./...; \
 		echo "${GREEN}Lint complete${NC}"; \
+	elif [ -f $(GOPATH)/bin/golangci-lint ]; then \
+		$(GOPATH)/bin/golangci-lint run ./...; \
+		echo "${GREEN}Lint complete${NC}"; \
 	else \
 		echo "${RED}golangci-lint not installed${NC}"; \
-		echo "Install with: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.5.0"; \
+		echo "Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
 		exit 1; \
 	fi
 
@@ -86,6 +89,9 @@ cyclo:
 	@echo "${BLUE}Checking cyclomatic complexity...${NC}"
 	@if command -v gocyclo > /dev/null; then \
 		gocyclo -over 15 -avg .; \
+		echo "${GREEN}Cyclomatic complexity check complete${NC}"; \
+	elif [ -f $(GOPATH)/bin/gocyclo ]; then \
+		$(GOPATH)/bin/gocyclo -over 15 -avg .; \
 		echo "${GREEN}Cyclomatic complexity check complete${NC}"; \
 	else \
 		echo "${RED}gocyclo not installed${NC}"; \

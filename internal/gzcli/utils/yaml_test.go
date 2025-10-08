@@ -322,7 +322,7 @@ func TestParseYamlFromFile_PermissionDenied(t *testing.T) {
 	if err := os.Chmod(testFile, 0000); err != nil {
 		t.Fatalf("Failed to change file permissions: %v", err)
 	}
-	defer os.Chmod(testFile, 0644) // Cleanup
+	defer func() { _ = os.Chmod(testFile, 0644) }() // Cleanup
 
 	var result testStruct
 	err := ParseYamlFromFile(testFile, &result)

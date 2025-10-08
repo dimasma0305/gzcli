@@ -21,7 +21,7 @@ func TestRemoveAllEvent_Success(t *testing.T) {
 		case "/api/account/login":
 			// Return successful login response
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"token": "test-token",
 			})
 		case "/api/edit/games":
@@ -34,7 +34,7 @@ func TestRemoveAllEvent_Success(t *testing.T) {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		case "/api/edit/games/1", "/api/edit/games/2", "/api/edit/games/3":
 			if r.Method == "DELETE" {
 				// Mark game as deleted
@@ -83,7 +83,7 @@ func TestRemoveAllEvent_GetGamesError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/account/login" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"token": "test-token",
 			})
 		} else {
@@ -112,7 +112,7 @@ func TestRemoveAllEvent_DeleteError(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/account/login":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"token": "test-token",
 			})
 		case "/api/edit/games":
@@ -123,11 +123,11 @@ func TestRemoveAllEvent_DeleteError(t *testing.T) {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		case "/api/edit/games/1":
 			if r.Method == "DELETE" {
 				w.WriteHeader(http.StatusForbidden)
-				json.NewEncoder(w).Encode(map[string]string{
+				_ = json.NewEncoder(w).Encode(map[string]string{
 					"error": "Permission denied",
 				})
 			}
@@ -161,12 +161,12 @@ func TestRemoveAllEvent_EmptyGameList(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/account/login":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"token": "test-token",
 			})
 		case "/api/edit/games":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"data": []map[string]interface{}{},
 			})
 		}
@@ -193,7 +193,7 @@ func TestScoreboard2CTFTimeFeed_Success(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/account/login":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"token": "test-token",
 			})
 		case "/api/game/1/scoreboard":
@@ -214,7 +214,7 @@ func TestScoreboard2CTFTimeFeed_Success(t *testing.T) {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(scoreboard)
+			_ = json.NewEncoder(w).Encode(scoreboard)
 		}
 	}))
 	defer server.Close()
@@ -282,7 +282,7 @@ func TestScoreboard2CTFTimeFeed_GetScoreboardError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/account/login" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"token": "test-token",
 			})
 		} else {
@@ -320,7 +320,7 @@ func TestScoreboard2CTFTimeFeed_EmptyScoreboard(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/account/login":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"token": "test-token",
 			})
 		case "/api/game/1/scoreboard":
@@ -329,7 +329,7 @@ func TestScoreboard2CTFTimeFeed_EmptyScoreboard(t *testing.T) {
 				"challenges": map[string][]map[string]interface{}{},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(scoreboard)
+			_ = json.NewEncoder(w).Encode(scoreboard)
 		}
 	}))
 	defer server.Close()
@@ -367,7 +367,7 @@ func TestScoreboard2CTFTimeFeed_CapacityOptimization(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/account/login":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"token": "test-token",
 			})
 		case "/api/game/1/scoreboard":
@@ -390,7 +390,7 @@ func TestScoreboard2CTFTimeFeed_CapacityOptimization(t *testing.T) {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(scoreboard)
+			_ = json.NewEncoder(w).Encode(scoreboard)
 		}
 	}))
 	defer server.Close()
