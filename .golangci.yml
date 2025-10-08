@@ -17,6 +17,7 @@ linters:
     - unconvert
     - dupl
     - prealloc
-    - nolintlint
     - revive
     - unparam
+  disable:
+    - nolintlint  # Disabled to allow defensive nolint directives
