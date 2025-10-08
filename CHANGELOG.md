@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/dimasma0305/gzcli/compare/v1.4.0...v1.4.1) (2025-10-08)
+
+### Code Refactoring
+
+* improve migration process and enhance error handling ([bc2a944](https://github.com/dimasma0305/gzcli/commit/bc2a944caeeb542997b29ff5719aa7f8fc27d573))
+* streamline installation and uninstallation processes ([939b6ac](https://github.com/dimasma0305/gzcli/commit/939b6acf3c47bf1f4571e4142d00ce1e239e10fb))
+
 ## [1.4.0](https://github.com/dimasma0305/gzcli/compare/v1.3.0...v1.4.0) (2025-10-08)
 
 ### Features
