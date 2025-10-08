@@ -557,7 +557,7 @@ if err := ValidateChallenge(ch); err != nil {
 - Simulate failures (network, disk, etc.)
 - Verify recovery behavior
 
-See [TESTING.md](../TESTING.md) for detailed testing guide.
+See [Development & Testing Guide](development.md#testing) for detailed testing guide.
 
 ## Security Considerations
 
@@ -601,7 +601,6 @@ See [TESTING.md](../TESTING.md) for detailed testing guide.
 
 ## Resources
 
-- [DEVELOPMENT.md](../DEVELOPMENT.md): Development setup and guide
-- [CONTRIBUTING.md](../CONTRIBUTING.md): Contribution guidelines
+- [Development & Testing Guide](development.md): Development setup, workflow, and testing guide
+- [Contributing Guidelines](../CONTRIBUTING.md): Contribution guidelines
 - [API Reference](api-reference.md): Internal API documentation
-- [TESTING.md](../TESTING.md): Testing guide

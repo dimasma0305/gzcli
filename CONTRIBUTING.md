@@ -214,7 +214,7 @@ gzcli/
 
 ## Testing
 
-For comprehensive testing guidelines, see [TESTING.md](TESTING.md).
+For comprehensive testing guidelines, see [Development & Testing Guide](docs/development.md#testing).
 
 ### Writing Tests
 
@@ -463,11 +463,12 @@ Add clarification about Go version requirements.
 
 ## Additional Resources
 
-- [Testing Guide](TESTING.md) - Comprehensive testing documentation
+- [Development & Testing Guide](docs/development.md) - Comprehensive development and testing documentation
 - [Architecture Documentation](docs/architecture.md) - System design and architecture
 - [API Reference](docs/api-reference.md) - Internal API documentation
-- [Development Guide](DEVELOPMENT.md) - Detailed development information
 - [Versioning Guide](docs/VERSIONING.md) - Automated semantic versioning
+- [Performance Guide](docs/PERFORMANCE.md) - Performance optimization details
+- [Binary Optimization](docs/BINARY_OPTIMIZATION.md) - Binary size reduction techniques
 
 ## Getting Help
 

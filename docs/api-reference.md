@@ -779,6 +779,5 @@ if err != nil {
 ## See Also
 
 - [Architecture Documentation](architecture.md)
-- [Testing Guide](../TESTING.md)
-- [Development Guide](../DEVELOPMENT.md)
+- [Development & Testing Guide](development.md)
 - [Contributing Guidelines](../CONTRIBUTING.md)

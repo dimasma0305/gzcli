@@ -1,0 +1,112 @@
+---
+alwaysApply: true
+---
+# gzcli Project Structure
+
+This project follows a clean architecture pattern with clear separation of concerns.
+
+## Directory Layout
+
+### Core Directories
+
+- [cmd/](mdc:cmd) - Command-line interface layer using Cobra
+  - Each command in a separate file (e.g., [init.go](mdc:cmd/init.go), [sync.go](mdc:cmd/sync.go))
+  - [root.go](mdc:cmd/root.go) defines the root command and global flags
+  - Command aliases defined for convenience (e.g., `s` for `sync`)
+
+- [internal/gzcli/](mdc:internal/gzcli) - Core business logic (private package)
+  - [gzapi/](mdc:internal/gzcli/gzapi) - API client for GZ::CTF platform
+  - [watcher/](mdc:internal/gzcli/watcher) - File watching and auto-sync system
+  - [challenge/](mdc:internal/gzcli/challenge) - Challenge management
+  - [team/](mdc:internal/gzcli/team) - Team management
+  - [config/](mdc:internal/gzcli/config) - Configuration handling
+  - [event/](mdc:internal/gzcli/event) - Event and webhook system
+  - [structure/](mdc:internal/gzcli/structure) - Directory structure management
+  - [script/](mdc:internal/gzcli/script) - Script execution
+  - [testutil/](mdc:internal/gzcli/testutil) - Test utilities and helpers
+
+- [internal/log/](mdc:internal/log) - Logging utilities
+- [internal/utils/](mdc:internal/utils) - Helper functions
+- [internal/template/](mdc:internal/template) - Template system for challenge generation
+
+### Documentation
+
+- [docs/](mdc:docs) - All documentation files
+  - [development.md](mdc:docs/development.md) - Development and testing guide (comprehensive)
+  - [architecture.md](mdc:docs/architecture.md) - System architecture and design
+  - [api-reference.md](mdc:docs/api-reference.md) - Internal API documentation
+  - [BINARY_OPTIMIZATION.md](mdc:docs/BINARY_OPTIMIZATION.md) - Binary size optimizations
+  - [MULTI_EVENT.md](mdc:docs/MULTI_EVENT.md) - Multi-event management guide
+  - [PERFORMANCE.md](mdc:docs/PERFORMANCE.md) - Performance optimization details
+  - [VERSIONING.md](mdc:docs/VERSIONING.md) - Automated semantic versioning
+  - [COMPLETION.md](mdc:docs/COMPLETION.md) - Shell completion guide
+
+- [README.md](mdc:README.md) - User-facing documentation
+- [CONTRIBUTING.md](mdc:CONTRIBUTING.md) - Contribution guidelines
+- [CHANGELOG.md](mdc:CHANGELOG.md) - Auto-generated changelog
+
+### Build and Development
+
+- [Makefile](mdc:Makefile) - Build automation with comprehensive targets
+- [go.mod](mdc:go.mod) / [go.sum](mdc:go.sum) - Go module definition
+- [main.go](mdc:main.go) - Application entry point
+- [scripts/](mdc:scripts) - Development and setup scripts
+  - [setup.sh](mdc:scripts/setup.sh) - Environment setup
+  - [test.sh](mdc:scripts/test.sh) - Test runner
+  - [lint.sh](mdc:scripts/lint.sh) - Linter runner
+
+### CI/CD and Release
+
+- [.github/workflows/](mdc:.github/workflows) - GitHub Actions workflows
+  - [ci.yml](mdc:.github/workflows/ci.yml) - Continuous integration
+- [.goreleaser.yml](mdc:.goreleaser.yml) - GoReleaser configuration for multi-platform releases
+- [.golangci.yml](mdc:.golangci.yml) - Linter configuration
+
+### Installation Scripts
+
+- [install.sh](mdc:install.sh) - Cross-platform installation script
+- [uninstall.sh](mdc:uninstall.sh) - Uninstallation script
+
+## Architecture Principles
+
+1. **Clean Architecture**: CLI → Business Logic → External Services
+2. **Dependency Direction**: Outer layers depend on inner layers, never vice versa
+3. **Private Packages**: All implementation details in `internal/` to prevent external imports
+4. **Single Responsibility**: Each package has one clear purpose
+5. **Test Coverage**: Aim for >80% overall, >85% for critical packages
+
+## Multi-Event Support
+
+The project supports managing multiple CTF events in a single workspace:
+
+```
+root/
+├── .gzcli/          # Tool data (cache, watcher state) - git-ignored
+├── .gzctf/          # Server configuration (shared)
+│   └── conf.yaml    # Server URL and credentials
+└── events/          # CTF events
+    ├── ctf2024/
+    │   ├── .gzevent # Event-specific configuration
+    │   └── ...      # Challenge categories
+    └── ctf2025/
+```
+
+See [MULTI_EVENT.md](mdc:docs/MULTI_EVENT.md) for details.
+
+## Important Conventions
+
+- **Command naming**: Use descriptive names, provide short aliases
+- **Configuration**: YAML for human-editable configs
+- **Error handling**: Always wrap errors with context using `fmt.Errorf("%w")`
+- **Logging**: Use internal/log package with appropriate levels
+- **Testing**: Place tests next to implementation (`*_test.go`)
+- **Documentation**: Keep docs in sync with code changes
+
+## When Adding New Features
+
+1. **New command**: Add to `cmd/` directory
+2. **New API endpoint**: Add to `internal/gzcli/gzapi/`
+3. **New core functionality**: Add to appropriate `internal/gzcli/` subpackage
+4. **Tests**: Always add corresponding test file
+5. **Documentation**: Update relevant docs in `docs/`
+6. **Changelog**: Commit messages drive automatic changelog generation

@@ -125,7 +125,7 @@ BenchmarkFindChallengeForFile-8
 
 | Metric | Baseline | Current | Target | Status |
 |--------|----------|---------|--------|--------|
-| Binary Size (Linux UPX) | 5.4 MB | 5.4 MB | 3.5 MB | In Progress |
+| Binary Size (optimized) | 18 MB | 18 MB | 15 MB | In Progress |
 | Memory Usage (idle) | ~20 MB | ~15 MB | ~10 MB | Partial |
 | Startup Time | ~80ms | ~60ms | ~40ms | Partial |
 | Cache Read (memory) | N/A | ~5.5μs | <10μs | ✅ Achieved |
@@ -176,10 +176,10 @@ BenchmarkFindChallengeForFile-8
    ps aux | grep gzcli
    ```
 
-3. **Use UPX-compressed binaries for smaller deployments:**
+3. **Use release binaries for optimized deployments:**
    ```bash
-   # Linux/Windows binaries are automatically compressed
-   # macOS binaries are uncompressed for code signing
+   # Release binaries are automatically optimized with build flags
+   # Provides 33% size reduction without performance impact
    ```
 
 ## Future Optimization Opportunities
@@ -250,14 +250,14 @@ If operations feel slow:
 
 ### Large Binary Size
 
-Current binary sizes (with UPX):
-- Linux/Windows: ~5.4 MB (compressed)
-- macOS: ~18 MB (uncompressed)
+Current binary sizes:
+- All platforms: ~18 MB (optimized)
+- Compressed archives: ~5-6 MB
 
 To further reduce size:
 1. Use build tags to exclude features
 2. Review dependencies with `go mod graph`
-3. Consider static linking alternatives
+3. Consider minimal builds for specific use cases
 
 ## References
 

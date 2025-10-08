@@ -1,0 +1,639 @@
+---
+globs: "*_test.go"
+---
+# Testing Standards for gzcli
+
+This rule applies to all Go test files in the project.
+
+## Testing Philosophy
+
+### Test Pyramid
+
+Follow the testing pyramid approach:
+- **Many** unit tests (fast, isolated)
+- **Some** integration tests (slower, test interactions)
+- **Few** E2E tests (slowest, test complete workflows)
+
+### Coverage Goals
+
+- **Critical packages** (watcher, challenge, API): >85%
+- **Command handlers:** >70%
+- **Utilities:** >80%
+- **Overall project:** >80%
+
+## Test Naming
+
+### Test Function Names
+
+Use descriptive names that explain what is being tested:
+
+**Format:** `Test<Component>_<Method>_<Scenario>_<ExpectedResult>`
+
+```go
+// Good examples
+func TestWatcher_HandleFileChange_RedeploysChallenge(t *testing.T)
+func TestGZAPI_Login_WithInvalidCredentials_ReturnsError(t *testing.T)
+func TestConfig_Load_WithMissingFile_ReturnsError(t *testing.T)
+
+// Bad examples
+func TestWatcher(t *testing.T)  // Too vague
+func Test1(t *testing.T)        // No description
+func TestLoginError(t *testing.T)  // Missing component context
+```
+
+### Subtest Names
+
+Use clear subtest names:
+
+```go
+t.Run("ValidInput", func(t *testing.T) { ... })
+t.Run("EmptyString", func(t *testing.T) { ... })
+t.Run("InvalidFormat", func(t *testing.T) { ... })
+```
+
+## Table-Driven Tests
+
+### When to Use
+
+Use table-driven tests for:
+- Multiple input scenarios
+- Testing edge cases
+- Parameterized tests
+- Functions with clear inputs and outputs
+
+### Structure
+
+```go
+func TestParseChallenge(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   string
+        want    *Challenge
+        wantErr bool
+    }{
+        {
+            name: "valid challenge",
+            input: `name: Test
+category: Web`,
+            want: &Challenge{
+                Name:     "Test",
+                Category: "Web",
+            },
+            wantErr: false,
+        },
+        {
+            name:    "invalid YAML",
+            input:   "invalid: [",
+            want:    nil,
+            wantErr: true,
+        },
+        {
+            name:    "empty input",
+            input:   "",
+            want:    nil,
+            wantErr: true,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got, err := ParseChallenge(tt.input)
+
+            if (err != nil) != tt.wantErr {
+                t.Errorf("ParseChallenge() error = %v, wantErr %v", err, tt.wantErr)
+                return
+            }
+
+            if !reflect.DeepEqual(got, tt.want) {
+                t.Errorf("ParseChallenge() = %v, want %v", got, tt.want)
+            }
+        })
+    }
+}
+```
+
+## Test Organization
+
+### File Structure
+
+```
+package/
+├── handler.go
+├── handler_test.go                  # Unit tests
+├── handler_integration_test.go      # Integration tests
+├── testdata/                        # Test fixtures
+│   ├── valid_input.json
+│   └── invalid_input.json
+└── testutil/                        # Test helpers
+    └── mocks.go
+```
+
+### Test vs Production Code
+
+- Tests should be next to the code they test
+- Use `_test.go` suffix
+- Tests can be in the same package or `_test` package
+
+```go
+// Same package - can test unexported functions
+package gzapi
+
+func TestInternalFunction(t *testing.T) { ... }
+
+// External package - only test exported API
+package gzapi_test
+
+func TestGZAPI_Login(t *testing.T) { ... }
+```
+
+## Test Fixtures
+
+### Using testdata/
+
+Store test fixtures in `testdata/` directory:
+
+```go
+func TestLoadConfig(t *testing.T) {
+    data, err := os.ReadFile("testdata/valid_config.yaml")
+    if err != nil {
+        t.Fatalf("Failed to load fixture: %v", err)
+    }
+
+    cfg, err := ParseConfig(data)
+    if err != nil {
+        t.Errorf("ParseConfig() failed: %v", err)
+    }
+
+    if cfg.URL != "https://example.com" {
+        t.Errorf("URL = %v, want https://example.com", cfg.URL)
+    }
+}
+```
+
+### Temporary Directories
+
+Use `t.TempDir()` for temporary directories:
+
+```go
+func TestFileOperation(t *testing.T) {
+    tmpDir := t.TempDir()  // Automatically cleaned up
+
+    filePath := filepath.Join(tmpDir, "test.txt")
+    err := os.WriteFile(filePath, []byte("test"), 0644)
+    if err != nil {
+        t.Fatal(err)
+    }
+
+    // Test with file
+}
+```
+
+## Mocking and Stubs
+
+### Interface Mocking
+
+Define interfaces for dependencies:
+
+```go
+// Interface for HTTP client
+type HTTPClient interface {
+    Do(req *http.Request) (*http.Response, error)
+}
+
+// Mock implementation
+type MockHTTPClient struct {
+    DoFunc func(req *http.Request) (*http.Response, error)
+}
+
+func (m *MockHTTPClient) Do(req *http.Request) (*http.Response, error) {
+    if m.DoFunc != nil {
+        return m.DoFunc(req)
+    }
+    return nil, errors.New("DoFunc not set")
+}
+
+// Use in tests
+func TestAPICall(t *testing.T) {
+    mockClient := &MockHTTPClient{
+        DoFunc: func(req *http.Request) (*http.Response, error) {
+            return &http.Response{
+                StatusCode: 200,
+                Body:       io.NopCloser(strings.NewReader(`{"status":"ok"}`)),
+            }, nil
+        },
+    }
+
+    api := &API{client: mockClient}
+    // Test with mock
+}
+```
+
+### Using testutil Package
+
+See [testutil README](mdc:internal/gzcli/testutil/README.md) for available test utilities.
+
+## Assertions
+
+### Error Checking
+
+Always check both presence and absence of errors:
+
+```go
+// Check error is returned
+if err == nil {
+    t.Error("expected error, got nil")
+}
+
+// Check no error
+if err != nil {
+    t.Errorf("unexpected error: %v", err)
+}
+
+// Check specific error
+if !errors.Is(err, ErrNotFound) {
+    t.Errorf("expected ErrNotFound, got %v", err)
+}
+```
+
+### Value Comparison
+
+Use appropriate comparison methods:
+
+```go
+// Simple values
+if got != want {
+    t.Errorf("got %v, want %v", got, want)
+}
+
+// Structs and slices
+if !reflect.DeepEqual(got, want) {
+    t.Errorf("got %+v, want %+v", got, want)
+}
+
+// Floating point
+if math.Abs(got-want) > 0.001 {
+    t.Errorf("got %f, want %f", got, want)
+}
+```
+
+## Integration Tests
+
+### Build Tags
+
+Use build tags to separate integration tests:
+
+```go
+//go:build integration
+// +build integration
+
+package gzapi_test
+
+func TestAPI_Integration(t *testing.T) {
+    // Integration test
+}
+```
+
+Run with: `go test -tags=integration ./...`
+
+### Short Mode
+
+Skip integration tests in short mode:
+
+```go
+func TestSync_Integration(t *testing.T) {
+    if testing.Short() {
+        t.Skip("skipping integration test in short mode")
+    }
+
+    // Integration test
+}
+```
+
+Run unit tests only: `go test -short ./...`
+
+## Test Helpers
+
+### Setup and Teardown
+
+Use helpers for common setup:
+
+```go
+func setupTestAPI(t *testing.T) *API {
+    t.Helper()  // Mark as helper
+
+    api := &API{
+        URL: "https://test.example.com",
+    }
+
+    t.Cleanup(func() {
+        // Cleanup code
+    })
+
+    return api
+}
+
+func TestWithHelper(t *testing.T) {
+    api := setupTestAPI(t)
+    // Use api
+}
+```
+
+### t.Helper()
+
+Mark helper functions with `t.Helper()` for better error reporting:
+
+```go
+func assertEqual(t *testing.T, got, want interface{}) {
+    t.Helper()
+    if !reflect.DeepEqual(got, want) {
+        t.Errorf("got %v, want %v", got, want)
+    }
+}
+```
+
+## Benchmarks
+
+### Writing Benchmarks
+
+```go
+func BenchmarkParseChallenge(b *testing.B) {
+    input := loadTestData()
+
+    b.ResetTimer()  // Reset timer after setup
+    for i := 0; i < b.N; i++ {
+        ParseChallenge(input)
+    }
+}
+
+func BenchmarkWithMemory(b *testing.B) {
+    b.ReportAllocs()  // Report memory allocations
+
+    for i := 0; i < b.N; i++ {
+        // Code to benchmark
+    }
+}
+```
+
+### Running Benchmarks
+
+```bash
+# Run benchmarks
+go test -bench=. ./...
+
+# With memory stats
+go test -bench=. -benchmem ./...
+
+# Specific benchmark
+go test -bench=BenchmarkParseChallenge ./...
+```
+
+## Testing Best Practices
+
+### DO
+
+✅ Test both success and error cases
+✅ Use table-driven tests for multiple scenarios
+✅ Keep tests fast and focused
+✅ Use meaningful test names
+✅ Clean up resources (use `t.Cleanup()`)
+✅ Use subtests for organization
+✅ Mock external dependencies
+✅ Test concurrent code with race detector
+✅ Write tests before fixing bugs (TDD for bugs)
+✅ Test public APIs and exported functions
+
+### DON'T
+
+❌ Test implementation details
+❌ Write flaky tests (time-dependent, order-dependent)
+❌ Ignore test failures
+❌ Skip testing error paths
+❌ Depend on external services without mocks
+❌ Commit code with failing tests
+❌ Use `time.Sleep()` for synchronization
+❌ Hard-code paths or configurations
+❌ Share state between tests
+❌ Test unexported functions unless necessary
+
+## Common Patterns
+
+### Testing HTTP Handlers
+
+```go
+func TestHandler(t *testing.T) {
+    req := httptest.NewRequest("GET", "/api/test", nil)
+    w := httptest.NewRecorder()
+
+    handler(w, req)
+
+    resp := w.Result()
+    if resp.StatusCode != http.StatusOK {
+        t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+    }
+}
+```
+
+### Testing with Context
+
+```go
+func TestWithTimeout(t *testing.T) {
+    ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+    defer cancel()
+
+    err := DoSomething(ctx)
+    if err != nil {
+        t.Errorf("unexpected error: %v", err)
+    }
+}
+```
+
+### Testing Concurrent Code
+
+```go
+func TestConcurrent(t *testing.T) {
+    var wg sync.WaitGroup
+    errors := make(chan error, 10)
+
+    for i := 0; i < 10; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            if err := DoWork(); err != nil {
+                errors <- err
+            }
+        }()
+    }
+
+    wg.Wait()
+    close(errors)
+
+    for err := range errors {
+        t.Errorf("unexpected error: %v", err)
+    }
+}
+```
+
+## Test Coverage
+
+### Measuring Coverage
+
+```bash
+# Generate coverage profile
+go test -coverprofile=coverage.out ./...
+
+# View in browser
+go tool cover -html=coverage.out
+
+# Show coverage by function
+go tool cover -func=coverage.out
+```
+
+### Coverage Directives
+
+Exclude code from coverage:
+
+```go
+// Skip coverage for this function
+func debugOnly() {
+    // Debug-only code
+    //go:coverage ignore
+}
+```
+
+## Continuous Integration
+
+Tests run automatically in CI:
+- Every push to main/develop
+- Every pull request
+- Multiple Go versions
+- Multiple operating systems
+
+See [.github/workflows/ci.yml](mdc:.github/workflows/ci.yml) for CI configuration.
+
+## Running Tests
+
+### All Tests
+
+```bash
+make test                # Run all tests
+go test -v ./...         # Verbose output
+make test-race           # With race detector
+```
+
+### Specific Tests
+
+```bash
+# Run tests in specific package
+go test -v ./internal/gzcli/watcher/...
+
+# Run specific test
+go test -v ./internal/gzcli/watcher -run TestWatcher_Start
+
+# Run tests matching pattern
+go test -v ./... -run "TestWatcher.*"
+```
+
+### Component Tests
+
+```bash
+make test-watcher        # Watcher tests
+make test-challenge      # Challenge tests
+make test-api            # API tests
+```
+
+## Troubleshooting
+
+### Tests Failing
+
+```bash
+# Clean cache
+go clean -testcache
+
+# Update dependencies
+go mod tidy
+go mod download
+
+# Run with verbose output
+go test -v ./...
+```
+
+### Race Conditions
+
+```bash
+# Run with race detector
+go test -race ./...
+
+# Fix using:
+# - Mutexes for shared state
+# - Channels for communication
+# - Avoiding global state
+```
+
+### Flaky Tests
+
+If tests are flaky:
+1. Remove timing dependencies
+2. Use proper synchronization
+3. Increase timeouts if needed
+4. Ensure test isolation
+
+## Example Test Template
+
+```go
+package mypackage
+
+import (
+    "testing"
+)
+
+func TestMyFunction(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   string
+        want    string
+        wantErr bool
+    }{
+        {
+            name:    "valid input",
+            input:   "test",
+            want:    "result",
+            wantErr: false,
+        },
+        {
+            name:    "empty input",
+            input:   "",
+            want:    "",
+            wantErr: true,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got, err := MyFunction(tt.input)
+
+            if (err != nil) != tt.wantErr {
+                t.Errorf("MyFunction() error = %v, wantErr %v", err, tt.wantErr)
+                return
+            }
+
+            if got != tt.want {
+                t.Errorf("MyFunction() = %v, want %v", got, tt.want)
+            }
+        })
+    }
+}
+```
+
+## Resources
+
+- [Go Testing Package](https://pkg.go.dev/testing)
+- [Table-Driven Tests](https://github.com/golang/go/wiki/TableDrivenTests)
+- [Go Code Review Comments: Tests](https://github.com/golang/go/wiki/CodeReviewComments#tests)
+- [Development & Testing Guide](mdc:docs/development.md)
+
+## Getting Help
+
+- Check existing tests for examples
+- Review [testutil README](mdc:internal/gzcli/testutil/README.md)
+- Ask in [GitHub Discussions](https://github.com/dimasma0305/gzcli/discussions)
+- Open an [issue](https://github.com/dimasma0305/gzcli/issues)

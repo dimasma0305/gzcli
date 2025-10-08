@@ -1,0 +1,379 @@
+---
+globs: "*.go"
+---
+# Go Development Practices for gzcli
+
+This rule applies to all Go source files in the project.
+
+## Code Style
+
+### General Guidelines
+
+1. **Follow standard Go conventions**
+   - Use `gofmt` and `goimports` for formatting (automatically applied)
+   - Follow [Effective Go](https://golang.org/doc/effective_go)
+   - Follow [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
+
+2. **Naming Conventions**
+   - Use camelCase for unexported identifiers
+   - Use PascalCase for exported identifiers
+   - Use short, descriptive names for variables in small scopes
+   - Use descriptive names for variables in larger scopes
+   - Acronyms should be all caps (e.g., `APIClient`, `HTTPURL`)
+
+3. **Function Size**
+   - Keep functions small and focused (ideally < 50 lines)
+   - Extract complex logic into helper functions
+   - One function should do one thing well
+
+4. **Comments**
+   - All exported functions, types, and constants must have doc comments
+   - Doc comments start with the name of the thing being described
+   - Use complete sentences
+   - Example: `// NewGZ creates a new GZ instance with the specified configuration.`
+
+## Error Handling
+
+### Always Handle Errors
+
+```go
+// Good
+result, err := DoSomething()
+if err != nil {
+    return fmt.Errorf("doing something: %w", err)
+}
+
+// Bad
+result, _ := DoSomething()  // Never ignore errors
+```
+
+### Error Wrapping
+
+Always wrap errors with context using `%w`:
+
+```go
+if err := api.Login(username, password); err != nil {
+    return fmt.Errorf("logging in as %s: %w", username, err)
+}
+```
+
+### Custom Error Types
+
+Define custom error types for domain-specific errors:
+
+```go
+var (
+    ErrNotFound      = errors.New("resource not found")
+    ErrUnauthorized  = errors.New("unauthorized")
+    ErrInvalidConfig = errors.New("invalid configuration")
+)
+```
+
+### Error Checking
+
+Use `errors.Is()` and `errors.As()` for error comparison:
+
+```go
+if errors.Is(err, gzapi.ErrNotFound) {
+    // Handle not found
+}
+```
+
+## Package Organization
+
+### Internal Packages
+
+- Keep implementation details in `internal/` to prevent external imports
+- Each package should have a clear, single purpose
+- Avoid circular dependencies
+
+### Package Names
+
+- Use short, lowercase names
+- No underscores or camelCase
+- Match directory name
+- Examples: `gzapi`, `watcher`, `config`
+
+## Interfaces
+
+### Interface Definitions
+
+- Keep interfaces small (1-3 methods ideally)
+- Define interfaces where they're used, not where they're implemented
+- Name interfaces with `-er` suffix when appropriate
+
+```go
+// Good - small, focused interface
+type Syncer interface {
+    Sync() error
+}
+
+// Good - defined where used
+type HTTPClient interface {
+    Do(req *http.Request) (*http.Response, error)
+}
+```
+
+## Concurrency
+
+### Goroutines
+
+- Always have a way to stop goroutines
+- Use context for cancellation
+- Don't leak goroutines
+
+```go
+func (w *Watcher) Start(ctx context.Context) error {
+    go func() {
+        for {
+            select {
+            case <-ctx.Done():
+                return
+            case event := <-w.events:
+                w.handleEvent(event)
+            }
+        }
+    }()
+    return nil
+}
+```
+
+### Channels
+
+- Prefer buffered channels for event queues
+- Close channels from the sender side
+- Use select with default for non-blocking sends
+
+### Mutexes
+
+- Keep critical sections small
+- Use `defer` for unlocking
+- Consider using `sync.RWMutex` for read-heavy workloads
+
+```go
+func (c *Cache) Get(key string) (interface{}, bool) {
+    c.mu.RLock()
+    defer c.mu.RUnlock()
+    val, ok := c.data[key]
+    return val, ok
+}
+```
+
+## Performance Considerations
+
+### Memory Allocations
+
+1. **Pre-allocate slices when size is known**
+   ```go
+   // Good
+   items := make([]Item, 0, expectedSize)
+   
+   // Bad
+   var items []Item  // Will reallocate multiple times
+   ```
+
+2. **Use strings.Builder for concatenation**
+   ```go
+   var b strings.Builder
+   b.Grow(estimatedSize)  // Pre-allocate
+   b.WriteString("prefix")
+   b.WriteString(value)
+   return b.String()
+   ```
+
+3. **Reuse buffers with sync.Pool**
+   ```go
+   var bufferPool = sync.Pool{
+       New: func() interface{} {
+           return new(bytes.Buffer)
+       },
+   }
+   ```
+
+### API Calls
+
+- Batch operations when possible
+- Reuse HTTP clients (don't create new ones per request)
+- Implement appropriate timeouts
+- Use connection pooling
+
+## Logging
+
+### Use the Internal Log Package
+
+```go
+import "github.com/dimasma0305/gzcli/internal/log"
+
+log.Info("Syncing challenge: %s", challengeName)
+log.Debug("File contents: %s", content)
+log.Error("Failed to sync: %v", err)
+```
+
+### Log Levels
+
+- **Debug**: Detailed information for debugging
+- **Info**: General informational messages
+- **Warning**: Warning messages
+- **Error**: Error conditions
+
+### Never Log Sensitive Data
+
+- Don't log passwords, tokens, or API keys
+- Sanitize user input in logs
+- Use placeholders for sensitive fields
+
+## Configuration
+
+### Use YAML for Configs
+
+- Human-readable format
+- Support comments
+- Use yaml tags on structs
+
+```go
+type Config struct {
+    URL      string      `yaml:"url"`
+    Username string      `yaml:"username"`
+    Password string      `yaml:"password,omitempty"`
+}
+```
+
+### Validation
+
+Always validate configuration:
+
+```go
+func (c *Config) Validate() error {
+    if c.URL == "" {
+        return fmt.Errorf("url is required")
+    }
+    if _, err := url.Parse(c.URL); err != nil {
+        return fmt.Errorf("invalid url: %w", err)
+    }
+    return nil
+}
+```
+
+## Dependencies
+
+### Import Organization
+
+Group imports in this order (separated by blank lines):
+1. Standard library
+2. External packages
+3. Internal packages
+
+```go
+import (
+    "context"
+    "fmt"
+    "time"
+
+    "github.com/spf13/cobra"
+    "gopkg.in/yaml.v3"
+
+    "github.com/dimasma0305/gzcli/internal/gzcli"
+    "github.com/dimasma0305/gzcli/internal/log"
+)
+```
+
+### Dependency Management
+
+- Keep dependencies minimal
+- Prefer standard library when possible
+- Review dependencies periodically
+- Pin versions in go.mod
+
+## Testing
+
+### Test Files
+
+- Place tests next to implementation (`file_test.go`)
+- Use table-driven tests for multiple scenarios
+- Test both success and error cases
+- See [testing-standards.mdc](mdc:.cursor/rules/testing-standards.mdc) for details
+
+### Testable Code
+
+Write code that's easy to test:
+- Use interfaces for dependencies
+- Avoid global state
+- Make time mockable (accept time.Time parameters)
+- Make randomness controllable (accept seed parameters)
+
+## Commit Messages
+
+### Conventional Commits
+
+All commits must follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+### Types
+
+- **feat**: New feature (minor version bump)
+- **fix**: Bug fix (patch version bump)
+- **perf**: Performance improvement (patch version bump)
+- **refactor**: Code refactoring (patch version bump)
+- **docs**: Documentation changes (no version bump)
+- **test**: Adding or updating tests (no version bump)
+- **chore**: Maintenance tasks (no version bump)
+- **ci**: CI/CD changes (no version bump)
+
+### Breaking Changes
+
+Use `feat!:` or `BREAKING CHANGE:` in footer for major version bumps.
+
+### Examples
+
+```
+feat(watch): add support for custom ignore patterns
+
+Add ability to specify custom file patterns to ignore in the watcher.
+
+Closes #123
+```
+
+```
+fix(sync): handle empty challenge directories
+
+Previously would fail when encountering empty directories.
+Now skips them with a warning.
+
+Fixes #456
+```
+
+## Documentation
+
+### Code Documentation
+
+- Document all exported functions, types, and constants
+- Include examples in doc comments when helpful
+- Keep documentation up to date with code changes
+
+### README Updates
+
+When adding features, update:
+- [README.md](mdc:README.md) usage examples
+- [docs/development.md](mdc:docs/development.md) if development process changes
+- [CONTRIBUTING.md](mdc:CONTRIBUTING.md) if contribution process changes
+
+## Review Checklist
+
+Before submitting code:
+
+- [ ] Code is formatted (`make fmt`)
+- [ ] Linters pass (`make lint`)
+- [ ] Tests pass (`make test`)
+- [ ] Tests added for new functionality
+- [ ] Documentation updated
+- [ ] Commit messages follow conventions
+- [ ] Error handling is comprehensive
+- [ ] No sensitive data in logs or commits
+- [ ] Code is readable and maintainable

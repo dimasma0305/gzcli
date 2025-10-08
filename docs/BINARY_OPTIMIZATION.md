@@ -6,13 +6,12 @@ This document describes the binary size optimizations applied to gzcli and their
 
 | Build Type | Binary Size | Reduction | Notes |
 |-----------|-------------|-----------|-------|
-| **Original** | 27 MB | - | Baseline build |
+| **Original** | 27 MB | - | Baseline build without optimization |
 | **Optimized** | 18 MB | 33% | With `-trimpath`, `-s`, `-w` flags |
-| **UPX Compressed** | 5.4 MB | 80% | With UPX best compression + LZMA |
 
 ## Applied Optimizations
 
-### 1. Build Flags
+### Build Flags
 
 The following build flags are used to reduce binary size:
 
@@ -24,55 +23,23 @@ These flags are applied in:
 - `.goreleaser.yml` (for releases)
 - `Makefile` (for local builds)
 
-### 2. UPX Compression
+### How It Works
 
-UPX (Ultimate Packer for eXecutables) compression is configured in `.goreleaser.yml` for release builds:
-
-- **Compression level:** `best` with LZMA
-- **Platforms:** Linux and Windows (all architectures)
-- **macOS:** Excluded due to code signing complications
-- **Size reduction:** ~70% additional reduction
-
-#### UPX Trade-offs
-
-**Pros:**
-- Significant size reduction (70%+ compression)
-- Binaries decompress automatically at runtime
-- No functional changes to the program
-
-**Cons:**
-- Adds ~10-20 ms to startup time (decompression overhead)
-- May trigger false positives in some antivirus software
-- Not compatible with macOS code signing without additional steps
-
-#### Installing UPX
-
-For local testing or CI/CD:
-
-```bash
-# Ubuntu/Debian
-sudo apt-get install upx-ucl
-
-# macOS
-brew install upx
-
-# Or download from GitHub
-wget https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz
-tar -xf upx-4.2.4-amd64_linux.tar.xz
-sudo cp upx-4.2.4-amd64_linux/upx /usr/local/bin/
-```
+The optimization flags:
+1. **Remove debug symbols** (`-s`, `-w`): Strips debugging information that's useful for development but not needed in production
+2. **Trim file paths** (`-trimpath`): Removes absolute file system paths, making builds reproducible and smaller
+3. **No runtime impact**: These are compile-time optimizations with zero performance overhead
 
 ## Building Optimized Binaries
 
 ### Local Development
 
 ```bash
-# Standard optimized build (18 MB)
+# Standard optimized build (~18 MB)
 make build
 
-# With UPX compression (5.4 MB)
-make build
-upx --best --lzma gzcli
+# Or manually with Go
+go build -trimpath -ldflags="-s -w" -o gzcli .
 ```
 
 ### Release Builds
@@ -86,8 +53,43 @@ make release
 
 The resulting binaries in `dist/` will be:
 - Optimized with build flags
-- UPX compressed (Linux/Windows only)
-- Ready for distribution
+- Ready for distribution across all platforms
+
+## Configuration
+
+### GoReleaser Configuration
+
+From `.goreleaser.yml`:
+
+```yaml
+builds:
+  - id: gzcli
+    binary: gzcli
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/dimasma0305/gzcli/cmd.Version={{.Version}}
+      - -X github.com/dimasma0305/gzcli/cmd.BuildTime={{.Date}}
+      - -X github.com/dimasma0305/gzcli/cmd.GitCommit={{.Commit}}
+```
+
+### Makefile Configuration
+
+For local builds:
+
+```makefile
+LDFLAGS=-ldflags "\
+  -s -w \
+  -X github.com/dimasma0305/gzcli/cmd.Version=${VERSION} \
+  -X github.com/dimasma0305/gzcli/cmd.BuildTime=${BUILD_TIME} \
+  -X github.com/dimasma0305/gzcli/cmd.GitCommit=${GIT_COMMIT}"
+
+build:
+	go build -trimpath $(LDFLAGS) -o gzcli .
+```
 
 ## Verification
 
@@ -104,66 +106,106 @@ To verify the optimizations don't affect functionality:
 make test
 ```
 
+## Size Comparison
+
+### By Platform
+
+| Platform | Architecture | Size (approx) |
+|----------|-------------|---------------|
+| Linux | amd64 | ~18 MB |
+| Linux | arm64 | ~18 MB |
+| Linux | arm v6/v7 | ~17 MB |
+| macOS | Universal | ~19 MB |
+| Windows | amd64 | ~18 MB |
+| Windows | 386 | ~17 MB |
+
+### Compression
+
+Archive formats further reduce download size:
+
+- **tar.gz (Linux/macOS):** ~5-6 MB compressed
+- **zip (Windows):** ~5-6 MB compressed
+
 ## Future Optimization Opportunities
 
 Additional optimizations that could be explored:
 
 1. **Build Tags**: Create separate builds for optional features
    - `gzcli-lite`: Core features only
-   - `gzcli-full`: All features including proxy, email, etc.
+   - `gzcli-full`: All features including optional components
 
 2. **Dependency Analysis:** Review and potentially replace heavy dependencies
-   - `github.com/lqqyt2423/go-mitmproxy`: ✅ **Removed** (~3 MB savings, dead code eliminated)
-   - `github.com/mattn/go-sqlite3`: Evaluate pure-Go alternatives like `modernc.org/sqlite`
-   - QUIC libraries: Check if needed for all use cases (used by req/v3)
+   - Evaluate pure-Go alternatives for dependencies
+   - Remove unused dependencies
 
-3. **Dead Code Elimination:** Use `-tags` to exclude unused code paths
+3. **Dead Code Elimination:** Use build tags to exclude unused code paths
+   - Profile which features are actually used
+   - Create minimal builds for specific use cases
 
-4. **Further Compression:** Experiment with alternative compression tools
-   - `gzexe`: GNU compression wrapper
-   - `appimage`: Self-contained application format
+4. **Module Trimming:** Analyze and remove unused code paths
+   - Use tools like `goweight` to identify large dependencies
+   - Consider alternatives for heavy dependencies
+
+## Why No Additional Compression?
+
+We deliberately chose not to use additional binary packers (like UPX or garble) because:
+
+1. **Simplicity:** Standard Go builds are predictable and widely supported
+2. **Compatibility:** No issues with code signing, antivirus, or platform-specific quirks
+3. **Transparency:** Users can inspect binaries with standard tools
+4. **Debugging:** Easier to debug issues in production if needed
+5. **Build Speed:** Faster builds without additional compression steps
+
+The 33% size reduction from build flags alone provides a good balance between size and simplicity.
 
 ## CI/CD Integration
 
 The optimizations are automatically applied in CI/CD:
 
 - GitHub Actions workflows use the optimized `.goreleaser.yml` configuration
-- UPX is installed in the release workflow
-- All release artifacts are optimized
+- All release artifacts are consistently optimized
+- Build process is reproducible and transparent
 
 ## Troubleshooting
 
-### UPX Antivirus Issues
+### Large Binary Size
 
-Some antivirus software may flag UPX-compressed binaries. To resolve:
+Current binary sizes:
+- All builds: ~18 MB (optimized)
+- Compressed archives: ~5-6 MB
 
-1. Build without UPX for affected users:
-   ```bash
-   make build  # Creates non-UPX binary
-   ```
+To further reduce size:
+1. Use build tags to exclude features
+2. Review dependencies with `go mod graph`
+3. Profile and remove unused code
 
-2. Submit false positive reports to antivirus vendors
+### Version Information Missing
 
-3. Use code signing (recommended for production releases)
+If `gzcli --version` shows "dev", ensure you're building with version flags:
 
-### macOS Code Signing
+```bash
+# Local build with version
+make build VERSION=v1.0.0
 
-UPX-compressed binaries cannot be code-signed on macOS. Options:
-
-1. Skip UPX for macOS (current configuration)
-2. Use universal binaries without UPX
-3. Decompress, sign, then recompress (advanced)
-
-### Startup Time Concerns
-
-If the ~10-20 ms startup overhead from UPX is problematic:
-
-1. Use non-UPX builds for time-critical applications
-2. Consider the trade-off: 5.4 MB vs 18 MB
-3. Profile actual startup time in your environment
+# Or let Makefile auto-detect from git
+make build
+```
 
 ## References
 
 - [Go Build Modes](https://pkg.go.dev/cmd/go)
-- [UPX Documentation](https://upx.github.io/)
-- [GoReleaser UPX Integration](https://goreleaser.com/customization/upx/)
+- [Go Linker Flags](https://pkg.go.dev/cmd/link)
+- [GoReleaser Documentation](https://goreleaser.com/)
+- [Binary Size Optimization Guide](https://github.com/golang/go/wiki/CompilerOptimizations)
+
+## Contributing
+
+When optimizing binary size:
+
+1. **Measure first:** Check current binary size with `ls -lh gzcli`
+2. **Document:** Explain the optimization and expected impact
+3. **Test:** Ensure functionality is maintained
+4. **Verify:** Confirm size reduction across platforms
+5. **Review:** Consider maintainability and complexity trade-offs
+
+For questions or suggestions, open an issue or discussion on GitHub.

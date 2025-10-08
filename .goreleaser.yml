@@ -4,14 +4,10 @@ before:
   hooks:
     - go mod tidy
     - go test ./...
-    - go install mvdan.cc/garble@latest
 
 builds:
   - id: gzcli
     binary: gzcli
-    # Use Garble for build-time optimization and code obfuscation
-    # Reduces binary size by 20-40% without runtime performance penalty
-    gobinary: garble
     env:
       - CGO_ENABLED=0
     goos:

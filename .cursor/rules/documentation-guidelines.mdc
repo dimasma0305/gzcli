@@ -1,0 +1,396 @@
+---
+globs: "*.md"
+---
+# Documentation Guidelines for gzcli
+
+This rule applies to all Markdown documentation files in the project.
+
+## Documentation Structure
+
+### Primary Documentation Files
+
+- [README.md](mdc:README.md) - User-facing documentation, installation, quick start, usage examples
+- [CONTRIBUTING.md](mdc:CONTRIBUTING.md) - Contribution guidelines, development setup, commit conventions
+- [CHANGELOG.md](mdc:CHANGELOG.md) - Auto-generated changelog (do not edit manually)
+
+### Documentation Directory
+
+All detailed documentation lives in [docs/](mdc:docs):
+
+- [docs/development.md](mdc:docs/development.md) - **Comprehensive** development and testing guide
+- [docs/architecture.md](mdc:docs/architecture.md) - System architecture and design decisions
+- [docs/api-reference.md](mdc:docs/api-reference.md) - Internal API documentation
+- [docs/BINARY_OPTIMIZATION.md](mdc:docs/BINARY_OPTIMIZATION.md) - Binary size optimization details
+- [docs/MULTI_EVENT.md](mdc:docs/MULTI_EVENT.md) - Multi-event management guide
+- [docs/PERFORMANCE.md](mdc:docs/PERFORMANCE.md) - Performance optimization guide
+- [docs/VERSIONING.md](mdc:docs/VERSIONING.md) - Automated semantic versioning
+- [docs/COMPLETION.md](mdc:docs/COMPLETION.md) - Shell completion guide
+
+## Cross-Referencing Conventions
+
+### Linking to Documentation
+
+When referencing other documentation files, use relative links:
+
+**From root-level files:**
+```markdown
+See [Development & Testing Guide](docs/development.md) for details.
+See [Architecture Documentation](docs/architecture.md) for design decisions.
+```
+
+**From docs/ files to other docs/ files:**
+```markdown
+See [development.md](development.md) for testing information.
+See [api-reference.md](api-reference.md) for API details.
+```
+
+**From docs/ files to root files:**
+```markdown
+See [Contributing Guidelines](../CONTRIBUTING.md) for contribution process.
+See [README](../README.md) for installation instructions.
+```
+
+### Linking to Sections
+
+Use anchor links for specific sections:
+
+```markdown
+See [Testing Section](docs/development.md#testing) for test guidelines.
+See [Architecture Overview](docs/architecture.md#architecture-overview) for details.
+```
+
+### Linking to Code Files
+
+Reference code files directly:
+```markdown
+The main entry point is in `main.go`.
+See `internal/gzcli/gzapi/` for API client implementation.
+```
+
+## Writing Style
+
+### Tone and Voice
+
+- **Clear and Concise**: Get to the point quickly
+- **Professional but Friendly**: Welcoming to newcomers
+- **Active Voice**: "Run the command" not "The command should be run"
+- **Second Person**: Address reader as "you"
+
+### Code Examples
+
+Always provide complete, runnable examples:
+
+```markdown
+# Good Example
+```bash
+# Initialize a new CTF project
+gzcli init --url https://ctf.example.com
+
+# Sync challenges
+gzcli sync
+```
+
+# Bad Example
+```bash
+gzcli init
+# ... configure ...
+# ... sync ...
+```
+```
+
+### Command Documentation
+
+When documenting commands:
+
+1. **Show the command:**
+   ```bash
+   gzcli watch start --foreground
+   ```
+
+2. **Explain what it does:**
+   Starts the file watcher in foreground mode, displaying logs in the terminal.
+
+3. **Show relevant options:**
+   - `--foreground`: Run in foreground (don't daemonize)
+   - `--debounce 5s`: Custom debounce duration
+   - `--event ctf2024`: Watch specific event
+
+4. **Provide examples:**
+   ```bash
+   # Watch specific event
+   gzcli watch start --event ctf2024
+   ```
+
+## Consistency Requirements
+
+### Technical Terms
+
+Use consistent terminology:
+
+- **"challenge"** not "task" or "problem"
+- **"event"** not "competition" or "CTF" (when referring to the event entity)
+- **"sync"** not "upload" or "deploy" (for the sync operation)
+- **"watcher"** not "monitor" or "observer"
+
+### File Paths
+
+- Use relative paths in examples: `./challenges/web/xss`
+- Use absolute paths for clarity when needed: `/home/user/.gzctf/conf.yaml`
+- Always use forward slashes, even for Windows examples
+
+### Code References
+
+- Commands: Use backticks: `gzcli sync`
+- File paths: Use backticks: `cmd/sync.go`
+- Configuration keys: Use backticks: `url`, `creds.username`
+- Environment variables: Use backticks and all caps: `GZCLI_DEBUG`
+
+### Version Numbers
+
+- Use semantic versioning format: `v1.2.3`
+- Don't specify versions in examples unless necessary
+- When showing version output, use realistic examples
+
+### Binary Sizes
+
+Current standard sizes (as of latest optimization):
+- **Release binaries:** ~18 MB (with standard build flags)
+- **Compressed archives:** ~5-6 MB
+
+Always reference the actual build process (standard Go build with `-trimpath`, `-s`, `-w` flags).
+
+## Section Organization
+
+### README Structure
+
+The README should have this order:
+1. Title and badges
+2. Description and key features
+3. Installation (quick install first)
+4. Usage (quick start, then detailed)
+5. Configuration
+6. Documentation links
+7. Development
+8. Contributing
+9. Community
+10. License
+
+### Documentation File Structure
+
+Each documentation file should have:
+
+1. **Title (H1):** Clear, descriptive title
+2. **Overview/Description:** Brief introduction
+3. **Table of Contents:** For files > 200 lines
+4. **Main Content:** Well-organized sections
+5. **Examples:** Practical examples throughout
+6. **References/See Also:** Links to related docs
+7. **Getting Help:** How to get support (if applicable)
+
+## Code Blocks
+
+### Syntax Highlighting
+
+Always specify the language:
+
+```markdown
+```bash
+gzcli sync
+```
+
+```go
+func main() {
+    fmt.Println("Hello")
+}
+```
+
+```yaml
+url: https://example.com
+```
+```
+
+### Command Output
+
+Show expected output when helpful:
+
+```markdown
+```bash
+$ gzcli --version
+gzcli version v1.2.3
+Commit: abc1234
+Built: 2025-10-07_12:34:56
+```
+```
+
+### Configuration Examples
+
+Provide complete, valid configuration examples:
+
+```yaml
+# .gzctf/conf.yaml
+url: https://ctf.example.com
+creds:
+  username: admin
+  password: your_password
+```
+
+## Updating Documentation
+
+### When to Update
+
+Update documentation when:
+- Adding new features or commands
+- Changing existing functionality
+- Fixing bugs that affect usage
+- Updating dependencies with user-facing changes
+- Improving build or development process
+
+### What to Update
+
+Check and update these files as needed:
+- **README.md:** If user-facing functionality changes
+- **docs/development.md:** If development process changes
+- **CONTRIBUTING.md:** If contribution process changes
+- **docs/architecture.md:** If architecture changes
+- **docs/api-reference.md:** If internal APIs change
+
+### Keeping Docs in Sync
+
+- Update examples to match actual code behavior
+- Verify all links still work
+- Check that command examples are current
+- Ensure configuration examples are valid
+- Update version numbers and dates as needed
+
+## Multi-Event Documentation
+
+When documenting multi-event features:
+
+1. **Explain the default behavior:**
+   "By default, most commands operate on ALL events."
+
+2. **Show event selection:**
+   ```bash
+   # Operate on specific event
+   gzcli sync --event ctf2024
+
+   # Exclude specific event
+   gzcli sync --exclude-event practice
+   ```
+
+3. **Reference the multi-event guide:**
+   See [Multi-Event Management](docs/MULTI_EVENT.md) for details.
+
+## Commit Message Impact on Docs
+
+Remember that commit messages affect the changelog:
+
+- **feat**: Appears in "New Features"
+- **fix**: Appears in "Bug Fixes"
+- **perf**: Appears in "Performance Improvements"
+- **docs**: May appear in "Documentation" (if significant)
+
+Keep commit messages clear since they become user-facing changelog entries.
+
+## Special Sections
+
+### Installation Scripts
+
+Document installation scripts with:
+- Supported platforms
+- What the script does
+- Alternative installation methods
+- Troubleshooting common issues
+
+### Configuration Files
+
+Document configuration with:
+- YAML structure and examples
+- Required vs optional fields
+- Default values
+- Validation rules
+- Example use cases
+
+### Command Reference
+
+Document commands with:
+- Command syntax
+- Description
+- Flags and options
+- Examples (multiple if complex)
+- Related commands
+
+## Diagrams and Visual Aids
+
+### ASCII Diagrams
+
+Use ASCII diagrams for architecture and flows:
+
+```
+┌─────────────────────┐
+│     CLI Layer       │
+└──────────┬──────────┘
+           │
+┌──────────▼──────────┐
+│  Business Logic     │
+└─────────────────────┘
+```
+
+### Directory Trees
+
+Use standard tree format:
+
+```
+gzcli/
+├── cmd/
+│   ├── root.go
+│   └── sync.go
+├── internal/
+│   └── gzcli/
+└── main.go
+```
+
+## Quality Checklist
+
+Before committing documentation changes:
+
+- [ ] All links work correctly
+- [ ] Code examples are tested and working
+- [ ] Spelling and grammar are correct
+- [ ] Formatting is consistent
+- [ ] Cross-references are accurate
+- [ ] Version information is current
+- [ ] Examples match actual behavior
+- [ ] New features are documented
+- [ ] Breaking changes are clearly noted
+
+## Common Mistakes to Avoid
+
+❌ **Don't:**
+- Reference UPX or garble (we use standard Go build flags only)
+- Link to deleted files (TESTING.md, DEVELOPMENT.md no longer exist)
+- Use inconsistent terminology
+- Provide incomplete examples
+- Leave broken links
+- Copy outdated examples
+- Forget to update cross-references
+
+✅ **Do:**
+- Reference standard build flags (`-trimpath`, `-s`, `-w`) for optimization
+- Link to docs/development.md for dev/test info
+- Use consistent terms throughout
+- Provide complete, tested examples
+- Verify all links work
+- Test examples before committing
+- Update related documentation together
+
+## Getting Help with Documentation
+
+If you're unsure about documentation:
+
+1. Check existing docs for patterns
+2. Look at recent commits for examples
+3. Ask in GitHub Discussions
+4. Open a draft PR for feedback
+
+Remember: Good documentation is as important as good code!
