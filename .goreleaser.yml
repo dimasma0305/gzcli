@@ -4,10 +4,14 @@ before:
   hooks:
     - go mod tidy
     - go test ./...
+    - go install mvdan.cc/garble@latest
 
 builds:
   - id: gzcli
     binary: gzcli
+    # Use Garble for build-time optimization and code obfuscation
+    # Reduces binary size by 20-40% without runtime performance penalty
+    gobinary: garble
     env:
       - CGO_ENABLED=0
     goos:
@@ -43,19 +47,6 @@ builds:
 universal_binaries:
   - id: gzcli-darwin
     replace: true
-
-# UPX compression for smaller binaries
-# Note: UPX may trigger false positives in some antivirus software
-# and adds ~10-20ms to startup time, but reduces size by 50-70%
-upx:
-  - enabled: true
-    goos: [linux, windows]
-    goarch: [amd64, arm64, arm, "386"]
-    # Compression level: 1-9 (1=fast, 9=best compression)
-    # Level 9 gives best compression but takes longer to build
-    compress: best
-    # Level 1-9 numeric value (9 = best compression)
-    lzma: true
 
 archives:
   - id: gzcli-archive
