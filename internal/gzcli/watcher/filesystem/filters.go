@@ -173,6 +173,10 @@ func DetermineUpdateType(filePath string, challengeCwd string) watchertypes.Upda
 		return watchertypes.UpdateFullRedeploy // Default to full redeploy on error
 	}
 
+	// Normalize path separators for consistent matching on Windows and Unix
+	// Convert backslashes to forward slashes
+	relPath = filepath.ToSlash(relPath)
+
 	// Check if it's in solver directory - no update needed
 	if strings.HasPrefix(relPath, "solver/") || strings.HasPrefix(relPath, "writeup/") {
 		log.InfoH3("File is in solver/writeup directory, skipping update")

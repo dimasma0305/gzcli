@@ -19,20 +19,15 @@ func TestInitWithEvent_StoresEventName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Errorf("Failed to restore directory: %v", err)
-		}
-	}()
 
 	tmpDir, err := os.MkdirTemp("", "gzcli-multievent-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Errorf("Failed to remove temp dir: %v", err)
-		}
+		// Important: Change directory before cleanup on Windows
+		_ = os.Chdir(originalDir)
+		_ = os.RemoveAll(tmpDir)
 	}()
 
 	if err := os.Chdir(tmpDir); err != nil {
@@ -144,20 +139,15 @@ func TestEventIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Errorf("Failed to restore directory: %v", err)
-		}
-	}()
 
 	tmpDir, err := os.MkdirTemp("", "gzcli-event-isolation-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Errorf("Failed to remove temp dir: %v", err)
-		}
+		// Important: Change directory before cleanup on Windows
+		_ = os.Chdir(originalDir)
+		_ = os.RemoveAll(tmpDir)
 	}()
 
 	if err := os.Chdir(tmpDir); err != nil {
