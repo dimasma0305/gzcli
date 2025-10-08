@@ -1,3 +1,9 @@
+## [1.5.1](https://github.com/dimasma0305/gzcli/compare/v1.5.0...v1.5.1) (2025-10-08)
+
+### Bug Fixes
+
+* resolve symlink paths for event poster configuration ([a162dd2](https://github.com/dimasma0305/gzcli/commit/a162dd2360191ac6795709a32d992c342402a71a))
+
 ## [1.5.0](https://github.com/dimasma0305/gzcli/compare/v1.4.1...v1.5.0) (2025-10-08)
 
 ### Features
