@@ -1,5 +1,4 @@
-//nolint:revive,gosec // utils is a common and acceptable package name; test files use 0644 permissions
-package utils
+package fileutil
 
 import (
 	"os"
@@ -194,7 +193,7 @@ tags:
   - testing
 `)
 
-	if err := os.WriteFile(testFile, yamlData, 0644); err != nil {
+	if err := os.WriteFile(testFile, yamlData, 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -235,7 +234,7 @@ func TestParseYamlFromFile_EmptyFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "empty.yaml")
 
-	if err := os.WriteFile(testFile, []byte{}, 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte{}, 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -261,7 +260,7 @@ name: Bob
 age: not_a_number
 `)
 
-	if err := os.WriteFile(testFile, invalidYaml, 0644); err != nil {
+	if err := os.WriteFile(testFile, invalidYaml, 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -287,7 +286,7 @@ func TestParseYamlFromFile_LargeFile(t *testing.T) {
 		yamlData += "  - tag" + string(rune('0'+i%10)) + "\n"
 	}
 
-	if err := os.WriteFile(testFile, []byte(yamlData), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(yamlData), 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -320,7 +319,7 @@ func TestParseYamlFromFile_PermissionDenied(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "noperm.yaml")
 
-	if err := os.WriteFile(testFile, []byte("name: test"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("name: test"), 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -328,7 +327,7 @@ func TestParseYamlFromFile_PermissionDenied(t *testing.T) {
 	if err := os.Chmod(testFile, 0000); err != nil {
 		t.Fatalf("Failed to change file permissions: %v", err)
 	}
-	defer func() { _ = os.Chmod(testFile, 0644) }() // Cleanup
+	defer func() { _ = os.Chmod(testFile, 0600) }() // Cleanup
 
 	var result testStruct
 	err := ParseYamlFromFile(testFile, &result)
@@ -355,7 +354,7 @@ nested:
   field2: 100
 `)
 
-	if err := os.WriteFile(testFile, yamlData, 0644); err != nil {
+	if err := os.WriteFile(testFile, yamlData, 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 

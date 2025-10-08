@@ -1,4 +1,4 @@
-// Package utils provides file operation utilities for challenge management.
+// Package fileutil provides file operation utilities for challenge management.
 //
 // This package includes high-performance file operations optimized for CTF challenges:
 //   - File name normalization for cross-platform compatibility
@@ -9,21 +9,21 @@
 // Example usage:
 //
 //	// Normalize filename
-//	safe := utils.NormalizeFileName("My Challenge!")  // Returns: "mychallenge"
+//	safe := fileutil.NormalizeFileName("My Challenge!")  // Returns: "mychallenge"
 //
 //	// Calculate file hash
-//	hash, err := utils.GetFileHashHex("challenge.zip")
+//	hash, err := fileutil.GetFileHashHex("challenge.zip")
 //
 //	// Copy file
-//	if err := utils.CopyFile("src.txt", "dst.txt"); err != nil {
+//	if err := fileutil.CopyFile("src.txt", "dst.txt"); err != nil {
 //	    log.Fatal(err)
 //	}
 //
 //	// Create ZIP archive
-//	if err := utils.ZipSource("./challenge", "challenge.zip"); err != nil {
+//	if err := fileutil.ZipSource("./challenge", "challenge.zip"); err != nil {
 //	    log.Fatal(err)
 //	}
-package utils
+package fileutil
 
 import (
 	"archive/zip"

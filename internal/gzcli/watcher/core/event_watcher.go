@@ -14,8 +14,8 @@ import (
 
 	challengepkg "github.com/dimasma0305/gzcli/internal/gzcli/challenge"
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
+	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
-	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/challenge"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/database"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/filesystem"
@@ -472,7 +472,7 @@ func (ew *EventWatcher) syncSingleChallenge(challengeName, challengePath string)
 
 	// Load the challenge configuration
 	var challengeConf config.ChallengeYaml
-	if err := utils.ParseYamlFromFile(challengeYamlPath, &challengeConf); err != nil {
+	if err := fileutil.ParseYamlFromFile(challengeYamlPath, &challengeConf); err != nil {
 		return fmt.Errorf("failed to parse challenge YAML: %w", err)
 	}
 

@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
-	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
+	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -33,7 +33,7 @@ var portParser = NewPortParser()
 // processChallengeFile processes a single challenge file and adds it to the manager
 func (cm *ChallengeManager) processChallengeFile(path, eventName, category string) error {
 	var challYaml config.ChallengeYaml
-	if err := utils.ParseYamlFromFile(path, &challYaml); err != nil {
+	if err := fileutil.ParseYamlFromFile(path, &challYaml); err != nil {
 		return fmt.Errorf("failed to parse: %w", err)
 	}
 

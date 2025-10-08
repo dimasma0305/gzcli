@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
-	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -32,7 +32,7 @@ func GetEventConfig(eventName string) (*EventConfig, error) {
 	eventDir := filepath.Join(dir, EVENTS_DIR, eventName)
 	eventPath := filepath.Join(eventDir, GZEVENT_FILE)
 	var game gzapi.Game
-	if err := utils.ParseYamlFromFile(eventPath, &game); err != nil {
+	if err := fileutil.ParseYamlFromFile(eventPath, &game); err != nil {
 		return nil, fmt.Errorf("failed to read event config %s: %w", eventPath, err)
 	}
 

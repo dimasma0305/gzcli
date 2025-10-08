@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
+	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
-	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
 )
 
 func createPosterIfNotExistOrDifferent(file string, game *gzapi.Game, client *gzapi.GZAPI) (string, error) {
@@ -15,7 +15,7 @@ func createPosterIfNotExistOrDifferent(file string, game *gzapi.Game, client *gz
 		return "", err
 	}
 
-	hash, err := utils.GetFileHashHex(file)
+	hash, err := fileutil.GetFileHashHex(file)
 	if err != nil {
 		return "", err
 	}

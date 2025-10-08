@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
-	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
 )
 
 // ServerConfig represents server-level configuration
@@ -25,7 +25,7 @@ func GetServerConfig() (*ServerConfig, error) {
 
 	confPath := filepath.Join(dir, GZCTF_DIR, CONFIG_FILE)
 	var config ServerConfig
-	if err := utils.ParseYamlFromFile(confPath, &config); err != nil {
+	if err := fileutil.ParseYamlFromFile(confPath, &config); err != nil {
 		return nil, fmt.Errorf("failed to read server config %s: %w", confPath, err)
 	}
 

@@ -12,7 +12,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
+	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -155,7 +155,7 @@ func GenerateSlug(eventName string, category string, challengeName string) strin
 // processChallengeFile processes a single challenge file
 func processChallengeFile(path string, category string, content []byte) (ChallengeYaml, error) {
 	var challenge ChallengeYaml
-	if err := utils.ParseYamlFromBytes(content, &challenge); err != nil {
+	if err := fileutil.ParseYamlFromBytes(content, &challenge); err != nil {
 		return challenge, fmt.Errorf("yaml parse error: %w %s", err, path)
 	}
 
@@ -187,7 +187,7 @@ func processChallengeTemplate(eventName string, content []byte, challenge Challe
 		return challenge, fmt.Errorf("template execution error: %w", err)
 	}
 
-	if err := utils.ParseYamlFromBytes(buf.Bytes(), &challenge); err != nil {
+	if err := fileutil.ParseYamlFromBytes(buf.Bytes(), &challenge); err != nil {
 		return challenge, fmt.Errorf("yaml parse error: %w %s", err, path)
 	}
 

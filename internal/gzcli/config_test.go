@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
+	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 )
 
 func TestNormalizeFileName(t *testing.T) {
@@ -43,7 +43,7 @@ func TestNormalizeFileName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := utils.NormalizeFileName(tt.input)
+			got := fileutil.NormalizeFileName(tt.input)
 			if got != tt.want {
 				t.Errorf("NormalizeFileName(%q) = %q, want %q", tt.input, got, tt.want)
 			}
@@ -77,7 +77,7 @@ func TestParseYamlFromBytes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var result map[string]interface{}
-			err := utils.ParseYamlFromBytes(tt.input, &result)
+			err := fileutil.ParseYamlFromBytes(tt.input, &result)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseYamlFromBytes() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -114,7 +114,7 @@ func TestGetFileHashHex(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := utils.GetFileHashHex(tt.file)
+			got, err := fileutil.GetFileHashHex(tt.file)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetFileHashHex() error = %v, wantErr %v", err, tt.wantErr)
 				return

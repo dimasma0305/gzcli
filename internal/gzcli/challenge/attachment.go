@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
-	"github.com/dimasma0305/gzcli/internal/gzcli/utils"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -56,7 +56,7 @@ func HandleLocalAttachment(challengeConf ChallengeYaml, challengeData *gzapi.Cha
 
 	zipFilename := "dist.zip"
 	// Write zip to temp dir to avoid triggering watcher events inside challenge dir
-	zipOutput := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%s", utils.NormalizeFileName(challengeConf.Name), zipFilename))
+	zipOutput := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%s", fileutil.NormalizeFileName(challengeConf.Name), zipFilename))
 	attachmentPath := filepath.Join(challengeConf.Cwd, *challengeConf.Provide)
 
 	// Artifact path that will be used for upload/uniqueness processing
@@ -66,7 +66,7 @@ func HandleLocalAttachment(challengeConf ChallengeYaml, challengeData *gzapi.Cha
 	log.InfoH3("Checking attachment path: %s", attachmentPath)
 	if info, err := os.Stat(attachmentPath); err != nil || info.IsDir() {
 		log.InfoH3("Creating zip file for %s from: %s", challengeConf.Name, attachmentPath)
-		if err := utils.ZipSource(attachmentPath, zipOutput); err != nil {
+		if err := fileutil.ZipSource(attachmentPath, zipOutput); err != nil {
 			log.Error("Failed to create zip for %s: %v", challengeConf.Name, err)
 			return fmt.Errorf("zip creation failed for %s: %w", challengeConf.Name, err)
 		}
@@ -83,7 +83,7 @@ func HandleLocalAttachment(challengeConf ChallengeYaml, challengeData *gzapi.Cha
 	// Create a unique attachment file name while preserving extension
 	ext := filepath.Ext(artifactBase)
 	nameNoExt := strings.TrimSuffix(artifactBase, ext)
-	sanitizedBase := utils.NormalizeFileName(fmt.Sprintf("%s_%s", challengeConf.Name, nameNoExt))
+	sanitizedBase := fileutil.NormalizeFileName(fmt.Sprintf("%s_%s", challengeConf.Name, nameNoExt))
 	uniqueFilename := sanitizedBase + ext
 	uniqueFilePath := filepath.Join(os.TempDir(), uniqueFilename)
 
@@ -146,7 +146,7 @@ func HandleLocalAttachment(challengeConf ChallengeYaml, challengeData *gzapi.Cha
 // CreateUniqueAttachmentFile creates a unique version of the attachment file by appending metadata
 func CreateUniqueAttachmentFile(srcPath, dstPath, challengeName string) error {
 	// Copy the original file
-	if err := utils.CopyFile(srcPath, dstPath); err != nil {
+	if err := fileutil.CopyFile(srcPath, dstPath); err != nil {
 		return err
 	}
 
@@ -166,7 +166,7 @@ func CreateUniqueAttachmentFile(srcPath, dstPath, challengeName string) error {
 
 // CreateAssetsIfNotExistOrDifferent creates assets if they don't exist or are different
 func CreateAssetsIfNotExistOrDifferent(filePath string, api *gzapi.GZAPI) (*gzapi.FileInfo, error) {
-	hash, err := utils.GetFileHashHex(filePath)
+	hash, err := fileutil.GetFileHashHex(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file hash: %w", err)
 	}
