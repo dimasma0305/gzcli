@@ -1,4 +1,20 @@
-// Package script provides utilities for running challenge scripts
+// Package script provides utilities for running challenge scripts concurrently.
+//
+// This package handles the execution of build, test, and deployment scripts
+// across multiple challenges using a worker pool for optimal performance.
+//
+// Example usage:
+//
+//	challenges := []ChallengeConf{challenge1, challenge2, challenge3}
+//
+//	runScript := func(conf ChallengeConf, scriptName string) error {
+//	    cmd := exec.Command("sh", "-c", conf.GetScripts()[scriptName].GetCommand())
+//	    return cmd.Run()
+//	}
+//
+//	if err := script.RunScripts("build", challenges, runScript); err != nil {
+//	    log.Fatalf("Script execution failed: %v", err)
+//	}
 package script
 
 import (

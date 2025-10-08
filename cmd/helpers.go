@@ -66,4 +66,3 @@ func contains(slice []string, item string) bool {
 	}
 	return false
 }
-
