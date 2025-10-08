@@ -1,3 +1,4 @@
+//nolint:gosec // Test files use 0644 permissions in temporary directories
 package structure
 
 import (

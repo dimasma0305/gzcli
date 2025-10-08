@@ -1,4 +1,4 @@
-//nolint:revive // Test file with intentionally unused parameters for interface compatibility
+//nolint:revive,unparam // Test file with intentionally unused parameters for interface compatibility
 package script
 
 import (
