@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
-func HandleChallengeAttachments(challengeConf ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
+func HandleChallengeAttachments(challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
 	log.InfoH3("Processing attachments for challenge: %s", challengeConf.Name)
 
 	switch {
@@ -51,7 +52,7 @@ func HandleChallengeAttachments(challengeConf ChallengeYaml, challengeData *gzap
 	return nil
 }
 
-func HandleLocalAttachment(challengeConf ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
+func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
 	log.InfoH3("Creating local attachment for %s", challengeConf.Name)
 
 	zipFilename := "dist.zip"

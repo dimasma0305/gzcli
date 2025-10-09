@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -22,7 +23,7 @@ const (
 )
 
 // IsGoodChallenge validates a challenge configuration for required fields and correct values
-func IsGoodChallenge(challenge ChallengeYaml) error {
+func IsGoodChallenge(challenge config.ChallengeYaml) error {
 	var errors []string
 
 	if challenge.Name == "" {
@@ -57,7 +58,7 @@ func IsGoodChallenge(challenge ChallengeYaml) error {
 }
 
 // ValidateChallenges validates all challenges and checks for duplicate names
-func ValidateChallenges(challengesConf []ChallengeYaml) error {
+func ValidateChallenges(challengesConf []config.ChallengeYaml) error {
 	// Track seen names and duplicate occurrences
 	seenNames := make(map[string]int, len(challengesConf))
 	var duplicates []string

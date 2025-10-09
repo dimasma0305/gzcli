@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/log"
 	"github.com/dimasma0305/gzcli/internal/template"
 )
 
-func GenStructure(challenges []ChallengeYaml) error {
+func GenStructure(challenges []config.ChallengeYaml) error {
 	// Read the .structure file
 	_, err := os.ReadDir(".structure")
 	if err != nil {

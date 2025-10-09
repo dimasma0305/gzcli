@@ -287,7 +287,7 @@ func (gz *GZ) Sync() error {
 	}
 	log.Info("Found %d games", len(games))
 
-	currentGame := findCurrentGameWrapper(games, conf.Event.Title, gz.api)
+	currentGame := challenge.FindCurrentGame(games, conf.Event.Title, gz.api)
 	if currentGame == nil {
 		log.Info("Current game not found, clearing cache and retrying...")
 		_ = DeleteCache("config")
@@ -297,7 +297,7 @@ func (gz *GZ) Sync() error {
 
 	if gz.UpdateGame {
 		log.Info("Updating game configuration...")
-		if err := updateGameIfNeededWrapper(conf, currentGame, gz.api); err != nil {
+		if err := challenge.UpdateGameIfNeeded(conf, currentGame, gz.api, createPosterIfNotExistOrDifferent, setCache); err != nil {
 			log.Error("Failed to update game: %v", err)
 			return fmt.Errorf("game update error: %w", err)
 		}
@@ -305,7 +305,7 @@ func (gz *GZ) Sync() error {
 	}
 
 	log.Info("Validating challenges...")
-	if err := validateChallengesWrapper(challengesConf); err != nil {
+	if err := challenge.ValidateChallenges(challengesConf); err != nil {
 		log.Error("Challenge validation failed: %v", err)
 		return fmt.Errorf("validation error: %w", err)
 	}
@@ -350,7 +350,7 @@ func (gz *GZ) Sync() error {
 			defer mutex.Unlock()
 
 			log.Info("Processing challenge: %s", c.Name)
-			if err := syncChallengeWrapper(conf, c, challenges, gz.api); err != nil {
+			if err := challenge.SyncChallenge(conf, c, challenges, gz.api, GetCache, setCache); err != nil {
 				log.Error("Failed to sync challenge %s: %v", c.Name, err)
 				errChan <- fmt.Errorf("challenge sync failed for %s: %w", c.Name, err)
 				failureCount++

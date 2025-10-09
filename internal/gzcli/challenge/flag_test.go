@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 )
 
@@ -68,14 +69,14 @@ func TestUpdateChallengeFlags_CreateNew(t *testing.T) {
 	})
 	defer cleanup()
 
-	config := &Config{
+	conf := &config.Config{
 		Event: gzapi.Game{
 			Id: 1,
 			CS: api,
 		},
 	}
 
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Flags: []string{"FLAG{new}"},
 	}
 
@@ -86,7 +87,7 @@ func TestUpdateChallengeFlags_CreateNew(t *testing.T) {
 		Flags:  []gzapi.Flag{}, // No existing flags
 	}
 
-	err := UpdateChallengeFlags(config, challengeConf, challengeData)
+	err := UpdateChallengeFlags(conf, challengeConf, challengeData)
 	if err != nil {
 		t.Errorf("UpdateChallengeFlags() failed: %v", err)
 	}
@@ -115,14 +116,14 @@ func TestUpdateChallengeFlags_DeleteOld(t *testing.T) {
 	})
 	defer cleanup()
 
-	config := &Config{
+	conf := &config.Config{
 		Event: gzapi.Game{
 			Id: 1,
 			CS: api,
 		},
 	}
 
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Flags: []string{"FLAG{keep}"},
 	}
 
@@ -136,7 +137,7 @@ func TestUpdateChallengeFlags_DeleteOld(t *testing.T) {
 		},
 	}
 
-	err := UpdateChallengeFlags(config, challengeConf, challengeData)
+	err := UpdateChallengeFlags(conf, challengeConf, challengeData)
 	if err != nil {
 		t.Errorf("UpdateChallengeFlags() failed: %v", err)
 	}
@@ -150,14 +151,14 @@ func TestUpdateChallengeFlags_NoChanges(t *testing.T) {
 	api, cleanup := mockGZAPI(t, nil)
 	defer cleanup()
 
-	config := &Config{
+	conf := &config.Config{
 		Event: gzapi.Game{
 			Id: 1,
 			CS: api,
 		},
 	}
 
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Flags: []string{"FLAG{existing}"},
 	}
 
@@ -170,7 +171,7 @@ func TestUpdateChallengeFlags_NoChanges(t *testing.T) {
 		},
 	}
 
-	err := UpdateChallengeFlags(config, challengeConf, challengeData)
+	err := UpdateChallengeFlags(conf, challengeConf, challengeData)
 	if err != nil {
 		t.Errorf("UpdateChallengeFlags() with no changes failed: %v", err)
 	}

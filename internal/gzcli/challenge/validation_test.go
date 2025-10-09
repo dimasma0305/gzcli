@@ -4,16 +4,18 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 )
 
 func TestIsGoodChallenge_Valid(t *testing.T) {
 	tests := []struct {
 		name      string
-		challenge ChallengeYaml
+		challenge config.ChallengeYaml
 	}{
 		{
 			name: "valid static attachment challenge",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Test Challenge",
 				Author:      "test-author",
 				Description: "Test description",
@@ -24,7 +26,7 @@ func TestIsGoodChallenge_Valid(t *testing.T) {
 		},
 		{
 			name: "valid static container challenge",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Container Challenge",
 				Author:      "test-author",
 				Description: "Container test",
@@ -35,20 +37,20 @@ func TestIsGoodChallenge_Valid(t *testing.T) {
 		},
 		{
 			name: "valid dynamic container challenge",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Dynamic Challenge",
 				Author:      "test-author",
 				Description: "Dynamic test",
 				Type:        "DynamicContainer",
 				Value:       500,
-				Container: Container{
+				Container: config.Container{
 					FlagTemplate: "FLAG{[TEAM_HASH]}",
 				},
 			},
 		},
 		{
 			name: "valid dynamic attachment challenge",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Dynamic Attachment",
 				Author:      "test-author",
 				Description: "Dynamic attachment test",
@@ -71,12 +73,12 @@ func TestIsGoodChallenge_Valid(t *testing.T) {
 func TestIsGoodChallenge_Invalid(t *testing.T) {
 	tests := []struct {
 		name          string
-		challenge     ChallengeYaml
+		challenge     config.ChallengeYaml
 		expectedError string
 	}{
 		{
 			name: "missing name",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Author:      "test-author",
 				Description: "Test",
 				Type:        "StaticAttachment",
@@ -87,7 +89,7 @@ func TestIsGoodChallenge_Invalid(t *testing.T) {
 		},
 		{
 			name: "missing author",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Test",
 				Description: "Test",
 				Type:        "StaticAttachment",
@@ -98,7 +100,7 @@ func TestIsGoodChallenge_Invalid(t *testing.T) {
 		},
 		{
 			name: "invalid type",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Test",
 				Author:      "test-author",
 				Description: "Test",
@@ -110,7 +112,7 @@ func TestIsGoodChallenge_Invalid(t *testing.T) {
 		},
 		{
 			name: "negative value",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Test",
 				Author:      "test-author",
 				Description: "Test",
@@ -122,7 +124,7 @@ func TestIsGoodChallenge_Invalid(t *testing.T) {
 		},
 		{
 			name: "static attachment missing flags",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Test",
 				Author:      "test-author",
 				Description: "Test",
@@ -134,7 +136,7 @@ func TestIsGoodChallenge_Invalid(t *testing.T) {
 		},
 		{
 			name: "static container missing flags",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Test",
 				Author:      "test-author",
 				Description: "Test",
@@ -145,13 +147,13 @@ func TestIsGoodChallenge_Invalid(t *testing.T) {
 		},
 		{
 			name: "dynamic container missing flag template",
-			challenge: ChallengeYaml{
+			challenge: config.ChallengeYaml{
 				Name:        "Test",
 				Author:      "test-author",
 				Description: "Test",
 				Type:        "DynamicContainer",
 				Value:       100,
-				Container:   Container{},
+				Container:   config.Container{},
 			},
 			expectedError: "missing flag template",
 		},
@@ -172,7 +174,7 @@ func TestIsGoodChallenge_Invalid(t *testing.T) {
 }
 
 func TestValidateChallenges_NoDuplicates(t *testing.T) {
-	challenges := []ChallengeYaml{
+	challenges := []config.ChallengeYaml{
 		{
 			Name:        "Challenge 1",
 			Author:      "author1",
@@ -200,7 +202,7 @@ func TestValidateChallenges_NoDuplicates(t *testing.T) {
 }
 
 func TestValidateChallenges_WithDuplicates(t *testing.T) {
-	challenges := []ChallengeYaml{
+	challenges := []config.ChallengeYaml{
 		{
 			Name:        "Duplicate Challenge",
 			Author:      "author1",
@@ -237,7 +239,7 @@ func TestValidateChallenges_WithDuplicates(t *testing.T) {
 }
 
 func TestValidateChallenges_MultipleDuplicates(t *testing.T) {
-	challenges := []ChallengeYaml{
+	challenges := []config.ChallengeYaml{
 		{
 			Name:   "Challenge A",
 			Author: "author1",
@@ -288,7 +290,7 @@ func TestValidateChallenges_MultipleDuplicates(t *testing.T) {
 }
 
 func TestValidateChallenges_InvalidChallenge(t *testing.T) {
-	challenges := []ChallengeYaml{
+	challenges := []config.ChallengeYaml{
 		{
 			Name:        "Valid Challenge",
 			Author:      "author1",
@@ -389,7 +391,7 @@ func TestValidateInterval(t *testing.T) {
 }
 
 func TestValidateChallenges_EmptyList(t *testing.T) {
-	challenges := []ChallengeYaml{}
+	challenges := []config.ChallengeYaml{}
 
 	err := ValidateChallenges(challenges)
 	if err != nil {
@@ -407,7 +409,7 @@ func TestIsGoodChallenge_AllTypes(t *testing.T) {
 
 	for _, challengeType := range types {
 		t.Run(challengeType, func(t *testing.T) {
-			challenge := ChallengeYaml{
+			challenge := config.ChallengeYaml{
 				Name:        "Test " + challengeType,
 				Author:      "test-author",
 				Description: "Test",
@@ -434,7 +436,7 @@ func TestIsGoodChallenge_AllTypes(t *testing.T) {
 }
 
 func TestIsGoodChallenge_ZeroValue(t *testing.T) {
-	challenge := ChallengeYaml{
+	challenge := config.ChallengeYaml{
 		Name:        "Zero Value Challenge",
 		Author:      "test-author",
 		Description: "Test with zero value",

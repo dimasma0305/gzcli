@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 )
 
 func TestGetShell(t *testing.T) {
@@ -59,9 +61,9 @@ func TestGetShell(t *testing.T) {
 }
 
 func TestRunScript_NoScript(t *testing.T) {
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name:    "Test Challenge",
-		Scripts: map[string]ScriptValue{},
+		Scripts: map[string]config.ScriptValue{},
 	}
 
 	err := RunScript(challengeConf, "nonexistent")
@@ -71,12 +73,12 @@ func TestRunScript_NoScript(t *testing.T) {
 }
 
 func TestRunScript_WithDashboard(t *testing.T) {
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name: "Dashboard Challenge",
-		Scripts: map[string]ScriptValue{
+		Scripts: map[string]config.ScriptValue{
 			"test": {Simple: "echo test"},
 		},
-		Dashboard: &Dashboard{}, // Has dashboard, should skip
+		Dashboard: &config.Dashboard{}, // Has dashboard, should skip
 	}
 
 	err := RunScript(challengeConf, "test")
@@ -86,9 +88,9 @@ func TestRunScript_WithDashboard(t *testing.T) {
 }
 
 func TestRunScript_EmptyCommand(t *testing.T) {
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name: "Test Challenge",
-		Scripts: map[string]ScriptValue{
+		Scripts: map[string]config.ScriptValue{
 			"test": {Simple: ""}, // Empty command
 		},
 	}
@@ -108,9 +110,9 @@ func TestRunScript_SimpleCommand(t *testing.T) {
 
 	testFile := filepath.Join(tmpDir, "test.txt")
 
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name: "Test Challenge",
-		Scripts: map[string]ScriptValue{
+		Scripts: map[string]config.ScriptValue{
 			"test": {Simple: "echo hello > test.txt"},
 		},
 		Cwd: tmpDir,
@@ -134,10 +136,10 @@ func TestRunScript_WithInterval(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name: "Test Challenge",
-		Scripts: map[string]ScriptValue{
-			"test": {Complex: &ScriptConfig{
+		Scripts: map[string]config.ScriptValue{
+			"test": {Complex: &config.ScriptConfig{
 				Execute:  "echo interval",
 				Interval: 1 * time.Minute,
 			}},
@@ -246,7 +248,7 @@ func TestRunIntervalScript(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name: "Test Challenge",
 		Cwd:  tmpDir,
 	}
@@ -273,7 +275,7 @@ func TestRunIntervalScript_ValidInterval(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name: "Test Challenge",
 		Cwd:  tmpDir,
 	}

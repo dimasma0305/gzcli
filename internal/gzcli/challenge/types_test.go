@@ -3,27 +3,29 @@ package challenge
 import (
 	"testing"
 	"time"
+
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 )
 
 func TestScriptValue_IsSimple(t *testing.T) {
 	tests := []struct {
 		name   string
-		script ScriptValue
+		script config.ScriptValue
 		want   bool
 	}{
 		{
 			name:   "simple string command",
-			script: ScriptValue{Simple: "echo hello"},
+			script: config.ScriptValue{Simple: "echo hello"},
 			want:   true,
 		},
 		{
 			name:   "empty simple command",
-			script: ScriptValue{Simple: ""},
+			script: config.ScriptValue{Simple: ""},
 			want:   false,
 		},
 		{
 			name: "complex command",
-			script: ScriptValue{Complex: &ScriptConfig{
+			script: config.ScriptValue{Complex: &config.ScriptConfig{
 				Execute: "docker build",
 			}},
 			want: false,
@@ -42,29 +44,29 @@ func TestScriptValue_IsSimple(t *testing.T) {
 func TestScriptValue_GetCommand(t *testing.T) {
 	tests := []struct {
 		name   string
-		script ScriptValue
+		script config.ScriptValue
 		want   string
 	}{
 		{
 			name:   "simple command",
-			script: ScriptValue{Simple: "echo test"},
+			script: config.ScriptValue{Simple: "echo test"},
 			want:   "echo test",
 		},
 		{
 			name: "complex command",
-			script: ScriptValue{Complex: &ScriptConfig{
+			script: config.ScriptValue{Complex: &config.ScriptConfig{
 				Execute: "docker build -t test .",
 			}},
 			want: "docker build -t test .",
 		},
 		{
 			name:   "empty script",
-			script: ScriptValue{},
+			script: config.ScriptValue{},
 			want:   "",
 		},
 		{
 			name:   "complex but nil",
-			script: ScriptValue{Complex: nil},
+			script: config.ScriptValue{Complex: nil},
 			want:   "",
 		},
 	}
@@ -81,17 +83,17 @@ func TestScriptValue_GetCommand(t *testing.T) {
 func TestScriptValue_GetInterval(t *testing.T) {
 	tests := []struct {
 		name   string
-		script ScriptValue
+		script config.ScriptValue
 		want   time.Duration
 	}{
 		{
 			name:   "simple command has no interval",
-			script: ScriptValue{Simple: "echo test"},
+			script: config.ScriptValue{Simple: "echo test"},
 			want:   0,
 		},
 		{
 			name: "complex with interval",
-			script: ScriptValue{Complex: &ScriptConfig{
+			script: config.ScriptValue{Complex: &config.ScriptConfig{
 				Execute:  "test.sh",
 				Interval: 5 * time.Minute,
 			}},
@@ -99,14 +101,14 @@ func TestScriptValue_GetInterval(t *testing.T) {
 		},
 		{
 			name: "complex without interval",
-			script: ScriptValue{Complex: &ScriptConfig{
+			script: config.ScriptValue{Complex: &config.ScriptConfig{
 				Execute: "test.sh",
 			}},
 			want: 0,
 		},
 		{
 			name:   "nil complex",
-			script: ScriptValue{Complex: nil},
+			script: config.ScriptValue{Complex: nil},
 			want:   0,
 		},
 	}
@@ -123,17 +125,17 @@ func TestScriptValue_GetInterval(t *testing.T) {
 func TestScriptValue_HasInterval(t *testing.T) {
 	tests := []struct {
 		name   string
-		script ScriptValue
+		script config.ScriptValue
 		want   bool
 	}{
 		{
 			name:   "simple command has no interval",
-			script: ScriptValue{Simple: "echo test"},
+			script: config.ScriptValue{Simple: "echo test"},
 			want:   false,
 		},
 		{
 			name: "complex with interval",
-			script: ScriptValue{Complex: &ScriptConfig{
+			script: config.ScriptValue{Complex: &config.ScriptConfig{
 				Execute:  "test.sh",
 				Interval: 5 * time.Minute,
 			}},
@@ -141,7 +143,7 @@ func TestScriptValue_HasInterval(t *testing.T) {
 		},
 		{
 			name: "complex with zero interval",
-			script: ScriptValue{Complex: &ScriptConfig{
+			script: config.ScriptValue{Complex: &config.ScriptConfig{
 				Execute:  "test.sh",
 				Interval: 0,
 			}},
@@ -149,7 +151,7 @@ func TestScriptValue_HasInterval(t *testing.T) {
 		},
 		{
 			name:   "nil complex",
-			script: ScriptValue{Complex: nil},
+			script: config.ScriptValue{Complex: nil},
 			want:   false,
 		},
 	}

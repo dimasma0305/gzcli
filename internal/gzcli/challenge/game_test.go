@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 )
 
@@ -63,7 +64,7 @@ func TestFindCurrentGame(t *testing.T) {
 }
 
 func TestCreateNewGame(t *testing.T) {
-	config := &Config{
+	conf := &config.Config{
 		Event: gzapi.Game{
 			Title:  "Test CTF",
 			Poster: "/path/to/poster.png",
@@ -102,9 +103,9 @@ func TestCreateNewGame(t *testing.T) {
 
 	// Simulate CreateGame by calling the originalCreateGame directly
 	event := gzapi.CreateGameForm{
-		Title: config.Event.Title,
-		Start: config.Event.Start.Time,
-		End:   config.Event.End.Time,
+		Title: conf.Event.Title,
+		Start: conf.Event.Start.Time,
+		End:   conf.Event.End.Time,
 	}
 	game, err := originalCreateGame(event)
 	if err != nil {
@@ -113,19 +114,19 @@ func TestCreateNewGame(t *testing.T) {
 
 	// Simulate Update call
 	gameUpdated = true // Simulating update
-	poster, err := createPosterFunc(config.Event.Poster, game, api)
+	poster, err := createPosterFunc(conf.Event.Poster, game, api)
 	if err != nil {
 		t.Fatalf("createPosterFunc failed: %v", err)
 	}
 
-	config.Event.Id = game.Id
-	config.Event.PublicKey = game.PublicKey
-	config.Event.Poster = poster
+	conf.Event.Id = game.Id
+	conf.Event.PublicKey = game.PublicKey
+	conf.Event.Poster = poster
 
-	// In real implementation, game.Update(&config.Event) would be called
+	// In real implementation, game.Update(&conf.Event) would be called
 	// For testing, we just verify the logic flow
 
-	if err := setCache("config", config); err != nil {
+	if err := setCache("config", conf); err != nil {
 		t.Fatalf("setCache failed: %v", err)
 	}
 
@@ -137,8 +138,8 @@ func TestCreateNewGame(t *testing.T) {
 		t.Error("Expected game to be updated")
 	}
 
-	if config.Event.Id != 100 {
-		t.Errorf("Expected config.Event.Id to be 100, got %d", config.Event.Id)
+	if conf.Event.Id != 100 {
+		t.Errorf("Expected conf.Event.Id to be 100, got %d", conf.Event.Id)
 	}
 
 	if _, ok := cacheData["config"]; !ok {
@@ -159,7 +160,7 @@ func TestCreateNewGame_NoPoster(t *testing.T) {
 	})
 	defer cleanup()
 
-	config := &Config{
+	conf := &config.Config{
 		Event: gzapi.Game{
 			Title:  "Test CTF",
 			Poster: "", // No poster
@@ -175,7 +176,7 @@ func TestCreateNewGame_NoPoster(t *testing.T) {
 	}
 
 	// This would fail in CreateNewGame because poster is required
-	_, err := CreateNewGame(config, api, createPosterFunc, setCache)
+	_, err := CreateNewGame(conf, api, createPosterFunc, setCache)
 	if err == nil {
 		t.Error("Expected error when poster is empty")
 	}
@@ -197,7 +198,7 @@ func TestUpdateGameIfNeeded(t *testing.T) {
 	})
 	defer cleanup()
 
-	config := &Config{
+	conf := &config.Config{
 		Event: gzapi.Game{
 			Title:     "Test CTF",
 			Poster:    "/path/to/poster.png",
@@ -221,13 +222,13 @@ func TestUpdateGameIfNeeded(t *testing.T) {
 	}
 
 	// UpdateGameIfNeeded will call currentGame.Update internally
-	err := UpdateGameIfNeeded(config, currentGame, api, createPosterFunc, setCache)
+	err := UpdateGameIfNeeded(conf, currentGame, api, createPosterFunc, setCache)
 	if err != nil {
 		t.Errorf("UpdateGameIfNeeded() failed: %v", err)
 	}
 
-	if config.Event.Id != 1 {
-		t.Errorf("Expected config.Event.Id to be set to 1, got %d", config.Event.Id)
+	if conf.Event.Id != 1 {
+		t.Errorf("Expected conf.Event.Id to be set to 1, got %d", conf.Event.Id)
 	}
 }
 
@@ -240,7 +241,7 @@ func TestUpdateGameIfNeeded_NoChanges(t *testing.T) {
 	})
 	defer cleanup()
 
-	config := &Config{
+	conf := &config.Config{
 		Event: gzapi.Game{
 			Id:        1,
 			Title:     "Test CTF",
@@ -265,7 +266,7 @@ func TestUpdateGameIfNeeded_NoChanges(t *testing.T) {
 		return nil
 	}
 
-	err := UpdateGameIfNeeded(config, currentGame, api, createPosterFunc, setCache)
+	err := UpdateGameIfNeeded(conf, currentGame, api, createPosterFunc, setCache)
 	if err != nil {
 		t.Errorf("UpdateGameIfNeeded() failed: %v", err)
 	}

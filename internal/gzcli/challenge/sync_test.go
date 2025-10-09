@@ -3,6 +3,7 @@ package challenge
 import (
 	"testing"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 )
 
@@ -81,18 +82,18 @@ func TestIsExistInArray(t *testing.T) {
 func TestMergeChallengeData(t *testing.T) {
 	tests := []struct {
 		name          string
-		challengeConf ChallengeYaml
+		challengeConf config.ChallengeYaml
 		challengeData gzapi.Challenge
 		checkFunc     func(*testing.T, *gzapi.Challenge)
 	}{
 		{
 			name: "merge with container limits",
-			challengeConf: ChallengeYaml{
+			challengeConf: config.ChallengeYaml{
 				Name:        "Test Challenge",
 				Author:      "test-author",
 				Description: "Test description",
 				Value:       500,
-				Container: Container{
+				Container: config.Container{
 					MemoryLimit:  512,
 					CpuCount:     2,
 					StorageLimit: 256,
@@ -119,7 +120,7 @@ func TestMergeChallengeData(t *testing.T) {
 		},
 		{
 			name: "merge without container limits (use defaults)",
-			challengeConf: ChallengeYaml{
+			challengeConf: config.ChallengeYaml{
 				Name:   "Default Challenge",
 				Author: "test-author",
 				Value:  50,
@@ -139,7 +140,7 @@ func TestMergeChallengeData(t *testing.T) {
 		},
 		{
 			name: "high score sets min score rate",
-			challengeConf: ChallengeYaml{
+			challengeConf: config.ChallengeYaml{
 				Name:   "High Value Challenge",
 				Author: "test-author",
 				Value:  1000,
@@ -153,7 +154,7 @@ func TestMergeChallengeData(t *testing.T) {
 		},
 		{
 			name: "low score sets min score rate to 1",
-			challengeConf: ChallengeYaml{
+			challengeConf: config.ChallengeYaml{
 				Name:   "Low Value Challenge",
 				Author: "test-author",
 				Value:  50,
@@ -167,7 +168,7 @@ func TestMergeChallengeData(t *testing.T) {
 		},
 		{
 			name: "merge with author in content",
-			challengeConf: ChallengeYaml{
+			challengeConf: config.ChallengeYaml{
 				Name:        "Authored Challenge",
 				Author:      "John Doe",
 				Description: "This is a test",
@@ -210,14 +211,14 @@ func TestIsConfigEdited(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		challengeConf ChallengeYaml
+		challengeConf config.ChallengeYaml
 		challengeData gzapi.Challenge
 		setupCache    func()
 		want          bool
 	}{
 		{
 			name: "cache miss - considered edited",
-			challengeConf: ChallengeYaml{
+			challengeConf: config.ChallengeYaml{
 				Name:     "Test",
 				Category: "Web",
 			},
@@ -231,7 +232,7 @@ func TestIsConfigEdited(t *testing.T) {
 		},
 		{
 			name: "cache hit - data same",
-			challengeConf: ChallengeYaml{
+			challengeConf: config.ChallengeYaml{
 				Name:     "Test",
 				Category: "Web",
 			},
@@ -252,7 +253,7 @@ func TestIsConfigEdited(t *testing.T) {
 		},
 		{
 			name: "cache hit - data different",
-			challengeConf: ChallengeYaml{
+			challengeConf: config.ChallengeYaml{
 				Name:     "Test",
 				Category: "Web",
 			},

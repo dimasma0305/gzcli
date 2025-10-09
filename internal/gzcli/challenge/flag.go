@@ -1,6 +1,7 @@
 package challenge
 
 import (
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 )
 
@@ -15,12 +16,12 @@ func IsFlagExist(flag string, flags []gzapi.Flag) bool {
 }
 
 // UpdateChallengeFlags synchronizes challenge flags between configuration and API
-func UpdateChallengeFlags(config *Config, challengeConf ChallengeYaml, challengeData *gzapi.Challenge) error {
+func UpdateChallengeFlags(conf *config.Config, challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge) error {
 	for _, flag := range challengeData.Flags {
 		if !IsExistInArray(flag.Flag, challengeConf.Flags) {
-			flag.GameId = config.Event.Id
+			flag.GameId = conf.Event.Id
 			flag.ChallengeId = challengeData.Id
-			flag.CS = config.Event.CS
+			flag.CS = conf.Event.CS
 			if err := flag.Delete(); err != nil {
 				return err
 			}

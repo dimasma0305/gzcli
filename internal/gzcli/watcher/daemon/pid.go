@@ -9,6 +9,20 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// EnsureDirectoriesExist ensures that the directories for the given file paths exist
+func EnsureDirectoriesExist(paths ...string) error {
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0750); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+	}
+	return nil
+}
+
 // WritePIDFile writes the PID to the specified file
 func WritePIDFile(pidFile string, pid int) error {
 	// Create directory if it doesn't exist

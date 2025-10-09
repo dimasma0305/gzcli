@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 )
 
@@ -52,7 +53,7 @@ func mockGZAPI(t *testing.T, handlers map[string]http.HandlerFunc) (*gzapi.GZAPI
 }
 
 func TestHandleChallengeAttachments_NoAttachment(t *testing.T) {
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name:     "Test Challenge",
 		Category: "Web",
 		Provide:  nil, // No attachment
@@ -75,7 +76,7 @@ func TestHandleChallengeAttachments_NoAttachment(t *testing.T) {
 
 func TestHandleChallengeAttachments_RemoteURL(t *testing.T) {
 	remoteURL := "https://example.com/file.zip"
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name:     "Test Challenge",
 		Category: "Web",
 		Provide:  &remoteURL,
@@ -131,7 +132,7 @@ func TestHandleChallengeAttachments_RemoteURL(t *testing.T) {
 }
 
 func TestHandleChallengeAttachments_RemoveExisting(t *testing.T) {
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name:     "Test Challenge",
 		Category: "Web",
 		Provide:  nil, // No new attachment
@@ -410,7 +411,7 @@ func TestHandleLocalAttachment_DirectoryZip(t *testing.T) {
 	}
 
 	providePath := tmpDir
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name:     "Test Challenge",
 		Category: "Web",
 		Provide:  &providePath,
@@ -467,7 +468,7 @@ func TestHandleLocalAttachment_ExistingFile(t *testing.T) {
 	tmpFile.Close()
 
 	providePath := tmpFile.Name()
-	challengeConf := ChallengeYaml{
+	challengeConf := config.ChallengeYaml{
 		Name:     "Test Challenge",
 		Category: "Web",
 		Provide:  &providePath,

@@ -208,8 +208,18 @@ func (ew *EventWatcher) discoverChallenges() error {
 			return nil // Skip errors
 		}
 
-		// Skip if it's a directory or not a challenge file
-		if info.IsDir() || !challengeFileRegex.MatchString(info.Name()) {
+		// Skip hidden directories (starting with .)
+		if info.IsDir() {
+			dirName := filepath.Base(path)
+			if dirName != "." && dirName != ".." && dirName[0] == '.' {
+				log.DebugH3("[%s] Skipping hidden directory: %s", ew.eventName, dirName)
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		// Skip if not a challenge file
+		if !challengeFileRegex.MatchString(info.Name()) {
 			return nil
 		}
 
@@ -217,9 +227,27 @@ func (ew *EventWatcher) discoverChallenges() error {
 		challengeDir := filepath.Dir(path)
 		challengeName := filepath.Base(challengeDir)
 
-		// Add challenge to watcher
-		if err := ew.challengeMgr.AddChallenge(challengeName, challengeDir); err != nil {
-			log.Error("[%s] Failed to add challenge %s: %v", ew.eventName, challengeName, err)
+		// Determine category from path to create unique challenge identifier
+		// Path format: events/{event}/{category}/{challenge}/
+		relPath, err := filepath.Rel(ew.eventPath, challengeDir)
+		var uniqueName string
+		if err == nil && relPath != "." {
+			// Split by path separator
+			parts := splitPath(relPath)
+			if len(parts) > 0 {
+				category := parts[0]
+				// Use category/challengeName as unique identifier
+				uniqueName = category + "/" + challengeName
+			} else {
+				uniqueName = challengeName
+			}
+		} else {
+			uniqueName = challengeName
+		}
+
+		// Add challenge to watcher with unique name
+		if err := ew.challengeMgr.AddChallenge(uniqueName, challengeDir); err != nil {
+			log.Error("[%s] Failed to add challenge %s: %v", ew.eventName, uniqueName, err)
 			return nil // Continue with other challenges
 		}
 
@@ -558,40 +586,8 @@ func (ew *EventWatcher) syncChallengeInternal(conf *config.Config, challengeConf
 	// Step 2: No mapping found - use normal sync flow (create or find by name)
 	log.InfoH3("[%s] No mapping found for %s, using normal sync flow", ew.eventName, folderPath)
 
-	// Convert config.ChallengeYaml to challengepkg.ChallengeYaml
-	challConfig := &challengepkg.Config{
-		Url:   conf.Url,
-		Creds: conf.Creds,
-		Event: conf.Event,
-	}
-
-	challYaml := challengepkg.ChallengeYaml{
-		Name:        challengeConf.Name,
-		Author:      challengeConf.Author,
-		Description: challengeConf.Description,
-		Flags:       challengeConf.Flags,
-		Value:       challengeConf.Value,
-		Provide:     challengeConf.Provide,
-		Visible:     challengeConf.Visible,
-		Type:        challengeConf.Type,
-		Hints:       challengeConf.Hints,
-		Container: challengepkg.Container{
-			FlagTemplate:         challengeConf.Container.FlagTemplate,
-			ContainerImage:       challengeConf.Container.ContainerImage,
-			MemoryLimit:          challengeConf.Container.MemoryLimit,
-			CpuCount:             challengeConf.Container.CpuCount,
-			StorageLimit:         challengeConf.Container.StorageLimit,
-			ContainerExposePort:  challengeConf.Container.ContainerExposePort,
-			EnableTrafficCapture: challengeConf.Container.EnableTrafficCapture,
-		},
-		Scripts:   convertScriptsToChallengePkg(challengeConf.Scripts),
-		Dashboard: convertDashboardToChallengePkg(challengeConf.Dashboard),
-		Category:  challengeConf.Category,
-		Cwd:       challengeConf.Cwd,
-	}
-
-	// Call the challenge sync function
-	if err := challengepkg.SyncChallenge(challConfig, challYaml, challenges, ew.api, ew.noOpGetCache, ew.noOpSetCache); err != nil {
+	// Call the challenge sync function with config.ChallengeYaml directly
+	if err := challengepkg.SyncChallenge(conf, challengeConf, challenges, ew.api, ew.noOpGetCache, ew.noOpSetCache); err != nil {
 		return err
 	}
 
@@ -638,44 +634,12 @@ func (ew *EventWatcher) fetchChallengeByID(challengeID int) (*gzapi.Challenge, e
 
 // syncToExistingChallenge syncs changes to an existing challenge (handles name changes)
 func (ew *EventWatcher) syncToExistingChallenge(conf *config.Config, challengeConf config.ChallengeYaml, existingChallenge *gzapi.Challenge) error {
-	// Create a modified challenge config with updated data
-	challConfig := &challengepkg.Config{
-		Url:   conf.Url,
-		Creds: conf.Creds,
-		Event: conf.Event,
-	}
-
-	challYaml := challengepkg.ChallengeYaml{
-		Name:        challengeConf.Name,
-		Author:      challengeConf.Author,
-		Description: challengeConf.Description,
-		Flags:       challengeConf.Flags,
-		Value:       challengeConf.Value,
-		Provide:     challengeConf.Provide,
-		Visible:     challengeConf.Visible,
-		Type:        challengeConf.Type,
-		Hints:       challengeConf.Hints,
-		Container: challengepkg.Container{
-			FlagTemplate:         challengeConf.Container.FlagTemplate,
-			ContainerImage:       challengeConf.Container.ContainerImage,
-			MemoryLimit:          challengeConf.Container.MemoryLimit,
-			CpuCount:             challengeConf.Container.CpuCount,
-			StorageLimit:         challengeConf.Container.StorageLimit,
-			ContainerExposePort:  challengeConf.Container.ContainerExposePort,
-			EnableTrafficCapture: challengeConf.Container.EnableTrafficCapture,
-		},
-		Scripts:   convertScriptsToChallengePkg(challengeConf.Scripts),
-		Dashboard: convertDashboardToChallengePkg(challengeConf.Dashboard),
-		Category:  challengeConf.Category,
-		Cwd:       challengeConf.Cwd,
-	}
-
 	// Set the existing challenge in the challenges list to ensure update path is taken
 	existingChallenge.CS = ew.api
 	challengesList := []gzapi.Challenge{*existingChallenge}
 
-	// Sync using the standard flow (will update existing)
-	return challengepkg.SyncChallenge(challConfig, challYaml, challengesList, ew.api, ew.noOpGetCache, ew.noOpSetCache)
+	// Sync using the standard flow with config.ChallengeYaml directly (will update existing)
+	return challengepkg.SyncChallenge(conf, challengeConf, challengesList, ew.api, ew.noOpGetCache, ew.noOpSetCache)
 }
 
 // Helper methods for update state management
@@ -696,37 +660,6 @@ func (ew *EventWatcher) noOpSetCache(key string, value interface{}) error {
 
 func (ew *EventWatcher) noOpDeleteCache(key string) {
 	// Ignore cache deletes in watcher
-}
-
-// convertScriptsToChallengePkg converts config scripts to challenge package format
-func convertScriptsToChallengePkg(scripts map[string]config.ScriptValue) map[string]challengepkg.ScriptValue {
-	result := make(map[string]challengepkg.ScriptValue)
-	for k, v := range scripts {
-		result[k] = challengepkg.ScriptValue{
-			Simple: v.Simple,
-			Complex: func() *challengepkg.ScriptConfig {
-				if v.Complex != nil {
-					return &challengepkg.ScriptConfig{
-						Execute:  v.Complex.Execute,
-						Interval: v.Complex.Interval,
-					}
-				}
-				return nil
-			}(),
-		}
-	}
-	return result
-}
-
-// convertDashboardToChallengePkg converts config dashboard to challenge package format
-func convertDashboardToChallengePkg(dashboard *config.Dashboard) *challengepkg.Dashboard {
-	if dashboard == nil {
-		return nil
-	}
-	return &challengepkg.Dashboard{
-		Type:   dashboard.Type,
-		Config: dashboard.Config,
-	}
 }
 
 // splitPath splits a path into its components

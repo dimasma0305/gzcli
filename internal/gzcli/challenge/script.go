@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -54,7 +55,7 @@ func getShellArgs() []string {
 }
 
 // RunScript executes a specified script for a challenge
-func RunScript(challengeConf ChallengeYaml, script string) error {
+func RunScript(challengeConf config.ChallengeYaml, script string) error {
 	scriptValue, exists := challengeConf.Scripts[script]
 	if !exists {
 		return nil
@@ -160,7 +161,7 @@ func RunShellForInterval(ctx context.Context, script string, cwd string, timeout
 }
 
 // RunIntervalScript executes a script at regular intervals with context cancellation
-func RunIntervalScript(ctx context.Context, challengeConf ChallengeYaml, scriptName, command string, interval time.Duration) {
+func RunIntervalScript(ctx context.Context, challengeConf config.ChallengeYaml, scriptName, command string, interval time.Duration) {
 	// Validate interval
 	if !ValidateInterval(interval, scriptName) {
 		log.Error("Invalid interval for script '%s' in challenge '%s', skipping", scriptName, challengeConf.Name)

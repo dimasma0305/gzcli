@@ -91,129 +91,85 @@ func createOptimizedClient() *req.Client {
 	return client
 }
 
-//nolint:dupl // HTTP methods have intentional similarity for clarity
+// requestExecutor is a function that executes an HTTP request
+type requestExecutor func(*req.Request, string) (*req.Response, error)
+
+// doRequest handles common HTTP request logic
+func (cs *GZAPI) doRequest(method, url string, data any, executor requestExecutor) error {
+	if cs == nil || cs.Client == nil {
+		return fmt.Errorf("GZAPI client is not initialized")
+	}
+
+	// Build full URL efficiently
+	var urlBuilder strings.Builder
+	urlBuilder.Grow(len(cs.Url) + len(url))
+	urlBuilder.WriteString(cs.Url)
+	urlBuilder.WriteString(url)
+	fullURL := urlBuilder.String()
+
+	log.InfoH3("Making %s request to: %s", method, fullURL)
+
+	// Execute the request
+	resp, err := executor(cs.Client.R(), fullURL)
+	if err != nil {
+		log.Error("%s request failed for %s: %v", method, fullURL, err)
+		return fmt.Errorf("%s request failed for %s: %w", method, fullURL, err)
+	}
+
+	// Validate status code
+	if resp.StatusCode != 200 {
+		log.Error("%s request returned status %d for %s: %s", method, resp.StatusCode, fullURL, resp.String())
+		return fmt.Errorf("request end with %d status, %s", resp.StatusCode, resp.String())
+	}
+
+	// Unmarshal response if data pointer provided
+	if data != nil {
+		if len(resp.Bytes()) == 0 {
+			log.DebugH3("%s response has empty body, skipping unmarshal for: %s", method, fullURL)
+		} else {
+			if err := resp.UnmarshalJson(&data); err != nil {
+				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
+				return fmt.Errorf("error unmarshal json: %w, %s", err, resp.String())
+			}
+		}
+	}
+
+	log.InfoH3("%s request successful for: %s", method, fullURL)
+	return nil
+}
+
 func (cs *GZAPI) get(url string, data any) error {
-	if cs == nil || cs.Client == nil {
-		return fmt.Errorf("GZAPI client is not initialized")
-	}
-	// Use string builder for efficient URL construction
-	var urlBuilder strings.Builder
-	urlBuilder.Grow(len(cs.Url) + len(url))
-	urlBuilder.WriteString(cs.Url)
-	urlBuilder.WriteString(url)
-	fullURL := urlBuilder.String()
-	log.InfoH3("Making GET request to: %s", fullURL)
-
-	req, err := cs.Client.R().Get(fullURL)
-	if err != nil {
-		log.Error("GET request failed for %s: %v", fullURL, err)
-		return fmt.Errorf("GET request failed for %s: %w", fullURL, err)
-	}
-
-	if req.StatusCode != 200 {
-		log.Error("GET request returned status %d for %s: %s", req.StatusCode, fullURL, req.String())
-		return fmt.Errorf("request end with %d status, %s", req.StatusCode, req.String())
-	}
-
-	if data != nil {
-		// Check if response body is empty before unmarshaling
-		if len(req.Bytes()) == 0 {
-			log.DebugH3("GET response has empty body, skipping unmarshal for: %s", fullURL)
-		} else {
-			if err := req.UnmarshalJson(&data); err != nil {
-				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
-			}
-		}
-	}
-
-	log.InfoH3("GET request successful for: %s", fullURL)
-	return nil
+	return cs.doRequest("GET", url, data, func(r *req.Request, url string) (*req.Response, error) {
+		return r.Get(url)
+	})
 }
 
-//nolint:dupl // HTTP methods have intentional similarity for clarity
 func (cs *GZAPI) delete(url string, data any) error {
-	if cs == nil || cs.Client == nil {
-		return fmt.Errorf("GZAPI client is not initialized")
-	}
-	var urlBuilder strings.Builder
-	urlBuilder.Grow(len(cs.Url) + len(url))
-	urlBuilder.WriteString(cs.Url)
-	urlBuilder.WriteString(url)
-	fullURL := urlBuilder.String()
-	log.InfoH3("Making DELETE request to: %s", fullURL)
-
-	req, err := cs.Client.R().Delete(fullURL)
-	if err != nil {
-		log.Error("DELETE request failed for %s: %v", fullURL, err)
-		return fmt.Errorf("DELETE request failed for %s: %w", fullURL, err)
-	}
-
-	if req.StatusCode != 200 {
-		log.Error("DELETE request returned status %d for %s: %s", req.StatusCode, fullURL, req.String())
-		return fmt.Errorf("request end with %d status, %s", req.StatusCode, req.String())
-	}
-
-	if data != nil {
-		// Check if response body is empty before unmarshaling
-		if len(req.Bytes()) == 0 {
-			log.DebugH3("DELETE response has empty body, skipping unmarshal for: %s", fullURL)
-		} else {
-			if err := req.UnmarshalJson(&data); err != nil {
-				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
-			}
-		}
-	}
-
-	log.InfoH3("DELETE request successful for: %s", fullURL)
-	return nil
+	return cs.doRequest("DELETE", url, data, func(r *req.Request, url string) (*req.Response, error) {
+		return r.Delete(url)
+	})
 }
 
-//nolint:dupl // HTTP methods have intentional similarity for clarity
 func (cs *GZAPI) post(url string, json any, data any) error {
-	if cs == nil || cs.Client == nil {
-		return fmt.Errorf("GZAPI client is not initialized")
-	}
-	var urlBuilder strings.Builder
-	urlBuilder.Grow(len(cs.Url) + len(url))
-	urlBuilder.WriteString(cs.Url)
-	urlBuilder.WriteString(url)
-	fullURL := urlBuilder.String()
-	log.InfoH3("Making POST request to: %s", fullURL)
-
-	req, err := cs.Client.R().SetBodyJsonMarshal(json).Post(fullURL)
-	if err != nil {
-		log.Error("POST request failed for %s: %v", fullURL, err)
-		return fmt.Errorf("POST request failed for %s: %w", fullURL, err)
-	}
-
-	if req.StatusCode != 200 {
-		log.Error("POST request returned status %d for %s: %s", req.StatusCode, fullURL, req.String())
-		return fmt.Errorf("request end with %d status, %s", req.StatusCode, req.String())
-	}
-
-	if data != nil {
-		// Check if response body is empty before unmarshaling
-		if len(req.Bytes()) == 0 {
-			log.DebugH3("POST response has empty body, skipping unmarshal for: %s", fullURL)
-		} else {
-			if err := req.UnmarshalJson(&data); err != nil {
-				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
-			}
-		}
-	}
-
-	log.InfoH3("POST request successful for: %s", fullURL)
-	return nil
+	return cs.doRequest("POST", url, data, func(r *req.Request, url string) (*req.Response, error) {
+		return r.SetBodyJsonMarshal(json).Post(url)
+	})
 }
 
-//nolint:dupl // Multipart methods have intentional similarity for clarity
+func (cs *GZAPI) put(url string, json any, data any) error {
+	return cs.doRequest("PUT", url, data, func(r *req.Request, url string) (*req.Response, error) {
+		return r.SetBodyJsonMarshal(json).Put(url)
+	})
+}
+
 func (cs *GZAPI) postMultiPart(url string, file string, data any) error {
-	if cs == nil || cs.Client == nil {
-		return fmt.Errorf("GZAPI client is not initialized")
+	// Verify file exists before attempting upload
+	if _, err := os.Stat(file); err != nil {
+		log.Error("File does not exist: %s", file)
+		return fmt.Errorf("file not found: %s", file)
 	}
+
+	// Build full URL for logging
 	var urlBuilder strings.Builder
 	urlBuilder.Grow(len(cs.Url) + len(url))
 	urlBuilder.WriteString(cs.Url)
@@ -221,45 +177,20 @@ func (cs *GZAPI) postMultiPart(url string, file string, data any) error {
 	fullURL := urlBuilder.String()
 	log.InfoH3("Making POST multipart request to: %s with file: %s", fullURL, file)
 
+	// Use "files" for /api/assets endpoint as per API specification
+	return cs.doRequest("POST", url, data, func(r *req.Request, url string) (*req.Response, error) {
+		return r.SetFile("files", file).Post(url)
+	})
+}
+
+func (cs *GZAPI) putMultiPart(url string, file string, data any) error {
 	// Verify file exists before attempting upload
 	if _, err := os.Stat(file); err != nil {
 		log.Error("File does not exist: %s", file)
 		return fmt.Errorf("file not found: %s", file)
 	}
 
-	// Use "files" for /api/assets endpoint as per API specification
-	req, err := cs.Client.R().SetFile("files", file).Post(fullURL)
-	if err != nil {
-		log.Error("POST multipart request failed for %s: %v", fullURL, err)
-		return fmt.Errorf("POST multipart request failed for %s: %w", fullURL, err)
-	}
-
-	if req.StatusCode != 200 {
-		log.Error("POST multipart request returned status %d for %s: %s", req.StatusCode, fullURL, req.String())
-		return fmt.Errorf("request end with %d status, %s", req.StatusCode, req.String())
-	}
-
-	if data != nil {
-		// Check if response body is empty before unmarshaling
-		if len(req.Bytes()) == 0 {
-			log.DebugH3("POST multipart response has empty body, skipping unmarshal for: %s", fullURL)
-		} else {
-			if err := req.UnmarshalJson(&data); err != nil {
-				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
-			}
-		}
-	}
-
-	log.InfoH3("POST multipart request successful for: %s", fullURL)
-	return nil
-}
-
-//nolint:dupl // Multipart methods have intentional similarity for clarity
-func (cs *GZAPI) putMultiPart(url string, file string, data any) error {
-	if cs == nil || cs.Client == nil {
-		return fmt.Errorf("GZAPI client is not initialized")
-	}
+	// Build full URL for logging
 	var urlBuilder strings.Builder
 	urlBuilder.Grow(len(cs.Url) + len(url))
 	urlBuilder.WriteString(cs.Url)
@@ -267,75 +198,8 @@ func (cs *GZAPI) putMultiPart(url string, file string, data any) error {
 	fullURL := urlBuilder.String()
 	log.InfoH3("Making PUT multipart request to: %s with file: %s", fullURL, file)
 
-	// Verify file exists before attempting upload
-	if _, err := os.Stat(file); err != nil {
-		log.Error("File does not exist: %s", file)
-		return fmt.Errorf("file not found: %s", file)
-	}
-
 	// Use "file" for PUT operations (poster/avatar uploads) as per API specification
-	req, err := cs.Client.R().SetFile("file", file).Put(fullURL)
-	if err != nil {
-		log.Error("PUT multipart request failed for %s: %v", fullURL, err)
-		return fmt.Errorf("PUT multipart request failed for %s: %w", fullURL, err)
-	}
-
-	if req.StatusCode != 200 {
-		log.Error("PUT multipart request returned status %d for %s: %s", req.StatusCode, fullURL, req.String())
-		return fmt.Errorf("request end with %d status, %s", req.StatusCode, req.String())
-	}
-
-	if data != nil {
-		// Check if response body is empty before unmarshaling
-		if len(req.Bytes()) == 0 {
-			log.DebugH3("PUT multipart response has empty body, skipping unmarshal for: %s", fullURL)
-		} else {
-			if err := req.UnmarshalJson(&data); err != nil {
-				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
-			}
-		}
-	}
-
-	log.InfoH3("PUT multipart request successful for: %s", fullURL)
-	return nil
-}
-
-//nolint:dupl // HTTP methods have intentional similarity for clarity
-func (cs *GZAPI) put(url string, json any, data any) error {
-	if cs == nil || cs.Client == nil {
-		return fmt.Errorf("GZAPI client is not initialized")
-	}
-	var urlBuilder strings.Builder
-	urlBuilder.Grow(len(cs.Url) + len(url))
-	urlBuilder.WriteString(cs.Url)
-	urlBuilder.WriteString(url)
-	fullURL := urlBuilder.String()
-	log.InfoH3("Making PUT request to: %s", fullURL)
-
-	req, err := cs.Client.R().SetBodyJsonMarshal(json).Put(fullURL)
-	if err != nil {
-		log.Error("PUT request failed for %s: %v", fullURL, err)
-		return fmt.Errorf("PUT request failed for %s: %w", fullURL, err)
-	}
-
-	if req.StatusCode != 200 {
-		log.Error("PUT request returned status %d for %s: %s", req.StatusCode, fullURL, req.String())
-		return fmt.Errorf("request end with %d status, %s", req.StatusCode, req.String())
-	}
-
-	if data != nil {
-		// Check if response body is empty before unmarshaling
-		if len(req.Bytes()) == 0 {
-			log.DebugH3("PUT response has empty body, skipping unmarshal for: %s", fullURL)
-		} else {
-			if err := req.UnmarshalJson(&data); err != nil {
-				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
-				return fmt.Errorf("error unmarshal json: %w, %s", err, req.String())
-			}
-		}
-	}
-
-	log.InfoH3("PUT request successful for: %s", fullURL)
-	return nil
+	return cs.doRequest("PUT", url, data, func(r *req.Request, url string) (*req.Response, error) {
+		return r.SetFile("file", file).Put(url)
+	})
 }

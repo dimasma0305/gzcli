@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 )
 
 func TestGenStructure_DirNotExist(t *testing.T) {
@@ -19,7 +21,7 @@ func TestGenStructure_DirNotExist(t *testing.T) {
 
 	os.Chdir(tmpDir)
 
-	challenges := []ChallengeYaml{
+	challenges := []config.ChallengeYaml{
 		{Name: "Test Challenge", Cwd: filepath.Join(tmpDir, "challenge1")},
 	}
 
@@ -63,7 +65,7 @@ func TestGenStructure_Success(t *testing.T) {
 		t.Fatalf("Failed to create challenge dir: %v", err)
 	}
 
-	challenges := []ChallengeYaml{
+	challenges := []config.ChallengeYaml{
 		{Name: "Test Challenge", Cwd: challengeDir},
 	}
 

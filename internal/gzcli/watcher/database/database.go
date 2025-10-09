@@ -10,8 +10,8 @@ import (
 
 	"github.com/dimasma0305/gzcli/internal/log"
 
-	// Import SQLite driver for database/sql
-	_ "github.com/mattn/go-sqlite3"
+	// Import pure-Go SQLite driver for database/sql (no CGO required)
+	_ "modernc.org/sqlite"
 )
 
 // DB wraps database operations for the watcher
@@ -46,11 +46,17 @@ func (d *DB) Init() error {
 		return fmt.Errorf("failed to create database directory: %w", err)
 	}
 
-	// Open database
-	db, err := sql.Open("sqlite3", dbPath)
+	// Open database with pragmas for better concurrency and performance
+	// Use WAL mode for concurrent reads/writes and set busy timeout
+	dbPath += "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
+
+	// Set connection pool settings for better concurrency
+	db.SetMaxOpenConns(1) // SQLite works best with a single writer
+	db.SetMaxIdleConns(1)
 
 	// Test connection
 	if err := db.Ping(); err != nil {

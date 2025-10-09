@@ -46,6 +46,16 @@ func (w *Watcher) Start(config watchertypes.WatcherConfig) error {
 
 // startAsDaemon starts the watcher as a daemon process
 func (w *Watcher) startAsDaemon() error {
+	// Create directories for PID, log, database, and socket files before forking
+	if err := daemon.EnsureDirectoriesExist(
+		w.config.PidFile,
+		w.config.LogFile,
+		w.config.DatabasePath,
+		w.config.SocketPath,
+	); err != nil {
+		return fmt.Errorf("failed to create daemon directories: %w", err)
+	}
+
 	// Create daemon context
 	daemonCtx := &godaemon.Context{
 		PidFileName: w.config.PidFile,

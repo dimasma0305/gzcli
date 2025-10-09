@@ -3,30 +3,32 @@ package challenge
 import (
 	"testing"
 	"time"
+
+	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 )
 
 // Benchmark script value parsing
 func BenchmarkScriptValue_GetCommand(b *testing.B) {
 	testCases := []struct {
 		name  string
-		value ScriptValue
+		value config.ScriptValue
 	}{
 		{
 			name:  "StringCommand",
-			value: ScriptValue{Simple: "docker compose up -d"},
+			value: config.ScriptValue{Simple: "docker compose up -d"},
 		},
 		{
 			name: "MapCommand",
-			value: ScriptValue{
-				Complex: &ScriptConfig{
+			value: config.ScriptValue{
+				Complex: &config.ScriptConfig{
 					Execute: "docker compose up -d",
 				},
 			},
 		},
 		{
 			name: "MapWithInterval",
-			value: ScriptValue{
-				Complex: &ScriptConfig{
+			value: config.ScriptValue{
+				Complex: &config.ScriptConfig{
 					Execute:  "docker compose up -d",
 					Interval: 5 * time.Minute,
 				},
@@ -45,8 +47,8 @@ func BenchmarkScriptValue_GetCommand(b *testing.B) {
 
 // Benchmark interval parsing
 func BenchmarkScriptValue_GetInterval(b *testing.B) {
-	value := ScriptValue{
-		Complex: &ScriptConfig{
+	value := config.ScriptValue{
+		Complex: &config.ScriptConfig{
 			Execute:  "docker compose up -d",
 			Interval: 5 * time.Minute,
 		},
