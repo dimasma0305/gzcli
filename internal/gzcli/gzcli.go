@@ -136,6 +136,10 @@ type GZ struct {
 	UpdateGame bool
 	watcher    *watcher.Watcher
 	eventName  string // Store the event name for this instance
+	
+	// Managers
+	syncManager   *SyncManager
+	configManager *ConfigManager
 }
 
 // Cache frequently used paths and configurations
@@ -214,7 +218,12 @@ func InitWithEvent(eventName string) (*GZ, error) {
 		return nil, err
 	}
 
-	return &GZ{api: api, eventName: conf.EventName}, nil
+	return &GZ{
+		api:           api,
+		eventName:     conf.EventName,
+		syncManager:   NewSyncManager(api),
+		configManager: NewConfigManager(),
+	}, nil
 }
 
 // GenerateStructure generates challenge directory structure from templates
@@ -270,28 +279,15 @@ func (gz *GZ) Sync() error {
 		log.Error("Failed to get config: %v", err)
 		return fmt.Errorf("config error: %w", err)
 	}
-	log.Info("Config loaded successfully")
 
-	// Get fresh challenges config
-	log.Info("Loading challenges configuration...")
-	challengesConf, err := config.GetChallengesYaml(conf)
-	if err != nil {
-		log.Error("Failed to get challenges YAML: %v", err)
-		return fmt.Errorf("challenges config error: %w", err)
+	// Use sync manager
+	syncConfig := SyncConfig{
+		UpdateGame: gz.UpdateGame,
+		EventName:  gz.eventName,
 	}
-	log.Info("Loaded %d challenges from configuration", len(challengesConf))
 
-	// Create container with dependencies
-	cnt := container.NewContainer(container.ContainerConfig{
-		Config:      conf,
-		API:         gz.api,
-		Game:        &conf.Event,
-		GetCache:    GetCache,
-		SetCache:    setCache,
-		DeleteCache: deleteCacheWrapperWithError,
-	})
-
-	// Get fresh games list using service
+	return gz.syncManager.Sync(conf, syncConfig)
+}
 	log.Info("Fetching games from API...")
 	gameSvc := cnt.GameService()
 	ctx := context.Background()

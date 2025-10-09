@@ -27,7 +27,6 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
-var challengeFileRegex = regexp.MustCompile(`^challenge\.(yaml|yml)$`)
 
 // EventWatcher manages file watching for a single event
 type EventWatcher struct {
@@ -35,17 +34,11 @@ type EventWatcher struct {
 	eventPath string
 	api       *gzapi.GZAPI
 
-	watcher            *fsnotify.Watcher
-	config             watchertypes.WatcherConfig
-	ctx                context.Context
-	cancel             context.CancelFunc
-	wg                 sync.WaitGroup
-	challengeMutexes   map[string]*sync.Mutex
-	challengeMutexesMu sync.RWMutex
-	pendingUpdates     map[string]string // challengeName -> latest file path
-	pendingUpdatesMu   sync.RWMutex
-	updatingChallenges map[string]bool // challengeName -> is updating
-	updatingMu         sync.RWMutex
+	watcher *fsnotify.Watcher
+	config  watchertypes.WatcherConfig
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 
 	// Component managers
 	challengeMgr *challenge.Manager
@@ -53,15 +46,14 @@ type EventWatcher struct {
 	
 	// Service layer
 	container *container.Container
-	db           *database.DB // Shared reference
-	gitMgr       *git.Manager
+	db        *database.DB // Shared reference
+	gitMgr    *git.Manager
 
-	// Challenge mapping cache (folder path -> GZCTF challenge ID)
-	challengeMappings   map[string]int // folderPath -> challengeID
-	challengeMappingsMu sync.RWMutex
-
-	// Additional state
-	debounceTimers map[string]*time.Timer
+	// Extracted components
+	fileProcessor    *FileProcessor
+	challengeSync    *ChallengeSync
+	stateManager     *StateManager
+	challengeMapping *ChallengeMapping
 }
 
 // NewEventWatcher creates a new event-specific watcher
@@ -93,24 +85,24 @@ func NewEventWatcher(eventName string, api *gzapi.GZAPI, config watchertypes.Wat
 	ctx, cancel := context.WithCancel(parentCtx)
 
 	ew := &EventWatcher{
-		eventName:          eventName,
-		eventPath:          eventPath,
-		api:                api,
-		watcher:            watcher,
-		config:             config,
-		ctx:                ctx,
-		cancel:             cancel,
-		db:                 db,
-		debounceTimers:     make(map[string]*time.Timer),
-		challengeMutexes:   make(map[string]*sync.Mutex),
-		pendingUpdates:     make(map[string]string),
-		updatingChallenges: make(map[string]bool),
-		challengeMappings:  make(map[string]int),
+		eventName: eventName,
+		eventPath: eventPath,
+		api:       api,
+		watcher:   watcher,
+		config:    config,
+		ctx:       ctx,
+		cancel:    cancel,
+		db:        db,
 	}
 
 	// Initialize component managers
 	ew.challengeMgr = challenge.NewManager(watcher)
 	ew.scriptMgr = scripts.NewManager(ctx, ew)
+
+	// Initialize extracted components
+	ew.fileProcessor = NewFileProcessor(eventName, eventPath)
+	ew.stateManager = NewStateManager()
+	ew.challengeMapping = NewChallengeMapping()
 
 	// Initialize container for service layer
 	// We need to create a temporary config for the container
@@ -128,6 +120,9 @@ func NewEventWatcher(eventName string, api *gzapi.GZAPI, config watchertypes.Wat
 		DeleteCache: ew.noOpDeleteCache,
 	})
 
+	// Initialize challenge sync after container is ready
+	ew.challengeSync = NewChallengeSync(eventName, ew.container)
+
 	return ew, nil
 }
 
@@ -141,6 +136,9 @@ func (ew *EventWatcher) UpdateContainerConfig(conf *config.Config) {
 		SetCache:    ew.noOpSetCache,
 		DeleteCache: ew.noOpDeleteCache,
 	})
+	
+	// Update challenge sync with new container
+	ew.challengeSync = NewChallengeSync(ew.eventName, ew.container)
 }
 
 // Start starts watching the event
@@ -298,26 +296,7 @@ func (ew *EventWatcher) discoverChallenges() error {
 
 // GetChallengeUpdateMutex gets or creates a mutex for a specific challenge
 func (ew *EventWatcher) GetChallengeUpdateMutex(challengeName string) *sync.Mutex {
-	ew.challengeMutexesMu.RLock()
-	if mutex, exists := ew.challengeMutexes[challengeName]; exists {
-		ew.challengeMutexesMu.RUnlock()
-		return mutex
-	}
-	ew.challengeMutexesMu.RUnlock()
-
-	// Need to create new mutex
-	ew.challengeMutexesMu.Lock()
-	defer ew.challengeMutexesMu.Unlock()
-
-	// Double-check in case another goroutine created it
-	if mutex, exists := ew.challengeMutexes[challengeName]; exists {
-		return mutex
-	}
-
-	// Create new mutex
-	mutex := &sync.Mutex{}
-	ew.challengeMutexes[challengeName] = mutex
-	return mutex
+	return ew.stateManager.GetChallengeMutex(challengeName)
 }
 
 // Implement ScriptLogger interface for scripts package
@@ -489,18 +468,10 @@ func (ew *EventWatcher) removeChallenge(challengeName string) {
 		log.Info("[%s] Successfully removed challenge: %s", ew.eventName, challengeName)
 	}
 
-	// Clean up mutexes and state
-	ew.challengeMutexesMu.Lock()
-	delete(ew.challengeMutexes, challengeName)
-	ew.challengeMutexesMu.Unlock()
-
-	ew.updatingMu.Lock()
-	delete(ew.updatingChallenges, challengeName)
-	ew.updatingMu.Unlock()
-
-	ew.pendingUpdatesMu.Lock()
-	delete(ew.pendingUpdates, challengeName)
-	ew.pendingUpdatesMu.Unlock()
+	// Clean up state
+	ew.stateManager.SetUpdating(challengeName, false)
+	ew.stateManager.ClearPendingUpdate(challengeName)
+	ew.stateManager.ClearDebounceTimer(challengeName)
 
 	// Update database
 	if ew.db != nil {
@@ -626,9 +597,8 @@ func (ew *EventWatcher) syncChallengeInternal(conf *config.Config, challengeConf
 	// Step 2: No mapping found - use normal sync flow (create or find by name)
 	log.InfoH3("[%s] No mapping found for %s, using normal sync flow", ew.eventName, folderPath)
 
-	// Use service layer to sync challenge
-	challengeSvc := ew.container.ChallengeService()
-	if err := challengeSvc.Sync(ew.ctx, challengeConf); err != nil {
+	// Use challenge sync component
+	if err := ew.challengeSync.SyncChallenge(ew.ctx, challengeConf, challenges); err != nil {
 		return err
 	}
 
@@ -676,16 +646,13 @@ func (ew *EventWatcher) syncToExistingChallenge(conf *config.Config, challengeCo
 	// Set the existing challenge data
 	existingChallenge.CS = ew.api
 
-	// Use service layer to sync challenge with existing data
-	challengeSvc := ew.container.ChallengeService()
-	return challengeSvc.Sync(ew.ctx, challengeConf)
+	// Use challenge sync component
+	return ew.challengeSync.SyncToExistingChallenge(ew.ctx, challengeConf, existingChallenge, challenges)
 }
 
 // Helper methods for update state management
 func (ew *EventWatcher) isUpdating(challengeName string) bool {
-	ew.updatingMu.RLock()
-	defer ew.updatingMu.RUnlock()
-	return ew.updatingChallenges[challengeName]
+	return ew.stateManager.IsUpdating(challengeName)
 }
 
 // Helper functions for cache operations (no-op for watcher)
@@ -720,13 +687,10 @@ func splitPath(path string) []string {
 // getChallengeID retrieves a challenge ID from cache or database
 func (ew *EventWatcher) getChallengeID(folderPath string) (int, bool) {
 	// Check in-memory cache first
-	ew.challengeMappingsMu.RLock()
-	if id, exists := ew.challengeMappings[folderPath]; exists {
-		ew.challengeMappingsMu.RUnlock()
+	if id, exists := ew.challengeMapping.GetChallengeID(folderPath); exists {
 		log.DebugH3("[%s] Cache hit for challenge mapping: %s → ID %d", ew.eventName, folderPath, id)
 		return id, true
 	}
-	ew.challengeMappingsMu.RUnlock()
 
 	// Cache miss - check database
 	if ew.db != nil {
@@ -737,9 +701,7 @@ func (ew *EventWatcher) getChallengeID(folderPath string) (int, bool) {
 		}
 		if mapping != nil {
 			// Found in database - update cache
-			ew.challengeMappingsMu.Lock()
-			ew.challengeMappings[folderPath] = mapping.ChallengeID
-			ew.challengeMappingsMu.Unlock()
+			ew.challengeMapping.SetChallengeID(folderPath, mapping.ChallengeID, "")
 			log.DebugH3("[%s] Database hit for challenge mapping: %s → ID %d", ew.eventName, folderPath, mapping.ChallengeID)
 			return mapping.ChallengeID, true
 		}
@@ -752,9 +714,7 @@ func (ew *EventWatcher) getChallengeID(folderPath string) (int, bool) {
 // setChallengeID stores a challenge ID in cache and database
 func (ew *EventWatcher) setChallengeID(folderPath string, challengeID int, challengeTitle string) {
 	// Update in-memory cache
-	ew.challengeMappingsMu.Lock()
-	ew.challengeMappings[folderPath] = challengeID
-	ew.challengeMappingsMu.Unlock()
+	ew.challengeMapping.SetChallengeID(folderPath, challengeID, challengeTitle)
 
 	// Store in database for persistence
 	if ew.db != nil {
@@ -769,9 +729,7 @@ func (ew *EventWatcher) setChallengeID(folderPath string, challengeID int, chall
 // deleteChallengeID removes a challenge ID mapping
 func (ew *EventWatcher) deleteChallengeID(folderPath string) {
 	// Remove from cache
-	ew.challengeMappingsMu.Lock()
-	delete(ew.challengeMappings, folderPath)
-	ew.challengeMappingsMu.Unlock()
+	ew.challengeMapping.RemoveChallengeID(folderPath)
 
 	// Remove from database
 	if ew.db != nil {
@@ -785,29 +743,15 @@ func (ew *EventWatcher) deleteChallengeID(folderPath string) {
 
 // Helper methods for update state management
 func (ew *EventWatcher) setUpdating(challengeName string, updating bool) {
-	ew.updatingMu.Lock()
-	defer ew.updatingMu.Unlock()
-	if updating {
-		ew.updatingChallenges[challengeName] = true
-	} else {
-		delete(ew.updatingChallenges, challengeName)
-	}
+	ew.stateManager.SetUpdating(challengeName, updating)
 }
 
 func (ew *EventWatcher) setPendingUpdate(challengeName, filePath string) {
-	ew.pendingUpdatesMu.Lock()
-	defer ew.pendingUpdatesMu.Unlock()
-	ew.pendingUpdates[challengeName] = filePath
+	ew.stateManager.SetPendingUpdate(challengeName, filePath)
 }
 
 func (ew *EventWatcher) getPendingUpdate(challengeName string) (string, bool) {
-	ew.pendingUpdatesMu.Lock()
-	defer ew.pendingUpdatesMu.Unlock()
-	filePath, exists := ew.pendingUpdates[challengeName]
-	if exists {
-		delete(ew.pendingUpdates, challengeName)
-	}
-	return filePath, exists
+	return ew.stateManager.GetPendingUpdate(challengeName)
 }
 
 // GetWatchedChallenges returns the list of challenges being watched by this event watcher
