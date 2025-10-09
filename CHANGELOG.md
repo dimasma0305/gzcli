@@ -1,3 +1,13 @@
+## [1.8.0](https://github.com/dimasma0305/gzcli/compare/v1.7.1...v1.8.0) (2025-10-09)
+
+### Features
+
+* Enhance challenge synchronization and normalization ([06a4e11](https://github.com/dimasma0305/gzcli/commit/06a4e111fe0cdd0bcecd9f380e070afce440c7cf))
+
+### Code Refactoring
+
+* Update challenge handling to use config types and improve code structure ([eaeb258](https://github.com/dimasma0305/gzcli/commit/eaeb25852a46899ebe9391ebbd2c615e23b9505d))
+
 ## [1.7.1](https://github.com/dimasma0305/gzcli/compare/v1.7.0...v1.7.1) (2025-10-08)
 
 ### Bug Fixes
