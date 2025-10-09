@@ -285,3 +285,99 @@ func TestIsConfigEdited(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeChallengeDataWithCategoryNormalization(t *testing.T) {
+	tests := []struct {
+		name          string
+		challengeConf config.ChallengeYaml
+		checkFunc     func(*testing.T, *gzapi.Challenge)
+	}{
+		{
+			name: "Game Hacking category normalization",
+			challengeConf: config.ChallengeYaml{
+				Name:        "test-challenge",
+				Author:      "test-author",
+				Description: "Test description",
+				Category:    "Game Hacking",
+				Value:       500,
+			},
+			checkFunc: func(t *testing.T, result *gzapi.Challenge) {
+				expectedTitle := "[Game Hacking] test-challenge"
+				expectedCategory := "Reverse"
+				if result.Title != expectedTitle {
+					t.Errorf("Expected Title %q, got %q", expectedTitle, result.Title)
+				}
+				if result.Category != expectedCategory {
+					t.Errorf("Expected Category %q, got %q", expectedCategory, result.Category)
+				}
+			},
+		},
+		{
+			name: "Normal category no normalization",
+			challengeConf: config.ChallengeYaml{
+				Name:        "test-challenge",
+				Author:      "test-author",
+				Description: "Test description",
+				Category:    "Web",
+				Value:       500,
+			},
+			checkFunc: func(t *testing.T, result *gzapi.Challenge) {
+				expectedTitle := "test-challenge"
+				expectedCategory := "Web"
+				if result.Title != expectedTitle {
+					t.Errorf("Expected Title %q, got %q", expectedTitle, result.Title)
+				}
+				if result.Category != expectedCategory {
+					t.Errorf("Expected Category %q, got %q", expectedCategory, result.Category)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			challengeData := &gzapi.Challenge{}
+			result := MergeChallengeData(&tt.challengeConf, challengeData)
+			tt.checkFunc(t, result)
+		})
+	}
+}
+
+func TestIsChallengeExistWithNormalizedNames(t *testing.T) {
+	// Test that IsChallengeExist correctly handles normalized names
+	challenges := []gzapi.Challenge{
+		{Title: "[Game Hacking] static-attachment", Category: "Reverse"},
+		{Title: "web-challenge", Category: "Web"},
+		{Title: "crypto-challenge", Category: "Crypto"},
+	}
+
+	tests := []struct {
+		name          string
+		challengeName string
+		want          bool
+	}{
+		{
+			name:          "normalized Game Hacking challenge exists",
+			challengeName: "[Game Hacking] static-attachment",
+			want:          true,
+		},
+		{
+			name:          "original name without prefix doesn't exist",
+			challengeName: "static-attachment",
+			want:          false,
+		},
+		{
+			name:          "normal challenge exists",
+			challengeName: "web-challenge",
+			want:          true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsChallengeExist(tt.challengeName, challenges); got != tt.want {
+				t.Errorf("IsChallengeExist() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

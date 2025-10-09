@@ -152,6 +152,17 @@ func GenerateSlug(eventName string, category string, challengeName string) strin
 	})
 }
 
+// NormalizeChallengeCategory normalizes category names and updates challenge name if needed.
+// Returns the normalized category and the potentially modified challenge name.
+// This is needed because "Game Hacking" is not a valid API category enum value,
+// but should be mapped to "Reverse" with a name prefix.
+func NormalizeChallengeCategory(category string, challengeName string) (string, string) {
+	if category == "Game Hacking" {
+		return "Reverse", "[Game Hacking] " + challengeName
+	}
+	return category, challengeName
+}
+
 // processChallengeFile processes a single challenge file
 func processChallengeFile(path string, category string, content []byte) (ChallengeYaml, error) {
 	var challenge ChallengeYaml
@@ -159,13 +170,10 @@ func processChallengeFile(path string, category string, content []byte) (Challen
 		return challenge, fmt.Errorf("yaml parse error: %w %s", err, path)
 	}
 
-	challenge.Category = category
 	challenge.Cwd = filepath.Dir(path)
 
-	if category == "Game Hacking" {
-		challenge.Category = "Reverse"
-		challenge.Name = "[Game Hacking] " + challenge.Name
-	}
+	// Normalize category and update name if needed
+	challenge.Category, challenge.Name = NormalizeChallengeCategory(category, challenge.Name)
 
 	return challenge, nil
 }

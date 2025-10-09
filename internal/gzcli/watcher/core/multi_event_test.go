@@ -770,13 +770,13 @@ func TestMultiEvent_DuplicateFolderNames(t *testing.T) {
 	ew2.discoverChallenges()
 
 	// Verify isolation
-	verifyDuplicateFolderIsolation(t, ew1, ew2, "easy-web")
+	verifyDuplicateFolderIsolation(t, ew1, ew2, "web/easy-web")
 
 	// Verify paths contain correct event names
 	challenges1 := ew1.challengeMgr.GetChallenges()
 	challenges2 := ew2.challengeMgr.GetChallenges()
-	verifyChallengePath(t, challenges1["easy-web"], "ctf2024")
-	verifyChallengePath(t, challenges2["easy-web"], "ctf2025")
+	verifyChallengePath(t, challenges1["web/easy-web"], "ctf2024")
+	verifyChallengePath(t, challenges2["web/easy-web"], "ctf2025")
 
 	t.Logf("Successfully verified isolation of duplicate folder names across events")
 	t.Logf("tmpDir: %s", tmpDir)
@@ -836,11 +836,11 @@ func TestMultiEvent_DuplicateChallengeNames(t *testing.T) {
 		t.Error("Each event should have 1 challenge")
 	}
 
-	if _, exists := challenges1["challenge-a"]; !exists {
-		t.Error("Event1 should have challenge 'challenge-a'")
+	if _, exists := challenges1["web/challenge-a"]; !exists {
+		t.Error("Event1 should have challenge 'web/challenge-a'")
 	}
-	if _, exists := challenges2["challenge-b"]; !exists {
-		t.Error("Event2 should have challenge 'challenge-b'")
+	if _, exists := challenges2["web/challenge-b"]; !exists {
+		t.Error("Event2 should have challenge 'web/challenge-b'")
 	}
 
 	// Verify state isolation between different challenge names
@@ -942,11 +942,12 @@ func TestMultiEvent_DuplicateFolderAndName(t *testing.T) {
 	challengesSummer := ewSummer.challengeMgr.GetChallenges()
 	challengesWinter := ewWinter.challengeMgr.GetChallenges()
 
-	pathSummer, existsSummer := challengesSummer["buffer-overflow"]
-	pathWinter, existsWinter := challengesWinter["buffer-overflow"]
+	challengeKey := "pwn/buffer-overflow"
+	pathSummer, existsSummer := challengesSummer[challengeKey]
+	pathWinter, existsWinter := challengesWinter[challengeKey]
 
 	if !existsSummer || !existsWinter {
-		t.Fatal("Both events should have discovered 'buffer-overflow'")
+		t.Fatal("Both events should have discovered 'pwn/buffer-overflow'")
 	}
 
 	if pathSummer == pathWinter {
@@ -954,7 +955,7 @@ func TestMultiEvent_DuplicateFolderAndName(t *testing.T) {
 	}
 
 	// Verify complete state isolation
-	verifyCompleteStateIsolation(t, ewSummer, ewWinter, "buffer-overflow")
+	verifyCompleteStateIsolation(t, ewSummer, ewWinter, challengeKey)
 
 	t.Logf("Successfully verified complete isolation with identical folder and YAML names")
 	t.Logf("Summer CTF path: %s", pathSummer)
@@ -1151,13 +1152,13 @@ func TestAutoSync_ChallengeRediscovery(t *testing.T) {
 	// Discover initial challenges
 	ew.discoverChallenges()
 	challenges := ew.challengeMgr.GetChallenges()
-	if len(challenges) != 1 || challenges["test-challenge"] == "" {
+	if len(challenges) != 1 || challenges["web/test-challenge"] == "" {
 		t.Fatal("Should discover 1 challenge")
 	}
 
 	// Remove and trigger rediscovery
 	os.RemoveAll(challengeDir)
-	ew.removeChallenge("test-challenge")
+	ew.removeChallenge("web/test-challenge")
 	ew.triggerRediscovery()
 	time.Sleep(100 * time.Millisecond)
 
@@ -1167,10 +1168,10 @@ func TestAutoSync_ChallengeRediscovery(t *testing.T) {
 
 	// Verify old removed, new discovered
 	challenges = ew.challengeMgr.GetChallenges()
-	if _, exists := challenges["test-challenge"]; exists {
+	if _, exists := challenges["web/test-challenge"]; exists {
 		t.Error("Old challenge should be removed")
 	}
-	if _, exists := challenges["new-challenge"]; !exists {
+	if _, exists := challenges["pwn/new-challenge"]; !exists {
 		t.Error("New challenge should be discovered")
 	}
 
@@ -1255,8 +1256,9 @@ flags:
 	}
 
 	for _, tc := range testCases {
-		if _, exists := challenges[tc.challengeName]; !exists {
-			t.Errorf("Challenge %s not discovered", tc.challengeName)
+		expectedKey := tc.category + "/" + tc.challengeName
+		if _, exists := challenges[expectedKey]; !exists {
+			t.Errorf("Challenge %s not discovered", expectedKey)
 		}
 	}
 
@@ -1318,16 +1320,17 @@ func TestAutoSync_ChallengeRemoval(t *testing.T) {
 	}
 
 	// Set up some state for the challenge
-	mutex := ew.GetChallengeUpdateMutex("test-challenge")
+	challengeKey := "web/test-challenge"
+	mutex := ew.GetChallengeUpdateMutex(challengeKey)
 	if mutex == nil {
 		t.Fatal("Mutex should be created")
 	}
 
-	ew.setUpdating("test-challenge", true)
-	ew.setPendingUpdate("test-challenge", "/some/file")
+	ew.setUpdating(challengeKey, true)
+	ew.setPendingUpdate(challengeKey, "/some/file")
 
 	// Remove the challenge
-	ew.removeChallenge("test-challenge")
+	ew.removeChallenge(challengeKey)
 
 	// Verify all state is cleaned up
 	challenges = ew.challengeMgr.GetChallenges()
@@ -1335,13 +1338,13 @@ func TestAutoSync_ChallengeRemoval(t *testing.T) {
 		t.Errorf("Expected 0 challenges after removal, got %d", len(challenges))
 	}
 
-	if ew.isUpdating("test-challenge") {
+	if ew.isUpdating(challengeKey) {
 		t.Error("Challenge should not be in updating state after removal")
 	}
 
 	// Verify mutex map is cleaned (indirectly by checking it doesn't exist)
 	ew.challengeMutexesMu.RLock()
-	_, exists := ew.challengeMutexes["test-challenge"]
+	_, exists := ew.challengeMutexes[challengeKey]
 	ew.challengeMutexesMu.RUnlock()
 
 	if exists {
@@ -1871,7 +1874,7 @@ func TestChallengeMapping_DeletedInGZCTF(t *testing.T) {
 	}
 
 	// Try to fetch the challenge (will fail since it doesn't exist)
-	_, err = ew.fetchChallengeByID(99999)
+	_, err = ew.fetchChallengeByID(99999, []gzapi.Challenge{})
 	if err == nil {
 		t.Error("Should get error when fetching non-existent challenge")
 	}

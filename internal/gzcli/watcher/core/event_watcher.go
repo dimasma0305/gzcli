@@ -344,8 +344,23 @@ func (ew *EventWatcher) HandleFileChange(filePath string) {
 	go func() {
 		defer ew.setUpdating(challengeName, false)
 
+		// Add a small delay to batch rapid file changes (100ms)
+		time.Sleep(100 * time.Millisecond)
+
 		updateType := filesystem.DetermineUpdateType(filePath, challengeCwd)
 		log.Info("[%s] Update type for %s: %v", ew.eventName, challengeName, updateType)
+
+		// Check for pending updates and upgrade update type if needed
+		// Do this early to capture any changes that came in during the delay
+		if pendingFilePath, hasPending := ew.getPendingUpdate(challengeName); hasPending {
+			log.InfoH3("[%s] Found pending update for %s, will also process: %s", ew.eventName, challengeName, pendingFilePath)
+			// Re-determine update type for pending file
+			pendingUpdateType := filesystem.DetermineUpdateType(pendingFilePath, challengeCwd)
+			if pendingUpdateType > updateType {
+				updateType = pendingUpdateType
+				log.InfoH3("[%s] Upgraded update type to: %v", ew.eventName, updateType)
+			}
+		}
 
 		// Skip if no update needed
 		if updateType == watchertypes.UpdateNone {
@@ -360,17 +375,6 @@ func (ew *EventWatcher) HandleFileChange(filePath string) {
 		if ew.scriptMgr != nil {
 			activeScripts := ew.scriptMgr.GetActiveIntervalScripts()
 			ew.UpdateChallengeState(challengeName, "syncing", "", activeScripts)
-		}
-
-		// Check for pending updates and upgrade update type if needed
-		if pendingFilePath, hasPending := ew.getPendingUpdate(challengeName); hasPending {
-			log.InfoH3("[%s] Found pending update for %s, will also process: %s", ew.eventName, challengeName, pendingFilePath)
-			// Re-determine update type for pending file
-			pendingUpdateType := filesystem.DetermineUpdateType(pendingFilePath, challengeCwd)
-			if pendingUpdateType > updateType {
-				updateType = pendingUpdateType
-				log.InfoH3("[%s] Upgraded update type to: %v", ew.eventName, updateType)
-			}
 		}
 
 		// Perform the actual sync
@@ -523,6 +527,9 @@ func (ew *EventWatcher) syncSingleChallenge(challengeName, challengePath string)
 		challengeConf.Category = filepath.Base(categoryDir)
 	}
 
+	// Normalize category and update name if needed (e.g., "Game Hacking" -> "Reverse")
+	challengeConf.Category, challengeConf.Name = config.NormalizeChallengeCategory(challengeConf.Category, challengeConf.Name)
+
 	// Get configuration for this event
 	conf, err := config.GetConfigWithEvent(ew.api, ew.eventName,
 		ew.noOpGetCache,
@@ -562,8 +569,8 @@ func (ew *EventWatcher) syncChallengeInternal(conf *config.Config, challengeConf
 	if challengeID, exists := ew.getChallengeID(folderPath); exists {
 		log.InfoH3("[%s] Found existing challenge mapping: %s → ID %d", ew.eventName, folderPath, challengeID)
 
-		// Try to fetch the challenge by ID
-		existingChallenge, err := ew.fetchChallengeByID(challengeID)
+		// Try to fetch the challenge by ID using the provided challenges list
+		existingChallenge, err := ew.fetchChallengeByID(challengeID, challenges)
 		if err != nil {
 			// Challenge might have been deleted in GZCTF - remove mapping and continue
 			log.InfoH3("[%s] Challenge ID %d not found in GZCTF (may have been deleted), removing mapping", ew.eventName, challengeID)
@@ -572,8 +579,8 @@ func (ew *EventWatcher) syncChallengeInternal(conf *config.Config, challengeConf
 			// Found existing challenge - update it with new name
 			log.InfoH3("[%s] Updating existing challenge ID %d: %s → %s", ew.eventName, challengeID, existingChallenge.Title, challengeConf.Name)
 
-			// Perform the sync with the existing challenge
-			if err := ew.syncToExistingChallenge(conf, challengeConf, existingChallenge); err != nil {
+			// Perform the sync with the existing challenge, passing challenges list to avoid redundant API calls
+			if err := ew.syncToExistingChallenge(conf, challengeConf, existingChallenge, challenges); err != nil {
 				return fmt.Errorf("failed to update existing challenge: %w", err)
 			}
 
@@ -591,38 +598,36 @@ func (ew *EventWatcher) syncChallengeInternal(conf *config.Config, challengeConf
 		return err
 	}
 
-	// Step 3: After successful sync, get the challenge ID and store mapping
-	syncedChallenge, err := conf.Event.GetChallenge(challengeConf.Name)
-	if err != nil {
-		log.Error("[%s] Failed to fetch synced challenge %s: %v", ew.eventName, challengeConf.Name, err)
-	} else {
+	// Step 3: After successful sync, find the challenge ID from the updated challenges list
+	// Try to find by the normalized name first
+	normalizedCategory, normalizedName := config.NormalizeChallengeCategory(challengeConf.Category, challengeConf.Name)
+	var syncedChallengeID int
+
+	// Fetch fresh challenges list to get the newly created/updated challenge
+	freshChallenges, err := conf.Event.GetChallenges()
+	if err == nil {
+		for _, ch := range freshChallenges {
+			if ch.Title == normalizedName && ch.Category == normalizedCategory {
+				syncedChallengeID = ch.Id
+				break
+			}
+		}
+	}
+
+	if syncedChallengeID > 0 {
 		// Store the mapping for future syncs
-		ew.setChallengeID(folderPath, syncedChallenge.Id, challengeConf.Name)
-		log.InfoH3("[%s] Created new challenge mapping: %s → ID %d", ew.eventName, folderPath, syncedChallenge.Id)
+		ew.setChallengeID(folderPath, syncedChallengeID, normalizedName)
+		log.InfoH3("[%s] Created new challenge mapping: %s → ID %d", ew.eventName, folderPath, syncedChallengeID)
+	} else {
+		log.Error("[%s] Failed to find synced challenge %s for mapping", ew.eventName, normalizedName)
 	}
 
 	return nil
 }
 
-// fetchChallengeByID fetches a challenge from GZCTF by its ID
-func (ew *EventWatcher) fetchChallengeByID(challengeID int) (*gzapi.Challenge, error) {
-	// Get all challenges and find the one with matching ID
-	// Note: GZCTF API might not have a direct "get by ID" endpoint, so we fetch all and filter
-	conf, err := config.GetConfigWithEvent(ew.api, ew.eventName,
-		ew.noOpGetCache,
-		ew.noOpSetCache,
-		ew.noOpDeleteCache,
-		nil)
-	if err != nil {
-		return nil, err
-	}
-
-	conf.Event.CS = ew.api
-	challenges, err := conf.Event.GetChallenges()
-	if err != nil {
-		return nil, err
-	}
-
+// fetchChallengeByID fetches a challenge from GZCTF by its ID using provided challenges list
+func (ew *EventWatcher) fetchChallengeByID(challengeID int, challenges []gzapi.Challenge) (*gzapi.Challenge, error) {
+	// Find the challenge with matching ID in the provided list
 	for _, ch := range challenges {
 		if ch.Id == challengeID {
 			return &ch, nil
@@ -633,13 +638,13 @@ func (ew *EventWatcher) fetchChallengeByID(challengeID int) (*gzapi.Challenge, e
 }
 
 // syncToExistingChallenge syncs changes to an existing challenge (handles name changes)
-func (ew *EventWatcher) syncToExistingChallenge(conf *config.Config, challengeConf config.ChallengeYaml, existingChallenge *gzapi.Challenge) error {
-	// Set the existing challenge in the challenges list to ensure update path is taken
+func (ew *EventWatcher) syncToExistingChallenge(conf *config.Config, challengeConf config.ChallengeYaml, existingChallenge *gzapi.Challenge, challenges []gzapi.Challenge) error {
+	// Set the existing challenge data
 	existingChallenge.CS = ew.api
-	challengesList := []gzapi.Challenge{*existingChallenge}
 
-	// Sync using the standard flow with config.ChallengeYaml directly (will update existing)
-	return challengepkg.SyncChallenge(conf, challengeConf, challengesList, ew.api, ew.noOpGetCache, ew.noOpSetCache)
+	// Use the new SyncChallengeWithExisting to force update mode, passing existing challenge directly
+	// This avoids name-based lookup that would fail when category normalization changes the name
+	return challengepkg.SyncChallengeWithExisting(conf, challengeConf, challenges, ew.api, ew.noOpGetCache, ew.noOpSetCache, existingChallenge)
 }
 
 // Helper methods for update state management

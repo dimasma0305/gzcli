@@ -62,8 +62,11 @@ func MergeChallengeData(challengeConf *config.ChallengeYaml, challengeData *gzap
 		challengeData.StorageLimit = 128 // Default fallback
 	}
 
-	challengeData.Title = challengeConf.Name
-	challengeData.Category = challengeConf.Category
+	// Normalize category and name before setting (ensures consistency across sync and watcher)
+	normalizedCategory, normalizedName := config.NormalizeChallengeCategory(challengeConf.Category, challengeConf.Name)
+
+	challengeData.Title = normalizedName
+	challengeData.Category = normalizedCategory
 	challengeData.Content = fmt.Sprintf("Author: **%s**\n\n%s", challengeConf.Author, challengeConf.Description)
 	challengeData.Type = challengeConf.Type
 	challengeData.Hints = challengeConf.Hints
@@ -177,18 +180,31 @@ func handleExistingChallenge(conf *config.Config, challengeConf config.Challenge
 }
 
 func SyncChallenge(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
+	return SyncChallengeWithExisting(conf, challengeConf, challenges, api, getCache, setCache, nil)
+}
+
+// SyncChallengeWithExisting syncs a challenge with an optional existing challenge to force update mode
+func SyncChallengeWithExisting(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error, existingChallenge *gzapi.Challenge) error {
 	var challengeData *gzapi.Challenge
 	var err error
 
 	log.InfoH2("Starting sync for challenge: %s (Type: %s, Category: %s)", challengeConf.Name, challengeConf.Type, challengeConf.Category)
 
-	// Check existence using the original challenges list first to avoid unnecessary API calls
-	if !IsChallengeExist(challengeConf.Name, challenges) {
+	// Determine the sync path based on challenge state
+	switch {
+	case existingChallenge != nil:
+		// If an existing challenge is provided, use it directly (force update mode)
+		log.InfoH3("Using provided existing challenge (ID: %d) for update", existingChallenge.Id)
+		challengeData = existingChallenge
+		challengeData.CS = api
+		challengeData.IsEnabled = nil // fix bug isEnable always be false after sync
+	case !IsChallengeExist(challengeConf.Name, challenges):
+		// Check existence using the original challenges list first to avoid unnecessary API calls
 		challengeData, err = handleNewChallenge(conf, challengeConf, challenges, api)
 		if err != nil {
 			return err
 		}
-	} else {
+	default:
 		challengeData, err = handleExistingChallenge(conf, challengeConf, api, getCache)
 		if err != nil {
 			return err
@@ -233,7 +249,9 @@ func processAttachmentsAndFlags(conf *config.Config, challengeConf config.Challe
 
 // updateChallengeWithRetry attempts to update a challenge and retries on 404
 func updateChallengeWithRetry(conf *config.Config, challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge) (*gzapi.Challenge, error) {
+	fmt.Printf("%+v\n", challengeData)
 	updatedData, err := challengeData.Update(*challengeData)
+	// print all object and key
 	if err == nil {
 		return updatedData, nil
 	}
