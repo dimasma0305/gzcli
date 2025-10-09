@@ -1,6 +1,7 @@
 package gzcli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/challenge"
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
+	"github.com/dimasma0305/gzcli/internal/gzcli/container"
 	"github.com/dimasma0305/gzcli/internal/gzcli/event"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/gzcli/team"
@@ -287,6 +289,19 @@ func (gz *GZ) Sync() error {
 	}
 	log.Info("Found %d games", len(games))
 
+	// Create container with dependencies
+	cnt := container.NewContainer(container.ContainerConfig{
+		Config:      conf,
+		API:         gz.api,
+		Game:        &conf.Event,
+		GetCache:    GetCache,
+		SetCache:    setCache,
+		DeleteCache: deleteCacheWrapperWithError,
+	})
+
+	// Get services from container
+	gameSvc := cnt.GameService()
+
 	currentGame := challenge.FindCurrentGame(games, conf.Event.Title, gz.api)
 	if currentGame == nil {
 		log.Info("Current game not found, clearing cache and retrying...")
@@ -297,7 +312,8 @@ func (gz *GZ) Sync() error {
 
 	if gz.UpdateGame {
 		log.Info("Updating game configuration...")
-		if err := challenge.UpdateGameIfNeeded(conf, currentGame, gz.api, createPosterIfNotExistOrDifferent, setCache); err != nil {
+		ctx := context.Background()
+		if err := gameSvc.UpdateGameIfNeeded(ctx, conf, currentGame, createPosterIfNotExistOrDifferent, setCache); err != nil {
 			log.Error("Failed to update game: %v", err)
 			return fmt.Errorf("game update error: %w", err)
 		}
@@ -320,6 +336,9 @@ func (gz *GZ) Sync() error {
 		return fmt.Errorf("API challenges fetch error: %w", err)
 	}
 	log.Info("Found %d existing challenges in API", len(challenges))
+
+	// Get challenge service from container
+	challengeSvc := cnt.ChallengeService()
 
 	// Process challenges
 	log.Info("Starting challenge synchronization...")
@@ -350,7 +369,8 @@ func (gz *GZ) Sync() error {
 			defer mutex.Unlock()
 
 			log.Info("Processing challenge: %s", c.Name)
-			if err := challenge.SyncChallenge(conf, c, challenges, gz.api, GetCache, setCache); err != nil {
+			ctx := context.Background()
+			if err := challengeSvc.Sync(ctx, c); err != nil {
 				log.Error("Failed to sync challenge %s: %v", c.Name, err)
 				errChan <- fmt.Errorf("challenge sync failed for %s: %w", c.Name, err)
 				failureCount++

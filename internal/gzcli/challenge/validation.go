@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
+	"github.com/dimasma0305/gzcli/internal/gzcli/errors"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -51,7 +52,7 @@ func IsGoodChallenge(challenge config.ChallengeYaml) error {
 		for _, e := range errors {
 			log.Error("  - %s", e)
 		}
-		return fmt.Errorf("invalid challenge: %s", challenge.Name)
+		return errors.Wrapf(errors.ErrValidationFailed, "validation failed for %s: %s", challenge.Name, strings.Join(errors, "; "))
 	}
 
 	return nil

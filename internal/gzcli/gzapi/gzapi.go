@@ -10,6 +10,7 @@ import (
 
 	"github.com/imroc/req/v3"
 
+	"github.com/dimasma0305/gzcli/internal/gzcli/errors"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -27,10 +28,10 @@ type GZAPI struct {
 func Init(url string, creds *Creds) (*GZAPI, error) {
 	// Validate inputs
 	if creds == nil {
-		return nil, fmt.Errorf("credentials cannot be nil")
+		return nil, errors.ErrInvalidCredentials
 	}
 	if url == "" {
-		return nil, fmt.Errorf("URL cannot be empty")
+		return nil, errors.ErrEmptyURL
 	}
 
 	url = strings.TrimRight(url, "/")
