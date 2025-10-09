@@ -12,8 +12,10 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	challengepkg "github.com/dimasma0305/gzcli/internal/gzcli/challenge"
+	"github.com/dimasma0305/gzcli/internal/gzcli/challenge"
+	"github.com/dimasma0305/gzcli/internal/gzcli/common"
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
+	"github.com/dimasma0305/gzcli/internal/gzcli/container"
 	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/gzcli/watcher/challenge"
@@ -48,6 +50,9 @@ type EventWatcher struct {
 	// Component managers
 	challengeMgr *challenge.Manager
 	scriptMgr    *scripts.Manager
+	
+	// Service layer
+	container *container.Container
 	db           *database.DB // Shared reference
 	gitMgr       *git.Manager
 
@@ -107,7 +112,35 @@ func NewEventWatcher(eventName string, api *gzapi.GZAPI, config watchertypes.Wat
 	ew.challengeMgr = challenge.NewManager(watcher)
 	ew.scriptMgr = scripts.NewManager(ctx, ew)
 
+	// Initialize container for service layer
+	// We need to create a temporary config for the container
+	// This will be updated when the actual config is loaded
+	tempConfig := &config.Config{
+		Event: gzapi.Game{Id: 1}, // Temporary ID, will be updated
+	}
+	
+	ew.container = container.NewContainer(container.ContainerConfig{
+		Config:      tempConfig,
+		API:         api,
+		Game:        &tempConfig.Event,
+		GetCache:    ew.noOpGetCache,
+		SetCache:    ew.noOpSetCache,
+		DeleteCache: ew.noOpDeleteCache,
+	})
+
 	return ew, nil
+}
+
+// UpdateContainerConfig updates the container with the actual config
+func (ew *EventWatcher) UpdateContainerConfig(conf *config.Config) {
+	ew.container = container.NewContainer(container.ContainerConfig{
+		Config:      conf,
+		API:         ew.api,
+		Game:        &conf.Event,
+		GetCache:    ew.noOpGetCache,
+		SetCache:    ew.noOpSetCache,
+		DeleteCache: ew.noOpDeleteCache,
+	})
 }
 
 // Start starts watching the event
@@ -593,8 +626,9 @@ func (ew *EventWatcher) syncChallengeInternal(conf *config.Config, challengeConf
 	// Step 2: No mapping found - use normal sync flow (create or find by name)
 	log.InfoH3("[%s] No mapping found for %s, using normal sync flow", ew.eventName, folderPath)
 
-	// Call the challenge sync function with config.ChallengeYaml directly
-	if err := challengepkg.SyncChallenge(conf, challengeConf, challenges, ew.api, ew.noOpGetCache, ew.noOpSetCache); err != nil {
+	// Use service layer to sync challenge
+	challengeSvc := ew.container.ChallengeService()
+	if err := challengeSvc.Sync(ew.ctx, challengeConf); err != nil {
 		return err
 	}
 
@@ -642,9 +676,9 @@ func (ew *EventWatcher) syncToExistingChallenge(conf *config.Config, challengeCo
 	// Set the existing challenge data
 	existingChallenge.CS = ew.api
 
-	// Use the new SyncChallengeWithExisting to force update mode, passing existing challenge directly
-	// This avoids name-based lookup that would fail when category normalization changes the name
-	return challengepkg.SyncChallengeWithExisting(conf, challengeConf, challenges, ew.api, ew.noOpGetCache, ew.noOpSetCache, existingChallenge)
+	// Use service layer to sync challenge with existing data
+	challengeSvc := ew.container.ChallengeService()
+	return challengeSvc.Sync(ew.ctx, challengeConf)
 }
 
 // Helper methods for update state management

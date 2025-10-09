@@ -38,6 +38,7 @@ type Container struct {
 	// Cached services
 	challengeService *service.ChallengeService
 	gameService      *service.GameService
+	teamService      *service.TeamService
 }
 
 // NewContainer creates a new dependency container
@@ -117,6 +118,16 @@ func (c *Container) GameService() *service.GameService {
 		)
 	}
 	return c.gameService
+}
+
+// TeamService returns the team service
+func (c *Container) TeamService() *service.TeamService {
+	if c.teamService == nil {
+		c.teamService = service.NewTeamService(service.TeamServiceConfig{
+			API: c.api,
+		})
+	}
+	return c.teamService
 }
 
 // WithContext creates a new container with context for operations
