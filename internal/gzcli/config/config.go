@@ -2,9 +2,11 @@
 package config
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
+	"github.com/dimasma0305/gzcli/internal/gzcli/service"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -56,7 +58,11 @@ func validateCachedGameWithKey(config *Config, api *gzapi.GZAPI, deleteCache fun
 	}
 
 	log.Info("Validating cached game ID %d exists on server...", config.Event.Id)
-	games, err := api.GetGames()
+	
+	// Use service layer for game operations
+	gameSvc := service.NewGameService(nil, nil, api)
+	ctx := context.Background()
+	games, err := gameSvc.GetGames(ctx)
 	if err != nil {
 		log.Error("Failed to get games for validation: %v", err)
 		return fmt.Errorf("API games fetch error: %w", err)
@@ -94,6 +100,12 @@ func ensureGameExistsWithKey(config *Config, api *gzapi.GZAPI, setCache func(str
 		return nil
 	}
 
+	// Use service layer for game operations
+	gameSvc := service.NewGameService(nil, nil, api)
+	ctx := context.Background()
+	
+	// Note: GetGameByTitle would need to be implemented in the service
+	// For now, we'll use the direct API call
 	game, err := api.GetGameByTitle(config.Event.Title)
 	if err != nil {
 		log.Info("Game '%s' not found by title, creating new game...", config.Event.Title)

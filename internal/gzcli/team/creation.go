@@ -2,6 +2,7 @@
 package team
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/sethvargo/go-password/password"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
+	"github.com/dimasma0305/gzcli/internal/gzcli/service"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
@@ -80,10 +82,20 @@ func ensureTeamCreated(api *gzapi.GZAPI, currentCreds *TeamCreds, username, team
 		return
 	}
 
-	err := api.CreateTeam(&gzapi.TeamForm{
-		Bio:  "",
-		Name: teamName,
+	// Use service layer for team creation
+	teamSvc := service.NewTeamService(service.TeamServiceConfig{
+		API: api,
 	})
+	
+	serviceTeamCreds := &service.TeamCreds{
+		TeamName: teamName,
+		Username: teamCreds.Username,
+		Password: teamCreds.Password,
+		Email:    teamCreds.Email,
+	}
+	
+	ctx := context.Background()
+	err := teamSvc.CreateTeam(ctx, serviceTeamCreds)
 	if err != nil {
 		log.ErrorH2("Team %s already exist", teamName)
 	}
@@ -113,6 +125,14 @@ func sendCredentialsEmail(teamCreds *TeamCreds, currentCreds *TeamCreds, config 
 
 // joinTeamToGame joins a team to the game
 func joinTeamToGame(api *gzapi.GZAPI, config ConfigInterface) error {
+	// Use service layer for team operations
+	teamSvc := service.NewTeamService(service.TeamServiceConfig{
+		API: api,
+	})
+	
+	ctx := context.Background()
+	// Note: GetTeams would need to be implemented in the service
+	// For now, we'll use the direct API call
 	team, err := api.GetTeams()
 	if err != nil {
 		log.Error("%s", err.Error())

@@ -21,10 +21,12 @@
 package event
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
+	"github.com/dimasma0305/gzcli/internal/gzcli/service"
 )
 
 // CTFTimeFeed represents a CTFTime-compatible feed format
@@ -55,7 +57,11 @@ type Standing struct {
 //	    log.Fatalf("Failed to remove events: %v", err)
 //	}
 func RemoveAllEvent(api *gzapi.GZAPI) error {
-	games, err := api.GetGames()
+	// Use service layer for game operations
+	gameSvc := service.NewGameService(nil, nil, api)
+	
+	ctx := context.Background()
+	games, err := gameSvc.GetGames(ctx)
 	if err != nil {
 		return err
 	}

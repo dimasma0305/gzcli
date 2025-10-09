@@ -281,15 +281,6 @@ func (gz *GZ) Sync() error {
 	}
 	log.Info("Loaded %d challenges from configuration", len(challengesConf))
 
-	// Get fresh games list
-	log.Info("Fetching games from API...")
-	games, err := gz.api.GetGames()
-	if err != nil {
-		log.Error("Failed to get games: %v", err)
-		return fmt.Errorf("games fetch error: %w", err)
-	}
-	log.Info("Found %d games", len(games))
-
 	// Create container with dependencies
 	cnt := container.NewContainer(container.ContainerConfig{
 		Config:      conf,
@@ -300,8 +291,16 @@ func (gz *GZ) Sync() error {
 		DeleteCache: deleteCacheWrapperWithError,
 	})
 
-	// Get services from container
+	// Get fresh games list using service
+	log.Info("Fetching games from API...")
 	gameSvc := cnt.GameService()
+	ctx := context.Background()
+	games, err := gameSvc.GetGames(ctx)
+	if err != nil {
+		log.Error("Failed to get games: %v", err)
+		return fmt.Errorf("games fetch error: %w", err)
+	}
+	log.Info("Found %d games", len(games))
 
 	// Use service to find current game
 	currentGame := gameSvc.FindGame(ctx, games, conf.Event.Title)
