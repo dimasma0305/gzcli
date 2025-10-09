@@ -49,21 +49,42 @@ func (r *GZAPIChallengeRepository) GetChallenge(ctx context.Context, gameID int,
 
 // CreateChallenge creates a new challenge
 func (r *GZAPIChallengeRepository) CreateChallenge(ctx context.Context, gameID int, challenge *gzapi.Challenge) (*gzapi.Challenge, error) {
-	// This would need to be implemented in the GZAPI package
-	// For now, return an error indicating it's not implemented
-	return nil, fmt.Errorf("create challenge not implemented in GZAPI")
+	// Create a temporary game object to use the existing API
+	game := &gzapi.Game{Id: gameID, CS: r.api}
+	
+	createdChallenge, err := game.CreateChallenge(challenge)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create challenge %s", challenge.Title)
+	}
+
+	log.Info("Successfully created challenge: %s (ID: %d)", createdChallenge.Title, createdChallenge.Id)
+	return createdChallenge, nil
 }
 
 // UpdateChallenge updates an existing challenge
 func (r *GZAPIChallengeRepository) UpdateChallenge(ctx context.Context, gameID int, challenge *gzapi.Challenge) (*gzapi.Challenge, error) {
-	// This would need to be implemented in the GZAPI package
-	// For now, return an error indicating it's not implemented
-	return nil, fmt.Errorf("update challenge not implemented in GZAPI")
+	// Create a temporary game object to use the existing API
+	game := &gzapi.Game{Id: gameID, CS: r.api}
+	
+	updatedChallenge, err := game.UpdateChallenge(challenge)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to update challenge %s (ID: %d)", challenge.Title, challenge.Id)
+	}
+
+	log.Info("Successfully updated challenge: %s (ID: %d)", updatedChallenge.Title, updatedChallenge.Id)
+	return updatedChallenge, nil
 }
 
 // DeleteChallenge deletes a challenge
 func (r *GZAPIChallengeRepository) DeleteChallenge(ctx context.Context, gameID int, challengeID int) error {
-	// This would need to be implemented in the GZAPI package
-	// For now, return an error indicating it's not implemented
-	return fmt.Errorf("delete challenge not implemented in GZAPI")
+	// Create a temporary game object to use the existing API
+	game := &gzapi.Game{Id: gameID, CS: r.api}
+	
+	err := game.DeleteChallenge(challengeID)
+	if err != nil {
+		return errors.Wrapf(err, "failed to delete challenge %d", challengeID)
+	}
+
+	log.Info("Successfully deleted challenge %d", challengeID)
+	return nil
 }
