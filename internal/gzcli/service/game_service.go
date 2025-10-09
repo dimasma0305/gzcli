@@ -14,20 +14,23 @@ import (
 // GameServiceConfig holds configuration for GameService
 type GameServiceConfig struct {
 	Cache repository.CacheRepository
+	GameRepo repository.GameRepository
 	API   *gzapi.GZAPI
 }
 
 // GameService handles game business logic
 type GameService struct {
-	cache repository.CacheRepository
-	api   *gzapi.GZAPI
+	cache    repository.CacheRepository
+	gameRepo repository.GameRepository
+	api      *gzapi.GZAPI
 }
 
 // NewGameService creates a new GameService
-func NewGameService(cache repository.CacheRepository, api *gzapi.GZAPI) *GameService {
+func NewGameService(cache repository.CacheRepository, gameRepo repository.GameRepository, api *gzapi.GZAPI) *GameService {
 	return &GameService{
-		cache: cache,
-		api:   api,
+		cache:    cache,
+		gameRepo: gameRepo,
+		api:      api,
 	}
 }
 
@@ -93,10 +96,30 @@ func (s *GameService) updateGame(ctx context.Context, currentGame *gzapi.Game, c
 	return currentGame, nil
 }
 
+// CreateGame creates a new game
+func (s *GameService) CreateGame(ctx context.Context, game *gzapi.Game) (*gzapi.Game, error) {
+	if s.gameRepo == nil {
+		return nil, errors.New("game repository not available")
+	}
+	
+	createdGame, err := s.gameRepo.CreateGame(ctx, game)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create game")
+	}
+	
+	return createdGame, nil
+}
+
 // GetGames retrieves all games
 func (s *GameService) GetGames(ctx context.Context) ([]gzapi.Game, error) {
-	// This would use the repository pattern
-	// For now, return an empty slice
-	log.Debug("GetGames not implemented")
-	return []gzapi.Game{}, nil
+	if s.gameRepo == nil {
+		return []gzapi.Game{}, nil
+	}
+	
+	games, err := s.gameRepo.GetGames(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get games")
+	}
+	
+	return games, nil
 }

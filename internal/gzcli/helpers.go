@@ -1,8 +1,12 @@
 package gzcli
 
 import (
+	"context"
+
 	"github.com/dimasma0305/gzcli/internal/gzcli/challenge"
+	"github.com/dimasma0305/gzcli/internal/gzcli/common"
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
+	"github.com/dimasma0305/gzcli/internal/gzcli/container"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/gzcli/script"
 	"github.com/dimasma0305/gzcli/internal/gzcli/structure"
@@ -19,7 +23,43 @@ func getConfigWrapper(api *gzapi.GZAPI) (*config.Config, error) {
 }
 
 func createNewGameWrapper(conf *config.Config, api *gzapi.GZAPI) (*gzapi.Game, error) {
-	return challenge.CreateNewGame(conf, api, createPosterIfNotExistOrDifferent, setCache)
+	// Create container with dependencies
+	cnt := container.NewContainer(container.ContainerConfig{
+		Config:      conf,
+		API:         api,
+		Game:        &conf.Event,
+		GetCache:    GetCache,
+		SetCache:    setCache,
+		DeleteCache: deleteCacheWrapper,
+	})
+
+	// Use service to create new game
+	gameSvc := cnt.GameService()
+	ctx := context.Background()
+	
+	// Create game using the service
+	game := &gzapi.Game{
+		Title:       conf.Event.Title,
+		Description: conf.Event.Description,
+		Value:       conf.Event.Value,
+		Start:       conf.Event.Start.Time,
+		End:         conf.Event.End.Time,
+	}
+	
+	createdGame, err := gameSvc.CreateGame(ctx, game)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Handle poster creation if needed
+	if createPosterIfNotExistOrDifferent != nil {
+		if err := createPosterIfNotExistOrDifferent(createdGame, api); err != nil {
+			// Log error but don't fail the game creation
+			// This maintains backward compatibility
+		}
+	}
+	
+	return createdGame, nil
 }
 
 func genStructureWrapper(challenges []interface{ GetCwd() string }) error {

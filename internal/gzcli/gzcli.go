@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/challenge"
+	"github.com/dimasma0305/gzcli/internal/gzcli/common"
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/gzcli/container"
 	"github.com/dimasma0305/gzcli/internal/gzcli/event"
@@ -302,7 +303,8 @@ func (gz *GZ) Sync() error {
 	// Get services from container
 	gameSvc := cnt.GameService()
 
-	currentGame := challenge.FindCurrentGame(games, conf.Event.Title, gz.api)
+	// Use service to find current game
+	currentGame := gameSvc.FindGame(ctx, games, conf.Event.Title)
 	if currentGame == nil {
 		log.Info("Current game not found, clearing cache and retrying...")
 		_ = DeleteCache("config")
@@ -321,9 +323,12 @@ func (gz *GZ) Sync() error {
 	}
 
 	log.Info("Validating challenges...")
-	if err := challenge.ValidateChallenges(challengesConf); err != nil {
-		log.Error("Challenge validation failed: %v", err)
-		return fmt.Errorf("validation error: %w", err)
+	validator := common.NewValidator()
+	for _, challengeConf := range challengesConf {
+		if err := validator.ValidateChallenge(challengeConf); err != nil {
+			log.Error("Challenge validation failed for %s: %v", challengeConf.Name, err)
+			return fmt.Errorf("validation error: %w", err)
+		}
 	}
 	log.Info("All challenges validated successfully")
 

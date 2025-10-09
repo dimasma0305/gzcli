@@ -71,8 +71,7 @@ func (c *Container) CacheRepository() repository.CacheRepository {
 // AttachmentRepository returns the attachment repository
 func (c *Container) AttachmentRepository() repository.AttachmentRepository {
 	if c.attachmentRepo == nil {
-		// This would be implemented when attachment repository is created
-		c.attachmentRepo = nil
+		c.attachmentRepo = repository.NewGZAPIAttachmentRepository(c.api)
 	}
 	return c.attachmentRepo
 }
@@ -80,8 +79,7 @@ func (c *Container) AttachmentRepository() repository.AttachmentRepository {
 // FlagRepository returns the flag repository
 func (c *Container) FlagRepository() repository.FlagRepository {
 	if c.flagRepo == nil {
-		// This would be implemented when flag repository is created
-		c.flagRepo = nil
+		c.flagRepo = repository.NewGZAPIFlagRepository(c.api)
 	}
 	return c.flagRepo
 }
@@ -89,8 +87,7 @@ func (c *Container) FlagRepository() repository.FlagRepository {
 // GameRepository returns the game repository
 func (c *Container) GameRepository() repository.GameRepository {
 	if c.gameRepo == nil {
-		// This would be implemented when game repository is created
-		c.gameRepo = nil
+		c.gameRepo = repository.NewGZAPIGameRepository(c.api)
 	}
 	return c.gameRepo
 }
@@ -115,6 +112,7 @@ func (c *Container) GameService() *service.GameService {
 	if c.gameService == nil {
 		c.gameService = service.NewGameService(
 			c.CacheRepository(),
+			c.GameRepository(),
 			c.api,
 		)
 	}

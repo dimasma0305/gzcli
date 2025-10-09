@@ -186,16 +186,111 @@ func (s *ChallengeService) needsUpdate(conf config.ChallengeYaml, existing *gzap
 
 // syncAttachments handles attachment synchronization
 func (s *ChallengeService) syncAttachments(ctx context.Context, challengeID int, conf config.ChallengeYaml) error {
-	// This would implement attachment sync logic
-	// For now, just log that it's not implemented
-	log.Debug("Attachment sync not implemented for challenge %d", challengeID)
+	if s.attachmentRepo == nil {
+		log.Debug("Attachment repository not available, skipping attachment sync")
+		return nil
+	}
+
+	// Get existing attachments
+	existingAttachments, err := s.attachmentRepo.GetAttachments(ctx, challengeID)
+	if err != nil {
+		log.Warn("Failed to get existing attachments for challenge %d: %v", challengeID, err)
+		// Don't fail the entire sync for attachment errors
+		return nil
+	}
+
+	// Create a map of existing attachments by filename
+	existingMap := make(map[string]*gzapi.Attachment)
+	for i := range existingAttachments {
+		existingMap[existingAttachments[i].FileName] = &existingAttachments[i]
+	}
+
+	// Process attachments from configuration
+	for _, attachmentPath := range conf.Attachments {
+		// Check if attachment already exists
+		if _, exists := existingMap[attachmentPath]; exists {
+			log.Debug("Attachment %s already exists for challenge %d", attachmentPath, challengeID)
+			continue
+		}
+
+		// Upload new attachment
+		_, err := s.attachmentRepo.UploadAttachment(ctx, challengeID, attachmentPath)
+		if err != nil {
+			log.Error("Failed to upload attachment %s for challenge %d: %v", attachmentPath, challengeID, err)
+			// Continue with other attachments
+			continue
+		}
+
+		log.Info("Successfully uploaded attachment %s for challenge %d", attachmentPath, challengeID)
+	}
+
 	return nil
 }
 
 // syncFlags handles flag synchronization
 func (s *ChallengeService) syncFlags(ctx context.Context, challengeID int, conf config.ChallengeYaml) error {
-	// This would implement flag sync logic
-	// For now, just log that it's not implemented
-	log.Debug("Flag sync not implemented for challenge %d", challengeID)
+	if s.flagRepo == nil {
+		log.Debug("Flag repository not available, skipping flag sync")
+		return nil
+	}
+
+	// Get existing flags
+	existingFlags, err := s.flagRepo.GetFlags(ctx, challengeID)
+	if err != nil {
+		log.Warn("Failed to get existing flags for challenge %d: %v", challengeID, err)
+		// Don't fail the entire sync for flag errors
+		return nil
+	}
+
+	// Create a map of existing flags by value
+	existingMap := make(map[string]*gzapi.Flag)
+	for i := range existingFlags {
+		existingMap[existingFlags[i].Value] = &existingFlags[i]
+	}
+
+	// Process flags from configuration
+	for _, flagValue := range conf.Flags {
+		// Check if flag already exists
+		if _, exists := existingMap[flagValue]; exists {
+			log.Debug("Flag %s already exists for challenge %d", flagValue, challengeID)
+			continue
+		}
+
+		// Create new flag
+		flag := &gzapi.Flag{
+			ChallengeID: challengeID,
+			Value:       flagValue,
+			Type:        "static", // Default type for static flags
+		}
+
+		_, err := s.flagRepo.CreateFlag(ctx, challengeID, flag)
+		if err != nil {
+			log.Error("Failed to create flag %s for challenge %d: %v", flagValue, challengeID, err)
+			// Continue with other flags
+			continue
+		}
+
+		log.Info("Successfully created flag %s for challenge %d", flagValue, challengeID)
+	}
+
+	// Handle dynamic flag template for dynamic container challenges
+	if conf.Type == "DynamicContainer" && conf.Container.FlagTemplate != "" {
+		// Check if dynamic flag template already exists
+		if _, exists := existingMap[conf.Container.FlagTemplate]; !exists {
+			flag := &gzapi.Flag{
+				ChallengeID: challengeID,
+				Value:       conf.Container.FlagTemplate,
+				Type:        "dynamic",
+			}
+
+			_, err := s.flagRepo.CreateFlag(ctx, challengeID, flag)
+			if err != nil {
+				log.Error("Failed to create dynamic flag template for challenge %d: %v", challengeID, err)
+			} else {
+				log.Info("Successfully created dynamic flag template for challenge %d", challengeID)
+			}
+		}
+	}
+
 	return nil
 }
