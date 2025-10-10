@@ -3,6 +3,7 @@ package daemon
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -27,10 +28,12 @@ func TestEnsureDirectoriesExist_SinglePath(t *testing.T) {
 		t.Error("Path is not a directory")
 	}
 
-	// Verify permissions (at least readable and writable)
-	mode := info.Mode()
-	if mode.Perm()&0700 != 0700 {
-		t.Errorf("Directory permissions = %o, want at least 0700", mode.Perm())
+	// Verify permissions (at least readable and writable) - Unix only
+	if runtime.GOOS != "windows" {
+		mode := info.Mode()
+		if mode.Perm()&0700 != 0700 {
+			t.Errorf("Directory permissions = %o, want at least 0700", mode.Perm())
+		}
 	}
 }
 
@@ -246,6 +249,11 @@ func TestReadPIDFromFile_EdgeCases(t *testing.T) {
 
 // TestWritePIDFile_Permissions tests PID file has correct permissions
 func TestWritePIDFile_Permissions(t *testing.T) {
+	// Skip on Windows as it uses a different permission model (ACLs)
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping Unix permission test on Windows")
+	}
+
 	tmpDir := t.TempDir()
 	pidFile := filepath.Join(tmpDir, "test.pid")
 
