@@ -13,6 +13,75 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// loadEnvFile loads environment variables from a .env file
+func loadEnvFile(envFilePath string) map[string]string {
+	envVars := make(map[string]string)
+
+	//nolint:gosec // G304: Reading env files is intentional
+	file, err := os.Open(envFilePath)
+	if err != nil {
+		// .env file is optional, don't error out
+		return envVars
+	}
+	defer func() {
+		if cerr := file.Close(); cerr != nil {
+			log.Error("Failed to close env file %s: %v", envFilePath, cerr)
+		}
+	}()
+
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Parse KEY=VALUE format
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			log.Debug("Skipping invalid line %d in %s: %s", lineNum, envFilePath, line)
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// Remove quotes if present
+		if len(value) >= 2 {
+			if (value[0] == '"' && value[len(value)-1] == '"') ||
+				(value[0] == '\'' && value[len(value)-1] == '\'') {
+				value = value[1 : len(value)-1]
+			}
+		}
+
+		envVars[key] = value
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Error("Error reading env file %s: %v", envFilePath, err)
+	}
+
+	return envVars
+}
+
+// expandEnvVarsWithMap expands environment variables in a string using both system env and provided map
+// Supports both ${VAR} and $VAR formats
+// Priority: provided map > system environment
+func expandEnvVarsWithMap(s string, envMap map[string]string) string {
+	return os.Expand(s, func(key string) string {
+		// Check custom env map first
+		if val, ok := envMap[key]; ok {
+			return val
+		}
+		// Fall back to system environment
+		return os.Getenv(key)
+	})
+}
+
 // PortParser extracts port information from configuration files
 type PortParser struct{}
 
@@ -55,6 +124,46 @@ func (pp *PortParser) parseComposePorts(configPath string) []string {
 		return []string{}
 	}
 
+	// Load environment variables from .env file (Docker Compose convention)
+	composeDir := filepath.Dir(configPath)
+	defaultEnvFile := filepath.Join(composeDir, ".env")
+	envVars := loadEnvFile(defaultEnvFile)
+
+	// Also load env_file entries from services
+	if services, ok := compose["services"].(map[interface{}]interface{}); ok {
+		for _, serviceData := range services {
+			if serviceMap, ok := serviceData.(map[interface{}]interface{}); ok {
+				// Load env_file if specified
+				if envFile, ok := serviceMap["env_file"]; ok {
+					envFiles := []string{}
+					switch v := envFile.(type) {
+					case string:
+						envFiles = append(envFiles, v)
+					case []interface{}:
+						for _, ef := range v {
+							if efStr, ok := ef.(string); ok {
+								envFiles = append(envFiles, efStr)
+							}
+						}
+					}
+
+					// Load each env file
+					for _, ef := range envFiles {
+						envPath := ef
+						if !filepath.IsAbs(ef) {
+							envPath = filepath.Join(composeDir, ef)
+						}
+						fileEnvVars := loadEnvFile(envPath)
+						// Merge into envVars (later files override earlier ones)
+						for k, v := range fileEnvVars {
+							envVars[k] = v
+						}
+					}
+				}
+			}
+		}
+	}
+
 	var ports []string
 
 	// Extract ports from services
@@ -65,6 +174,8 @@ func (pp *PortParser) parseComposePorts(configPath string) []string {
 				if portsList, ok := serviceMap["ports"].([]interface{}); ok {
 					for _, port := range portsList {
 						portStr := fmt.Sprintf("%v", port)
+						// Expand environment variables in port mappings
+						portStr = expandEnvVarsWithMap(portStr, envVars)
 						ports = append(ports, portStr)
 					}
 				}
@@ -73,6 +184,8 @@ func (pp *PortParser) parseComposePorts(configPath string) []string {
 				if exposeList, ok := serviceMap["expose"].([]interface{}); ok {
 					for _, port := range exposeList {
 						portStr := fmt.Sprintf("%v", port)
+						// Expand environment variables
+						portStr = expandEnvVarsWithMap(portStr, envVars)
 						// Expose without mapping, show as exposed only
 						ports = append(ports, fmt.Sprintf("*:%s", portStr))
 					}
@@ -116,6 +229,8 @@ func (pp *PortParser) parseDockerfilePorts(configPath string) []string {
 		if matches := exposeRegex.FindStringSubmatch(line); len(matches) > 1 {
 			// Parse port(s) - can be space-separated
 			portsPart := strings.TrimSpace(matches[1])
+			// Expand environment variables in port definitions (only system env for Dockerfile)
+			portsPart = expandEnvVarsWithMap(portsPart, nil)
 			portFields := strings.Fields(portsPart)
 
 			for _, portField := range portFields {
@@ -176,9 +291,15 @@ func (pp *PortParser) parseKubernetesPorts(configPath string) []string {
 							}
 
 							if hasPort && hasNodePort {
-								ports = append(ports, fmt.Sprintf("%v:%v", nodePort, port))
+								portMapping := fmt.Sprintf("%v:%v", nodePort, port)
+								// Expand environment variables in port mappings (only system env for K8s)
+								portMapping = expandEnvVarsWithMap(portMapping, nil)
+								ports = append(ports, portMapping)
 							} else if hasPort {
-								ports = append(ports, fmt.Sprintf("*:%v", port))
+								portMapping := fmt.Sprintf("*:%v", port)
+								// Expand environment variables (only system env for K8s)
+								portMapping = expandEnvVarsWithMap(portMapping, nil)
+								ports = append(ports, portMapping)
 							}
 						}
 					}
