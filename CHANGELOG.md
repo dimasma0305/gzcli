@@ -1,3 +1,9 @@
+## [1.9.2](https://github.com/dimasma0305/gzcli/compare/v1.9.1...v1.9.2) (2025-10-12)
+
+### Bug Fixes
+
+* timpa cache ([4828556](https://github.com/dimasma0305/gzcli/commit/482855639b27b3e6f2ffd47c973366458d416391))
+
 ## [1.9.1](https://github.com/dimasma0305/gzcli/compare/v1.9.0...v1.9.1) (2025-10-12)
 
 ### Bug Fixes
