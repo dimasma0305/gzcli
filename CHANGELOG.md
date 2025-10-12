@@ -1,3 +1,9 @@
+## [1.9.0](https://github.com/dimasma0305/gzcli/compare/v1.8.0...v1.9.0) (2025-10-12)
+
+### Features
+
+* Enhance challenge processing and host cache initialization ([1005dbb](https://github.com/dimasma0305/gzcli/commit/1005dbb634054148983136ac5d2d8d586a65c98d))
+
 ## [1.8.0](https://github.com/dimasma0305/gzcli/compare/v1.7.1...v1.8.0) (2025-10-09)
 
 ### Features
