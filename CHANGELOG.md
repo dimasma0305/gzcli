@@ -1,3 +1,9 @@
+## [1.9.3](https://github.com/dimasma0305/gzcli/compare/v1.9.2...v1.9.3) (2025-10-12)
+
+### Bug Fixes
+
+* update the challenge template ([ca43693](https://github.com/dimasma0305/gzcli/commit/ca436932740ba8c091e93668df55b51af8f241f5))
+
 ## [1.9.2](https://github.com/dimasma0305/gzcli/compare/v1.9.1...v1.9.2) (2025-10-12)
 
 ### Bug Fixes
