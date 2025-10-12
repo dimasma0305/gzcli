@@ -1,3 +1,9 @@
+## [1.9.1](https://github.com/dimasma0305/gzcli/compare/v1.9.0...v1.9.1) (2025-10-12)
+
+### Bug Fixes
+
+* looping issue in the event cache ([ee2d6ed](https://github.com/dimasma0305/gzcli/commit/ee2d6ed30f0499acdb92d96d9ef833dbcae20dda))
+
 ## [1.9.0](https://github.com/dimasma0305/gzcli/compare/v1.8.0...v1.9.0) (2025-10-12)
 
 ### Features
