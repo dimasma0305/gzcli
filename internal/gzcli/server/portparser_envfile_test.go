@@ -54,8 +54,12 @@ func TestExpandEnvVarsWithMap(t *testing.T) {
 	}
 
 	// Set a system env var
-	os.Setenv("SYSTEM_PORT", "8080")
-	defer os.Unsetenv("SYSTEM_PORT")
+	if err := os.Setenv("SYSTEM_PORT", "8080"); err != nil {
+		t.Fatalf("Failed to set SYSTEM_PORT: %v", err)
+	}
+	defer func() {
+		_ = os.Unsetenv("SYSTEM_PORT")
+	}()
 
 	tests := []struct {
 		input    string

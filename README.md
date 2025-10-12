@@ -14,6 +14,7 @@ gzcli is a standalone CLI tool for managing GZ::CTF challenges, providing featur
 
 - **Multi-event management** - Manage multiple CTF events in one workspace
 - **Challenge launcher server** - Web-based control panel with voting system
+- **Discord bot integration** - Real-time CTF event notifications via webhooks
 - Challenge synchronization
 - File watching with automatic redeployment
 - Team management and batch operations
@@ -254,6 +255,29 @@ gzcli script deploy
 gzcli script test
 ```
 
+### Discord Bot
+
+Run a Discord bot that monitors CTF events and sends real-time notifications:
+
+```sh
+# Start the bot with environment variables
+export POSTGRES_PASSWORD=your_password
+export GZCTF_DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
+gzcli bot
+
+# Or with flags
+gzcli bot --webhook $WEBHOOK_URL --db-password $DB_PASS
+```
+
+The bot monitors and sends notifications for:
+- 🏆 First Blood - First team to solve a challenge
+- 🥈 Second Blood - Second team to solve
+- 🥉 Third Blood - Third team to solve
+- 💡 New Hint - When hints are published
+- 🎉 New Challenge - When challenges are published
+
+Each notification includes the event name to distinguish between multiple CTF events. See [Discord Bot Documentation](docs/DISCORD_BOT.md) for detailed setup instructions.
+
 ### Other Commands
 
 ```sh
@@ -273,6 +297,7 @@ gzcli s          # same as: gzcli sync
 gzcli w start    # same as: gzcli watch start
 gzcli t create   # same as: gzcli team create
 gzcli i          # same as: gzcli init
+gzcli b          # same as: gzcli bot
 ```
 
 ## Configuration

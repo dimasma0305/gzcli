@@ -137,11 +137,15 @@ func TestLoadEnvFile_NonExistent(t *testing.T) {
 // TestExpandEnvVarsWithMap_Priority tests environment variable priority
 func TestExpandEnvVarsWithMap_Priority(t *testing.T) {
 	// Set system env
-	os.Setenv("SHARED_KEY", "system_value")
-	os.Setenv("SYSTEM_ONLY", "system_only_value")
+	if err := os.Setenv("SHARED_KEY", "system_value"); err != nil {
+		t.Fatalf("Failed to set SHARED_KEY: %v", err)
+	}
+	if err := os.Setenv("SYSTEM_ONLY", "system_only_value"); err != nil {
+		t.Fatalf("Failed to set SYSTEM_ONLY: %v", err)
+	}
 	defer func() {
-		os.Unsetenv("SHARED_KEY")
-		os.Unsetenv("SYSTEM_ONLY")
+		_ = os.Unsetenv("SHARED_KEY")
+		_ = os.Unsetenv("SYSTEM_ONLY")
 	}()
 
 	envMap := map[string]string{
@@ -270,8 +274,12 @@ func TestParseComposePorts_EnvFileAsArray(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create env files
-	os.WriteFile(filepath.Join(tmpDir, "a.env"), []byte("PORT_A=1000"), 0600)
-	os.WriteFile(filepath.Join(tmpDir, "b.env"), []byte("PORT_B=2000"), 0600)
+	if err := os.WriteFile(filepath.Join(tmpDir, "a.env"), []byte("PORT_A=1000"), 0600); err != nil {
+		t.Fatalf("Failed to write a.env: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "b.env"), []byte("PORT_B=2000"), 0600); err != nil {
+		t.Fatalf("Failed to write b.env: %v", err)
+	}
 
 	compose := `version: '3.8'
 services:
@@ -285,7 +293,9 @@ services:
       - "${PORT_B}:81"`
 
 	composePath := filepath.Join(tmpDir, "docker-compose.yml")
-	os.WriteFile(composePath, []byte(compose), 0600)
+	if err := os.WriteFile(composePath, []byte(compose), 0600); err != nil {
+		t.Fatalf("Failed to write docker-compose.yml: %v", err)
+	}
 
 	parser := NewPortParser()
 	ports := parser.ParsePorts("compose", composePath, tmpDir)
@@ -339,8 +349,12 @@ func TestParseComposePorts_SystemEnvFallback(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Set system env
-	os.Setenv("SYSTEM_PORT", "9000")
-	defer os.Unsetenv("SYSTEM_PORT")
+	if err := os.Setenv("SYSTEM_PORT", "9000"); err != nil {
+		t.Fatalf("Failed to set SYSTEM_PORT: %v", err)
+	}
+	defer func() {
+		_ = os.Unsetenv("SYSTEM_PORT")
+	}()
 
 	compose := `version: '3.8'
 services:
@@ -350,7 +364,9 @@ services:
       - "${SYSTEM_PORT}:80"`
 
 	composePath := filepath.Join(tmpDir, "docker-compose.yml")
-	os.WriteFile(composePath, []byte(compose), 0600)
+	if err := os.WriteFile(composePath, []byte(compose), 0600); err != nil {
+		t.Fatalf("Failed to write docker-compose.yml: %v", err)
+	}
 
 	parser := NewPortParser()
 	ports := parser.ParsePorts("compose", composePath, tmpDir)
@@ -370,7 +386,9 @@ func TestParseComposePorts_AbsoluteEnvFilePath(t *testing.T) {
 
 	// Create env file in temp directory with absolute path
 	absEnvPath := filepath.Join(tmpDir, "absolute.env")
-	os.WriteFile(absEnvPath, []byte("ABS_PORT=7000"), 0600)
+	if err := os.WriteFile(absEnvPath, []byte("ABS_PORT=7000"), 0600); err != nil {
+		t.Fatalf("Failed to write absolute.env: %v", err)
+	}
 
 	compose := `version: '3.8'
 services:
@@ -382,7 +400,9 @@ services:
       - "${ABS_PORT}:80"`
 
 	composePath := filepath.Join(tmpDir, "docker-compose.yml")
-	os.WriteFile(composePath, []byte(compose), 0600)
+	if err := os.WriteFile(composePath, []byte(compose), 0600); err != nil {
+		t.Fatalf("Failed to write docker-compose.yml: %v", err)
+	}
 
 	parser := NewPortParser()
 	ports := parser.ParsePorts("compose", composePath, tmpDir)
@@ -405,7 +425,9 @@ PORT3=3002
 PORT4=3003
 PORT5=3004`
 	envPath := filepath.Join(tmpDir, ".env")
-	os.WriteFile(envPath, []byte(envContent), 0600)
+	if err := os.WriteFile(envPath, []byte(envContent), 0600); err != nil {
+		b.Fatalf("Failed to write .env: %v", err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -441,7 +463,9 @@ services:
       - "3000:3000"`
 
 	composePath := filepath.Join(tmpDir, "docker-compose.yml")
-	os.WriteFile(composePath, []byte(compose), 0600)
+	if err := os.WriteFile(composePath, []byte(compose), 0600); err != nil {
+		b.Fatalf("Failed to write docker-compose.yml: %v", err)
+	}
 
 	parser := NewPortParser()
 	b.ResetTimer()

@@ -109,6 +109,87 @@ func (pp *PortParser) ParsePorts(launcherType, configPath, cwd string) []string 
 	}
 }
 
+// extractEnvFilePaths extracts env_file paths from a service definition
+func extractEnvFilePaths(envFile interface{}) []string {
+	var envFiles []string
+	switch v := envFile.(type) {
+	case string:
+		envFiles = append(envFiles, v)
+	case []interface{}:
+		for _, ef := range v {
+			if efStr, ok := ef.(string); ok {
+				envFiles = append(envFiles, efStr)
+			}
+		}
+	}
+	return envFiles
+}
+
+// loadComposeEnvVars loads environment variables from .env and service env_file entries
+func loadComposeEnvVars(compose map[string]interface{}, composeDir string) map[string]string {
+	// Load default .env file
+	defaultEnvFile := filepath.Join(composeDir, ".env")
+	envVars := loadEnvFile(defaultEnvFile)
+
+	// Load env_file entries from services
+	services, ok := compose["services"].(map[interface{}]interface{})
+	if !ok {
+		return envVars
+	}
+
+	for _, serviceData := range services {
+		serviceMap, ok := serviceData.(map[interface{}]interface{})
+		if !ok {
+			continue
+		}
+
+		envFile, ok := serviceMap["env_file"]
+		if !ok {
+			continue
+		}
+
+		envFiles := extractEnvFilePaths(envFile)
+		for _, ef := range envFiles {
+			envPath := ef
+			if !filepath.IsAbs(ef) {
+				envPath = filepath.Join(composeDir, ef)
+			}
+			fileEnvVars := loadEnvFile(envPath)
+			// Merge into envVars (later files override earlier ones)
+			for k, v := range fileEnvVars {
+				envVars[k] = v
+			}
+		}
+	}
+
+	return envVars
+}
+
+// extractServicePorts extracts ports and expose entries from a service
+func extractServicePorts(serviceMap map[interface{}]interface{}, envVars map[string]string) []string {
+	var ports []string
+
+	// Check for ports array
+	if portsList, ok := serviceMap["ports"].([]interface{}); ok {
+		for _, port := range portsList {
+			portStr := fmt.Sprintf("%v", port)
+			portStr = expandEnvVarsWithMap(portStr, envVars)
+			ports = append(ports, portStr)
+		}
+	}
+
+	// Check for expose array
+	if exposeList, ok := serviceMap["expose"].([]interface{}); ok {
+		for _, port := range exposeList {
+			portStr := fmt.Sprintf("%v", port)
+			portStr = expandEnvVarsWithMap(portStr, envVars)
+			ports = append(ports, fmt.Sprintf("*:%s", portStr))
+		}
+	}
+
+	return ports
+}
+
 // parseComposePorts parses ports from docker-compose.yml
 func (pp *PortParser) parseComposePorts(configPath string) []string {
 	//nolint:gosec // G304: Reading challenge configuration files is intentional
@@ -124,76 +205,26 @@ func (pp *PortParser) parseComposePorts(configPath string) []string {
 		return []string{}
 	}
 
-	// Load environment variables from .env file (Docker Compose convention)
+	// Load environment variables
 	composeDir := filepath.Dir(configPath)
-	defaultEnvFile := filepath.Join(composeDir, ".env")
-	envVars := loadEnvFile(defaultEnvFile)
-
-	// Also load env_file entries from services
-	if services, ok := compose["services"].(map[interface{}]interface{}); ok {
-		for _, serviceData := range services {
-			if serviceMap, ok := serviceData.(map[interface{}]interface{}); ok {
-				// Load env_file if specified
-				if envFile, ok := serviceMap["env_file"]; ok {
-					envFiles := []string{}
-					switch v := envFile.(type) {
-					case string:
-						envFiles = append(envFiles, v)
-					case []interface{}:
-						for _, ef := range v {
-							if efStr, ok := ef.(string); ok {
-								envFiles = append(envFiles, efStr)
-							}
-						}
-					}
-
-					// Load each env file
-					for _, ef := range envFiles {
-						envPath := ef
-						if !filepath.IsAbs(ef) {
-							envPath = filepath.Join(composeDir, ef)
-						}
-						fileEnvVars := loadEnvFile(envPath)
-						// Merge into envVars (later files override earlier ones)
-						for k, v := range fileEnvVars {
-							envVars[k] = v
-						}
-					}
-				}
-			}
-		}
-	}
-
-	var ports []string
+	envVars := loadComposeEnvVars(compose, composeDir)
 
 	// Extract ports from services
-	if services, ok := compose["services"].(map[interface{}]interface{}); ok {
-		for serviceName, serviceData := range services {
-			if serviceMap, ok := serviceData.(map[interface{}]interface{}); ok {
-				// Check for ports array
-				if portsList, ok := serviceMap["ports"].([]interface{}); ok {
-					for _, port := range portsList {
-						portStr := fmt.Sprintf("%v", port)
-						// Expand environment variables in port mappings
-						portStr = expandEnvVarsWithMap(portStr, envVars)
-						ports = append(ports, portStr)
-					}
-				}
+	var ports []string
+	services, ok := compose["services"].(map[interface{}]interface{})
+	if !ok {
+		return ports
+	}
 
-				// Also check expose
-				if exposeList, ok := serviceMap["expose"].([]interface{}); ok {
-					for _, port := range exposeList {
-						portStr := fmt.Sprintf("%v", port)
-						// Expand environment variables
-						portStr = expandEnvVarsWithMap(portStr, envVars)
-						// Expose without mapping, show as exposed only
-						ports = append(ports, fmt.Sprintf("*:%s", portStr))
-					}
-				}
-
-				log.Debug("Service %v: found %d port(s)", serviceName, len(ports))
-			}
+	for serviceName, serviceData := range services {
+		serviceMap, ok := serviceData.(map[interface{}]interface{})
+		if !ok {
+			continue
 		}
+
+		servicePorts := extractServicePorts(serviceMap, envVars)
+		ports = append(ports, servicePorts...)
+		log.Debug("Service %v: found %d port(s)", serviceName, len(servicePorts))
 	}
 
 	return ports
