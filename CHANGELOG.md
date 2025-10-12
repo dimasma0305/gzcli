@@ -1,3 +1,9 @@
+## [1.10.1](https://github.com/dimasma0305/gzcli/compare/v1.10.0...v1.10.1) (2025-10-12)
+
+### Bug Fixes
+
+* windows path issue ([5dcd323](https://github.com/dimasma0305/gzcli/commit/5dcd323c7fe2775272ebfacbfc66f3e02778100d))
+
 ## [1.10.0](https://github.com/dimasma0305/gzcli/compare/v1.9.3...v1.10.0) (2025-10-12)
 
 ### Features
