@@ -33,6 +33,13 @@ var hostCache struct {
 	once sync.Once
 }
 
+// InitHostCache initializes the host cache with the given public entry URL
+func InitHostCache(publicEntry string) {
+	hostCache.once.Do(func() {
+		hostCache.host = publicEntry
+	})
+}
+
 // ChallengeYaml represents a challenge configuration from YAML
 type ChallengeYaml struct {
 	Name        string                 `yaml:"name"`
@@ -178,8 +185,8 @@ func processChallengeFile(path string, category string, content []byte) (Challen
 	return challenge, nil
 }
 
-// processChallengeTemplate processes challenge template and returns final challenge
-func processChallengeTemplate(eventName string, content []byte, challenge ChallengeYaml, path string) (ChallengeYaml, error) {
+// ProcessChallengeTemplate processes challenge template and returns final challenge
+func ProcessChallengeTemplate(eventName string, content []byte, challenge ChallengeYaml, path string) (ChallengeYaml, error) {
 	t, err := template.New("chall").Parse(string(content))
 	if err != nil {
 		log.ErrorH2("template error: %v", err)
@@ -220,7 +227,7 @@ func walkCategoryPath(eventName, categoryPath, category string, challengeChan ch
 			return err
 		}
 
-		challenge, err = processChallengeTemplate(eventName, content, challenge, path)
+		challenge, err = ProcessChallengeTemplate(eventName, content, challenge, path)
 		if err != nil {
 			return err
 		}
@@ -255,10 +262,8 @@ func GetChallengesYaml(config *Config) ([]ChallengeYaml, error) {
 		return nil, fmt.Errorf("failed to get event path: %w", err)
 	}
 
-	// Pre-parse URL once
-	hostCache.once.Do(func() {
-		hostCache.host = config.Appsettings.ContainerProvider.PublicEntry
-	})
+	// Initialize host cache for template processing
+	InitHostCache(config.Appsettings.ContainerProvider.PublicEntry)
 
 	var wg sync.WaitGroup
 	challengeChan := make(chan ChallengeYaml)

@@ -502,9 +502,16 @@ func (ew *EventWatcher) syncSingleChallenge(challengeName, challengePath string)
 		}
 	}
 
-	// Load the challenge configuration
+	// Read raw YAML content for template processing
+	//nolint:gosec // G304: File paths come from validated challenges directory
+	content, err := os.ReadFile(challengeYamlPath)
+	if err != nil {
+		return fmt.Errorf("failed to read challenge YAML: %w", err)
+	}
+
+	// Load the challenge configuration (first pass to get basic info)
 	var challengeConf config.ChallengeYaml
-	if err := fileutil.ParseYamlFromFile(challengeYamlPath, &challengeConf); err != nil {
+	if err := fileutil.ParseYamlFromBytes(content, &challengeConf); err != nil {
 		return fmt.Errorf("failed to parse challenge YAML: %w", err)
 	}
 
@@ -530,7 +537,7 @@ func (ew *EventWatcher) syncSingleChallenge(challengeName, challengePath string)
 	// Normalize category and update name if needed (e.g., "Game Hacking" -> "Reverse")
 	challengeConf.Category, challengeConf.Name = config.NormalizeChallengeCategory(challengeConf.Category, challengeConf.Name)
 
-	// Get configuration for this event
+	// Get configuration for this event (needed for template processing)
 	conf, err := config.GetConfigWithEvent(ew.api, ew.eventName,
 		ew.noOpGetCache,
 		ew.noOpSetCache,
@@ -539,6 +546,18 @@ func (ew *EventWatcher) syncSingleChallenge(challengeName, challengePath string)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %w", err)
 	}
+
+	// Initialize host cache for template processing
+	config.InitHostCache(conf.Appsettings.ContainerProvider.PublicEntry)
+
+	// Process template to replace {{.host}} and {{.slug}} variables
+	challengeConf, err = config.ProcessChallengeTemplate(ew.eventName, content, challengeConf, challengeYamlPath)
+	if err != nil {
+		return fmt.Errorf("failed to process challenge template: %w", err)
+	}
+
+	// Re-set the challenge directory after template processing
+	challengeConf.Cwd = challengePath
 
 	// Get existing challenges from API
 	conf.Event.CS = ew.api
