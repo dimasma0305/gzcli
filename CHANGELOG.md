@@ -1,3 +1,13 @@
+## [1.10.0](https://github.com/dimasma0305/gzcli/compare/v1.9.3...v1.10.0) (2025-10-12)
+
+### Features
+
+* add discord webhook feature ([bd83368](https://github.com/dimasma0305/gzcli/commit/bd833688481fd348e54d072e67f04dba7e1323a0))
+
+### Bug Fixes
+
+* Add environment variable loading and expansion for Docker Compose and Dockerfile ([57f702b](https://github.com/dimasma0305/gzcli/commit/57f702b3004f99f6f0f4371c1e455a549ae20b08))
+
 ## [1.9.3](https://github.com/dimasma0305/gzcli/compare/v1.9.2...v1.9.3) (2025-10-12)
 
 ### Bug Fixes
