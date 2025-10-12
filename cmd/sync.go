@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli"
@@ -43,13 +45,17 @@ or --exclude-event to exclude certain events.`,
 		events, err := ResolveTargetEvents(syncEvents, syncExcludeEvents)
 		if err != nil {
 			log.Error("Failed to resolve target events: %v", err)
-			panic(err)
+			os.Exit(1)
 		}
 
 		// Track results
 		successCount := 0
 		failureCount := 0
-		var failedEvents []string
+		type failedEvent struct {
+			name string
+			err  error
+		}
+		var failedEvents []failedEvent
 
 		log.Info("Syncing %d event(s): %v", len(events), events)
 
@@ -61,7 +67,7 @@ or --exclude-event to exclude certain events.`,
 			if err != nil {
 				log.Error("[%s] Failed to initialize: %v", eventName, err)
 				failureCount++
-				failedEvents = append(failedEvents, eventName)
+				failedEvents = append(failedEvents, failedEvent{name: eventName, err: err})
 				continue
 			}
 
@@ -69,7 +75,7 @@ or --exclude-event to exclude certain events.`,
 			if err := gz.Sync(); err != nil {
 				log.Error("[%s] Sync failed: %v", eventName, err)
 				failureCount++
-				failedEvents = append(failedEvents, eventName)
+				failedEvents = append(failedEvents, failedEvent{name: eventName, err: err})
 			} else {
 				log.Info("[%s] Sync completed successfully", eventName)
 				successCount++
@@ -77,10 +83,17 @@ or --exclude-event to exclude certain events.`,
 		}
 
 		// Display summary
-		log.Info("Sync Summary: %d succeeded, %d failed", successCount, failureCount)
+		log.InfoH2("Sync Summary: %d succeeded, %d failed", successCount, failureCount)
 		if failureCount > 0 {
-			log.Error("Failed events: %v", failedEvents)
-			panic("Some events failed to sync")
+			log.Error("Failed events:")
+			for _, fe := range failedEvents {
+				log.Error("  - %s: %v", fe.name, fe.err)
+			}
+			log.Error("\nPlease check:")
+			log.Error("  1. Event directories exist in events/")
+			log.Error("  2. Each event has a valid .gzevent configuration file")
+			log.Error("  3. Server is accessible and credentials are correct")
+			os.Exit(1)
 		}
 	},
 }

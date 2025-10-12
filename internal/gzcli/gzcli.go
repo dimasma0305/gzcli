@@ -259,6 +259,13 @@ func (gz *GZ) Scoreboard2CTFTimeFeed() (*event.CTFTimeFeed, error) {
 
 // Sync synchronizes challenges from local configuration to the GZCTF server
 func (gz *GZ) Sync() error {
+	return gz.syncWithRetry(0)
+}
+
+// syncWithRetry is the internal sync implementation with retry logic
+func (gz *GZ) syncWithRetry(retryCount int) error {
+	const maxRetries = 2 // Prevent infinite recursion
+
 	log.Info("Starting sync process...")
 
 	// Use the event name stored in the GZ instance
@@ -289,9 +296,20 @@ func (gz *GZ) Sync() error {
 
 	currentGame := challenge.FindCurrentGame(games, conf.Event.Title, gz.api)
 	if currentGame == nil {
-		log.Info("Current game not found, clearing cache and retrying...")
-		_ = DeleteCache("config")
-		return gz.Sync()
+		if retryCount >= maxRetries {
+			log.Error("Game '%s' not found after %d retries", conf.Event.Title, maxRetries)
+			log.Error("Available games:")
+			for _, g := range games {
+				log.Error("  - %s (ID: %d)", g.Title, g.Id)
+			}
+			return fmt.Errorf("game '%s' not found on server. Check that the event title in .gzevent matches an existing game", conf.Event.Title)
+		}
+
+		log.Info("Current game not found, clearing cache and retrying... (attempt %d/%d)", retryCount+1, maxRetries)
+		// Use event-specific cache key
+		cacheKey := fmt.Sprintf("config-%s", gz.eventName)
+		_ = DeleteCache(cacheKey)
+		return gz.syncWithRetry(retryCount + 1)
 	}
 	log.Info("Found current game: %s (ID: %d)", currentGame.Title, currentGame.Id)
 

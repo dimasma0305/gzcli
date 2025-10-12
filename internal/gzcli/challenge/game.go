@@ -45,7 +45,9 @@ func CreateNewGame(conf *config.Config, api *gzapi.GZAPI, createPosterFunc func(
 	if err := game.Update(&conf.Event); err != nil {
 		return nil, err
 	}
-	if err := setCache("config", conf); err != nil {
+	// Use event-specific cache key
+	cacheKey := fmt.Sprintf("config-%s", conf.EventName)
+	if err := setCache(cacheKey, conf); err != nil {
 		return nil, err
 	}
 	return game, nil
@@ -66,7 +68,9 @@ func UpdateGameIfNeeded(conf *config.Config, currentGame *gzapi.Game, api *gzapi
 		if err := currentGame.Update(&conf.Event); err != nil {
 			return err
 		}
-		if err := setCache("config", conf); err != nil {
+		// Use event-specific cache key
+		cacheKey := fmt.Sprintf("config-%s", conf.EventName)
+		if err := setCache(cacheKey, conf); err != nil {
 			return err
 		}
 	}
