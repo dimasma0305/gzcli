@@ -92,8 +92,8 @@ func NewPortParser() *PortParser {
 
 // ParsePorts extracts ports from a configuration file based on launcher type
 func (pp *PortParser) ParsePorts(launcherType, configPath, cwd string) []string {
-	// Make absolute path
-	if !strings.HasPrefix(configPath, "/") {
+	// Make absolute path (cross-platform)
+	if !filepath.IsAbs(configPath) {
 		configPath = filepath.Join(cwd, configPath)
 	}
 

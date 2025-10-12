@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -88,8 +89,8 @@ func (e *Executor) Restart(challenge *ChallengeInfo) error {
 // startCompose starts a Docker Compose challenge
 func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) error {
 	configPath := dashboard.Config
-	if !strings.HasPrefix(configPath, "/") {
-		configPath = fmt.Sprintf("%s/%s", challenge.Cwd, configPath)
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
 	log.InfoH2("Starting Docker Compose: %s", challenge.Name)
@@ -126,8 +127,8 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 // stopCompose stops a Docker Compose challenge
 func (e *Executor) stopCompose(challenge *ChallengeInfo, dashboard *Dashboard) error {
 	configPath := dashboard.Config
-	if !strings.HasPrefix(configPath, "/") {
-		configPath = fmt.Sprintf("%s/%s", challenge.Cwd, configPath)
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
 	log.InfoH2("Stopping Docker Compose: %s", challenge.Name)
@@ -154,8 +155,8 @@ func (e *Executor) stopCompose(challenge *ChallengeInfo, dashboard *Dashboard) e
 // startDockerfile starts a Dockerfile-based challenge
 func (e *Executor) startDockerfile(challenge *ChallengeInfo, dashboard *Dashboard) error {
 	configPath := dashboard.Config
-	if !strings.HasPrefix(configPath, "/") {
-		configPath = fmt.Sprintf("%s/%s", challenge.Cwd, configPath)
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
 	log.InfoH2("Starting Dockerfile: %s", challenge.Name)
@@ -233,8 +234,8 @@ func (e *Executor) stopDockerfile(challenge *ChallengeInfo) error {
 // startKubernetes starts a Kubernetes-based challenge
 func (e *Executor) startKubernetes(challenge *ChallengeInfo, dashboard *Dashboard) error {
 	configPath := dashboard.Config
-	if !strings.HasPrefix(configPath, "/") {
-		configPath = fmt.Sprintf("%s/%s", challenge.Cwd, configPath)
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
 	log.InfoH2("Starting Kubernetes: %s", challenge.Name)
@@ -259,8 +260,8 @@ func (e *Executor) startKubernetes(challenge *ChallengeInfo, dashboard *Dashboar
 // stopKubernetes stops a Kubernetes-based challenge
 func (e *Executor) stopKubernetes(challenge *ChallengeInfo, dashboard *Dashboard) error {
 	configPath := dashboard.Config
-	if !strings.HasPrefix(configPath, "/") {
-		configPath = fmt.Sprintf("%s/%s", challenge.Cwd, configPath)
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
 	log.InfoH2("Stopping Kubernetes: %s", challenge.Name)
@@ -309,8 +310,8 @@ func (e *Executor) checkHealthCompose(challenge *ChallengeInfo) (bool, error) {
 	}
 
 	configPath := challenge.Dashboard.Config
-	if !strings.HasPrefix(configPath, "/") {
-		configPath = fmt.Sprintf("%s/%s", challenge.Cwd, configPath)
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
