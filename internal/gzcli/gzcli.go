@@ -266,33 +266,26 @@ func (gz *GZ) Sync() error {
 func (gz *GZ) syncWithRetry(retryCount int) error {
 	const maxRetries = 2 // Prevent infinite recursion
 
-	log.Info("Starting sync process...")
-
 	// Use the event name stored in the GZ instance
 	conf, err := config.GetConfigWithEvent(gz.api, gz.eventName, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
 	if err != nil {
 		log.Error("Failed to get config: %v", err)
 		return fmt.Errorf("config error: %w", err)
 	}
-	log.Info("Config loaded successfully")
 
 	// Get fresh challenges config
-	log.Info("Loading challenges configuration...")
 	challengesConf, err := config.GetChallengesYaml(conf)
 	if err != nil {
 		log.Error("Failed to get challenges YAML: %v", err)
 		return fmt.Errorf("challenges config error: %w", err)
 	}
-	log.Info("Loaded %d challenges from configuration", len(challengesConf))
 
 	// Get fresh games list
-	log.Info("Fetching games from API...")
 	games, err := gz.api.GetGames()
 	if err != nil {
 		log.Error("Failed to get games: %v", err)
 		return fmt.Errorf("games fetch error: %w", err)
 	}
-	log.Info("Found %d games", len(games))
 
 	currentGame := challenge.FindCurrentGame(games, conf.Event.Title, gz.api)
 	if currentGame == nil {
@@ -305,42 +298,34 @@ func (gz *GZ) syncWithRetry(retryCount int) error {
 			return fmt.Errorf("game '%s' not found on server. Check that the event title in .gzevent matches an existing game", conf.Event.Title)
 		}
 
-		log.Info("Current game not found, clearing cache and retrying... (attempt %d/%d)", retryCount+1, maxRetries)
 		// Use event-specific cache key
 		cacheKey := fmt.Sprintf("config-%s", gz.eventName)
 		_ = DeleteCache(cacheKey)
 		return gz.syncWithRetry(retryCount + 1)
 	}
-	log.Info("Found current game: %s (ID: %d)", currentGame.Title, currentGame.Id)
 
 	if gz.UpdateGame {
-		log.Info("Updating game configuration...")
 		if err := challenge.UpdateGameIfNeeded(conf, currentGame, gz.api, createPosterIfNotExistOrDifferent, setCache); err != nil {
 			log.Error("Failed to update game: %v", err)
 			return fmt.Errorf("game update error: %w", err)
 		}
-		log.Info("Game updated successfully")
 	}
 
-	log.Info("Validating challenges...")
 	if err := challenge.ValidateChallenges(challengesConf); err != nil {
 		log.Error("Challenge validation failed: %v", err)
 		return fmt.Errorf("validation error: %w", err)
 	}
-	log.Info("All challenges validated successfully")
 
 	// Get fresh challenges list
-	log.Info("Fetching existing challenges from API...")
 	conf.Event.CS = gz.api
 	challenges, err := conf.Event.GetChallenges()
 	if err != nil {
 		log.Error("Failed to get challenges from API: %v", err)
 		return fmt.Errorf("API challenges fetch error: %w", err)
 	}
-	log.Info("Found %d existing challenges in API", len(challenges))
 
 	// Process challenges
-	log.Info("Starting challenge synchronization...")
+	log.Info("Syncing %d challenges...", len(challengesConf))
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(challengesConf))
 	successCount := 0

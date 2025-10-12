@@ -38,7 +38,6 @@ func loadConfigFromCacheWithKey(config *Config, getCache func(string, interface{
 	if cacheErr == nil && configCache.Event.Id != 0 {
 		config.Event.Id = configCache.Event.Id
 		config.Event.PublicKey = configCache.Event.PublicKey
-		log.Info("Using cached game ID: %d", config.Event.Id)
 	}
 }
 
@@ -55,7 +54,6 @@ func validateCachedGameWithKey(config *Config, api *gzapi.GZAPI, deleteCache fun
 		return nil
 	}
 
-	log.Info("Validating cached game ID %d exists on server...", config.Event.Id)
 	games, err := api.GetGames()
 	if err != nil {
 		log.Error("Failed to get games for validation: %v", err)
@@ -67,13 +65,11 @@ func validateCachedGameWithKey(config *Config, api *gzapi.GZAPI, deleteCache fun
 		if game.Id == config.Event.Id {
 			// Update with current server data but keep the same ID
 			config.Event.PublicKey = game.PublicKey
-			log.Info("Cached game ID %d validated successfully", config.Event.Id)
 			return nil
 		}
 	}
 
 	// If cached game doesn't exist, clear cache and try to find by title
-	log.Info("Cached game ID %d not found on server, searching by title...", config.Event.Id)
 	deleteCache(cacheKey)
 	config.Event.Id = 0
 	config.Event.PublicKey = ""

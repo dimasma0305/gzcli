@@ -30,9 +30,16 @@ func IsExistInArray(value string, array []string) bool {
 	return false
 }
 
-func IsConfigEdited(challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge, getCache func(string, interface{}) error) bool {
+// buildChallengeCacheKey constructs the cache key for a challenge
+// Format: <eventname>/<category>/<challenge>/challenge
+func buildChallengeCacheKey(eventName, category, challengeName string) string {
+	return fmt.Sprintf("%s/%s/%s/challenge", eventName, category, challengeName)
+}
+
+func IsConfigEdited(conf *config.Config, challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge, getCache func(string, interface{}) error) bool {
 	var cacheChallenge gzapi.Challenge
-	if err := getCache(challengeConf.Category+"/"+challengeConf.Name+"/challenge", &cacheChallenge); err != nil {
+	cacheKey := buildChallengeCacheKey(conf.EventName, challengeConf.Category, challengeConf.Name)
+	if err := getCache(cacheKey, &cacheChallenge); err != nil {
 		return true
 	}
 
@@ -95,7 +102,6 @@ func isDuplicateError(err error) bool {
 
 // createChallengeWithRetry attempts to create a challenge and handles duplicate errors
 func createChallengeWithRetry(conf *config.Config, challengeConf config.ChallengeYaml, api *gzapi.GZAPI) (*gzapi.Challenge, error) {
-	log.InfoH2("Creating new challenge: %s", challengeConf.Name)
 	challengeData, err := conf.Event.CreateChallenge(gzapi.CreateChallengeForm{
 		Title:    challengeConf.Name,
 		Category: challengeConf.Category,
@@ -105,19 +111,15 @@ func createChallengeWithRetry(conf *config.Config, challengeConf config.Challeng
 
 	if err != nil {
 		if isDuplicateError(err) {
-			log.InfoH2("Challenge %s already exists (created by another process), fetching existing challenge", challengeConf.Name)
 			challengeData, err = conf.Event.GetChallenge(challengeConf.Name)
 			if err != nil {
 				log.Error("Failed to get existing challenge %s after creation conflict: %v", challengeConf.Name, err)
 				return nil, fmt.Errorf("get existing challenge %s: %w", challengeConf.Name, err)
 			}
-			log.InfoH3("Successfully fetched existing challenge %s after creation conflict", challengeConf.Name)
 		} else {
 			log.Error("Failed to create challenge %s: %v", challengeConf.Name, err)
 			return nil, fmt.Errorf("create challenge %s: %w", challengeConf.Name, err)
 		}
-	} else {
-		log.InfoH2("Successfully created challenge: %s (ID: %d)", challengeConf.Name, challengeData.Id)
 	}
 
 	challengeData.CS = api
@@ -126,13 +128,10 @@ func createChallengeWithRetry(conf *config.Config, challengeConf config.Challeng
 
 // handleNewChallenge handles creation or fetching of a new challenge
 func handleNewChallenge(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI) (*gzapi.Challenge, error) {
-	log.InfoH3("Challenge %s not found in initial list, fetching fresh challenges list", challengeConf.Name)
 	freshChallenges, err := conf.Event.GetChallenges()
 	if err != nil {
 		log.Error("Failed to get fresh challenges list for %s: %v", challengeConf.Name, err)
 		freshChallenges = challenges
-	} else {
-		log.InfoH3("Fetched fresh challenges list for %s (%d challenges)", challengeConf.Name, len(freshChallenges))
 	}
 
 	// Final check to prevent duplicates
@@ -141,13 +140,11 @@ func handleNewChallenge(conf *config.Config, challengeConf config.ChallengeYaml,
 	}
 
 	// Challenge was created by another goroutine, fetch it
-	log.InfoH2("Challenge %s was created by another process, fetching existing challenge", challengeConf.Name)
 	challengeData, err := conf.Event.GetChallenge(challengeConf.Name)
 	if err != nil {
 		log.Error("Failed to get newly created challenge %s: %v", challengeConf.Name, err)
 		return nil, fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
 	}
-	log.InfoH3("Successfully fetched existing challenge %s", challengeConf.Name)
 
 	challengeData.CS = api
 	return challengeData, nil
@@ -155,20 +152,16 @@ func handleNewChallenge(conf *config.Config, challengeConf config.ChallengeYaml,
 
 // handleExistingChallenge handles fetching an existing challenge from cache or API
 func handleExistingChallenge(conf *config.Config, challengeConf config.ChallengeYaml, api *gzapi.GZAPI, getCache func(string, interface{}) error) (*gzapi.Challenge, error) {
-	log.InfoH2("Updating existing challenge: %s", challengeConf.Name)
 	var challengeData *gzapi.Challenge
 
-	err := getCache(challengeConf.Category+"/"+challengeConf.Name+"/challenge", &challengeData)
+	cacheKey := buildChallengeCacheKey(conf.EventName, challengeConf.Category, challengeConf.Name)
+	err := getCache(cacheKey, &challengeData)
 	if err != nil {
-		log.InfoH3("Cache miss for %s, fetching from API", challengeConf.Name)
 		challengeData, err = conf.Event.GetChallenge(challengeConf.Name)
 		if err != nil {
 			log.Error("Failed to get challenge %s from API: %v", challengeConf.Name, err)
 			return nil, fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
 		}
-		log.InfoH3("Successfully fetched challenge %s from API", challengeConf.Name)
-	} else {
-		log.InfoH3("Found challenge %s in cache", challengeConf.Name)
 	}
 
 	// fix bug nill pointer because cache didn't return gzapi
@@ -188,13 +181,10 @@ func SyncChallengeWithExisting(conf *config.Config, challengeConf config.Challen
 	var challengeData *gzapi.Challenge
 	var err error
 
-	log.InfoH2("Starting sync for challenge: %s (Type: %s, Category: %s)", challengeConf.Name, challengeConf.Type, challengeConf.Category)
-
 	// Determine the sync path based on challenge state
 	switch {
 	case existingChallenge != nil:
 		// If an existing challenge is provided, use it directly (force update mode)
-		log.InfoH3("Using provided existing challenge (ID: %d) for update", existingChallenge.Id)
 		challengeData = existingChallenge
 		challengeData.CS = api
 		challengeData.IsEnabled = nil // fix bug isEnable always be false after sync
@@ -215,34 +205,29 @@ func SyncChallengeWithExisting(conf *config.Config, challengeConf config.Challen
 		return err
 	}
 
-	log.InfoH2("Merging challenge data for %s", challengeConf.Name)
 	challengeData = MergeChallengeData(&challengeConf, challengeData)
 
 	if err := updateChallengeIfNeeded(conf, &challengeConf, challengeData, getCache, setCache); err != nil {
 		return err
 	}
 
-	log.InfoH2("Successfully completed sync for challenge: %s", challengeConf.Name)
+	log.Info("✓ %s", challengeConf.Name)
 	return nil
 }
 
 // processAttachmentsAndFlags handles attachments and flags for a challenge
 func processAttachmentsAndFlags(conf *config.Config, challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
-	log.InfoH2("Processing attachments for %s", challengeConf.Name)
 	err := HandleChallengeAttachments(challengeConf, challengeData, api)
 	if err != nil {
 		log.Error("Failed to handle attachments for %s: %v", challengeConf.Name, err)
 		return fmt.Errorf("attachment handling failed for %s: %w", challengeConf.Name, err)
 	}
-	log.InfoH2("Attachments processed successfully for %s", challengeConf.Name)
 
-	log.InfoH2("Updating flags for %s", challengeConf.Name)
 	err = UpdateChallengeFlags(conf, challengeConf, challengeData)
 	if err != nil {
 		log.Error("Failed to update flags for %s: %v", challengeConf.Name, err)
 		return fmt.Errorf("update flags for %s: %w", challengeConf.Name, err)
 	}
-	log.InfoH2("Flags updated successfully for %s", challengeConf.Name)
 
 	return nil
 }
@@ -281,12 +266,10 @@ func updateChallengeWithRetry(conf *config.Config, challengeConf *config.Challen
 
 // updateChallengeIfNeeded updates the challenge if configuration has changed
 func updateChallengeIfNeeded(conf *config.Config, challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
-	if !IsConfigEdited(challengeConf, challengeData, getCache) {
-		log.InfoH2("Challenge %s is unchanged, skipping update", challengeConf.Name)
+	if !IsConfigEdited(conf, challengeConf, challengeData, getCache) {
 		return nil
 	}
 
-	log.InfoH2("Configuration changed for %s, updating...", challengeConf.Name)
 	updatedData, err := updateChallengeWithRetry(conf, challengeConf, challengeData)
 	if err != nil {
 		return err
@@ -297,14 +280,11 @@ func updateChallengeIfNeeded(conf *config.Config, challengeConf *config.Challeng
 		return fmt.Errorf("update challenge failed for %s", challengeConf.Name)
 	}
 
-	log.InfoH2("Successfully updated challenge %s", challengeConf.Name)
-
-	log.InfoH3("Caching updated challenge data for %s", challengeConf.Name)
-	if err := setCache(updatedData.Category+"/"+challengeConf.Name+"/challenge", updatedData); err != nil {
+	cacheKey := buildChallengeCacheKey(conf.EventName, updatedData.Category, challengeConf.Name)
+	if err := setCache(cacheKey, updatedData); err != nil {
 		log.Error("Failed to cache challenge data for %s: %v", challengeConf.Name, err)
 		return fmt.Errorf("cache error for %s: %w", challengeConf.Name, err)
 	}
-	log.InfoH3("Successfully cached challenge data for %s", challengeConf.Name)
 
 	return nil
 }

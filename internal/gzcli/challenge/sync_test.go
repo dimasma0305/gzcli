@@ -209,6 +209,11 @@ func TestIsConfigEdited(t *testing.T) {
 		return nil // Cache miss returns nil error but doesn't populate v
 	}
 
+	// Mock config with event name
+	conf := &config.Config{
+		EventName: "test-event",
+	}
+
 	tests := []struct {
 		name          string
 		challengeConf config.ChallengeYaml
@@ -243,7 +248,7 @@ func TestIsConfigEdited(t *testing.T) {
 			},
 			setupCache: func() {
 				cacheData = make(map[string]interface{})
-				cacheData["Web/Test/challenge"] = gzapi.Challenge{
+				cacheData["test-event/Web/Test/challenge"] = gzapi.Challenge{
 					Title:    "Test",
 					Category: "Web",
 					Hints:    []string{},
@@ -265,7 +270,7 @@ func TestIsConfigEdited(t *testing.T) {
 			},
 			setupCache: func() {
 				cacheData = make(map[string]interface{})
-				cacheData["Web/Test/challenge"] = gzapi.Challenge{
+				cacheData["test-event/Web/Test/challenge"] = gzapi.Challenge{
 					Title:    "Test",
 					Category: "Web",
 					Content:  "Old content",
@@ -279,7 +284,7 @@ func TestIsConfigEdited(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupCache()
-			if got := IsConfigEdited(&tt.challengeConf, &tt.challengeData, getCache); got != tt.want {
+			if got := IsConfigEdited(conf, &tt.challengeConf, &tt.challengeData, getCache); got != tt.want {
 				t.Errorf("IsConfigEdited() = %v, want %v", got, tt.want)
 			}
 		})

@@ -107,8 +107,6 @@ func (cs *GZAPI) doRequest(method, url string, data any, executor requestExecuto
 	urlBuilder.WriteString(url)
 	fullURL := urlBuilder.String()
 
-	log.InfoH3("Making %s request to: %s", method, fullURL)
-
 	// Execute the request
 	resp, err := executor(cs.Client.R(), fullURL)
 	if err != nil {
@@ -124,9 +122,7 @@ func (cs *GZAPI) doRequest(method, url string, data any, executor requestExecuto
 
 	// Unmarshal response if data pointer provided
 	if data != nil {
-		if len(resp.Bytes()) == 0 {
-			log.DebugH3("%s response has empty body, skipping unmarshal for: %s", method, fullURL)
-		} else {
+		if len(resp.Bytes()) > 0 {
 			if err := resp.UnmarshalJson(&data); err != nil {
 				log.Error("Failed to unmarshal JSON response from %s: %v", fullURL, err)
 				return fmt.Errorf("error unmarshal json: %w, %s", err, resp.String())
@@ -134,7 +130,6 @@ func (cs *GZAPI) doRequest(method, url string, data any, executor requestExecuto
 		}
 	}
 
-	log.InfoH3("%s request successful for: %s", method, fullURL)
 	return nil
 }
 
@@ -169,14 +164,6 @@ func (cs *GZAPI) postMultiPart(url string, file string, data any) error {
 		return fmt.Errorf("file not found: %s", file)
 	}
 
-	// Build full URL for logging
-	var urlBuilder strings.Builder
-	urlBuilder.Grow(len(cs.Url) + len(url))
-	urlBuilder.WriteString(cs.Url)
-	urlBuilder.WriteString(url)
-	fullURL := urlBuilder.String()
-	log.InfoH3("Making POST multipart request to: %s with file: %s", fullURL, file)
-
 	// Use "files" for /api/assets endpoint as per API specification
 	return cs.doRequest("POST", url, data, func(r *req.Request, url string) (*req.Response, error) {
 		return r.SetFile("files", file).Post(url)
@@ -189,14 +176,6 @@ func (cs *GZAPI) putMultiPart(url string, file string, data any) error {
 		log.Error("File does not exist: %s", file)
 		return fmt.Errorf("file not found: %s", file)
 	}
-
-	// Build full URL for logging
-	var urlBuilder strings.Builder
-	urlBuilder.Grow(len(cs.Url) + len(url))
-	urlBuilder.WriteString(cs.Url)
-	urlBuilder.WriteString(url)
-	fullURL := urlBuilder.String()
-	log.InfoH3("Making PUT multipart request to: %s with file: %s", fullURL, file)
 
 	// Use "file" for PUT operations (poster/avatar uploads) as per API specification
 	return cs.doRequest("PUT", url, data, func(r *req.Request, url string) (*req.Response, error) {
