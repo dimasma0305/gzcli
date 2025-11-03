@@ -1,4 +1,3 @@
-//nolint:revive // Exported functions follow project conventions
 package challenge
 
 import (
@@ -12,6 +11,7 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// IsChallengeExist checks if a challenge with a given name exists in a slice of challenges.
 func IsChallengeExist(challengeName string, challenges []gzapi.Challenge) bool {
 	challengeMap := make(map[string]struct{}, len(challenges))
 	for _, c := range challenges {
@@ -21,6 +21,7 @@ func IsChallengeExist(challengeName string, challenges []gzapi.Challenge) bool {
 	return exists
 }
 
+// IsExistInArray checks if a string value exists in a slice of strings.
 func IsExistInArray(value string, array []string) bool {
 	for _, v := range array {
 		if v == value {
@@ -30,12 +31,15 @@ func IsExistInArray(value string, array []string) bool {
 	return false
 }
 
-// buildChallengeCacheKey constructs the cache key for a challenge
-// Format: <eventname>/<category>/<challenge>/challenge
+// buildChallengeCacheKey constructs a unique cache key for a challenge based on its event,
+// category, and name.
+// The format is: <eventName>/<category>/<challengeName>/challenge
 func buildChallengeCacheKey(eventName, category, challengeName string) string {
 	return fmt.Sprintf("%s/%s/%s/challenge", eventName, category, challengeName)
 }
 
+// IsConfigEdited compares the current challenge data with its cached version to determine
+// if there have been any changes.
 func IsConfigEdited(conf *config.Config, challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge, getCache func(string, interface{}) error) bool {
 	var cacheChallenge gzapi.Challenge
 	cacheKey := buildChallengeCacheKey(conf.EventName, challengeConf.Category, challengeConf.Name)
@@ -49,6 +53,8 @@ func IsConfigEdited(conf *config.Config, challengeConf *config.ChallengeYaml, ch
 	return !cmp.Equal(*challengeData, cacheChallenge)
 }
 
+// MergeChallengeData merges the local challenge configuration (from YAML) into the challenge
+// data object fetched from the API.
 func MergeChallengeData(challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge) *gzapi.Challenge {
 	// Set resource limits from container configuration, with defaults if not specified
 	if challengeConf.Container.MemoryLimit > 0 {
@@ -92,7 +98,8 @@ func MergeChallengeData(challengeConf *config.ChallengeYaml, challengeData *gzap
 	return challengeData
 }
 
-// isDuplicateError checks if an error is a duplicate creation error
+// isDuplicateError checks if an error indicates a duplicate entry, which can occur during
+// challenge creation if the challenge already exists.
 func isDuplicateError(err error) bool {
 	errLower := strings.ToLower(err.Error())
 	return strings.Contains(errLower, "already exists") ||
@@ -100,7 +107,8 @@ func isDuplicateError(err error) bool {
 		strings.Contains(errLower, "conflict")
 }
 
-// createChallengeWithRetry attempts to create a challenge and handles duplicate errors
+// createChallengeWithRetry attempts to create a new challenge on the server. If a duplicate
+// error is encountered, it fetches the existing challenge data instead.
 func createChallengeWithRetry(conf *config.Config, challengeConf config.ChallengeYaml, api *gzapi.GZAPI) (*gzapi.Challenge, error) {
 	challengeData, err := conf.Event.CreateChallenge(gzapi.CreateChallengeForm{
 		Title:    challengeConf.Name,
@@ -126,7 +134,8 @@ func createChallengeWithRetry(conf *config.Config, challengeConf config.Challeng
 	return challengeData, nil
 }
 
-// handleNewChallenge handles creation or fetching of a new challenge
+// handleNewChallenge orchestrates the process of creating a new challenge, including a final
+// check to prevent race conditions from concurrent operations.
 func handleNewChallenge(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI) (*gzapi.Challenge, error) {
 	freshChallenges, err := conf.Event.GetChallenges()
 	if err != nil {
@@ -150,7 +159,8 @@ func handleNewChallenge(conf *config.Config, challengeConf config.ChallengeYaml,
 	return challengeData, nil
 }
 
-// handleExistingChallenge handles fetching an existing challenge from cache or API
+// handleExistingChallenge retrieves the data for an existing challenge, first checking the
+// cache and then falling back to an API call if necessary.
 func handleExistingChallenge(conf *config.Config, challengeConf config.ChallengeYaml, api *gzapi.GZAPI, getCache func(string, interface{}) error) (*gzapi.Challenge, error) {
 	var challengeData *gzapi.Challenge
 
@@ -172,11 +182,14 @@ func handleExistingChallenge(conf *config.Config, challengeConf config.Challenge
 	return challengeData, nil
 }
 
+// SyncChallenge is the main entry point for synchronizing a single challenge. It determines
+// whether the challenge is new or existing and calls the appropriate handlers.
 func SyncChallenge(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
 	return SyncChallengeWithExisting(conf, challengeConf, challenges, api, getCache, setCache, nil)
 }
 
-// SyncChallengeWithExisting syncs a challenge with an optional existing challenge to force update mode
+// SyncChallengeWithExisting provides a way to sync a challenge, with an option to force
+// an update by providing the existing challenge data.
 func SyncChallengeWithExisting(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error, existingChallenge *gzapi.Challenge) error {
 	var challengeData *gzapi.Challenge
 	var err error
@@ -215,7 +228,7 @@ func SyncChallengeWithExisting(conf *config.Config, challengeConf config.Challen
 	return nil
 }
 
-// processAttachmentsAndFlags handles attachments and flags for a challenge
+// processAttachmentsAndFlags handles the synchronization of challenge attachments and flags.
 func processAttachmentsAndFlags(conf *config.Config, challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
 	err := HandleChallengeAttachments(challengeConf, challengeData, api)
 	if err != nil {
@@ -232,7 +245,8 @@ func processAttachmentsAndFlags(conf *config.Config, challengeConf config.Challe
 	return nil
 }
 
-// updateChallengeWithRetry attempts to update a challenge and retries on 404
+// updateChallengeWithRetry attempts to update a challenge on the server. It includes retry logic
+// to handle cases where a 404 error might occur due to eventual consistency.
 func updateChallengeWithRetry(conf *config.Config, challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge) (*gzapi.Challenge, error) {
 	fmt.Printf("%+v\n", challengeData)
 	updatedData, err := challengeData.Update(*challengeData)
@@ -264,7 +278,8 @@ func updateChallengeWithRetry(conf *config.Config, challengeConf *config.Challen
 	return updatedData, nil
 }
 
-// updateChallengeIfNeeded updates the challenge if configuration has changed
+// updateChallengeIfNeeded checks if a challenge's configuration has changed and, if so,
+// triggers an update on the server and updates the cache.
 func updateChallengeIfNeeded(conf *config.Config, challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
 	if !IsConfigEdited(conf, challengeConf, challengeData, getCache) {
 		return nil

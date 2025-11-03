@@ -16,7 +16,8 @@ const (
 	GZEVENT_FILE = ".gzevent"
 )
 
-// EventConfig represents event-specific configuration
+// EventConfig represents the configuration for a single event, including its name
+// and the game data associated with it.
 type EventConfig struct {
 	Name string // Event name (directory name)
 	gzapi.Game

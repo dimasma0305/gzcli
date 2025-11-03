@@ -13,17 +13,21 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// Creds holds the username and password for authentication.
 type Creds struct {
 	Username string `json:"username" yaml:"username"`
 	Password string `json:"password" yaml:"password"`
 }
 
+// GZAPI is the main client for interacting with the GZCTF API. It holds the API endpoint URL,
+// credentials, and the underlying HTTP client.
 type GZAPI struct {
 	Url    string
 	Creds  *Creds
 	Client *req.Client
 }
 
+// Init initializes a new GZAPI client, authenticates with the server, and returns the client.
 func Init(url string, creds *Creds) (*GZAPI, error) {
 	// Validate inputs
 	if creds == nil {
@@ -45,6 +49,7 @@ func Init(url string, creds *Creds) (*GZAPI, error) {
 	return newGz, nil
 }
 
+// Register creates a new user account and initializes a GZAPI client for that user.
 func Register(url string, creds *RegisterForm) (*GZAPI, error) {
 	// Validate inputs
 	if creds == nil {

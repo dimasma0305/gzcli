@@ -201,7 +201,8 @@ This command will:
 	},
 }
 
-// containsAny checks if the string contains any of the substrings
+// containsAny checks if a string `s` contains any of the substrings in the `substrs` slice.
+// It returns true if any substring is found, otherwise false.
 func containsAny(s string, substrs []string) bool {
 	for _, substr := range substrs {
 		if strings.Contains(s, substr) {
@@ -211,14 +212,18 @@ func containsAny(s string, substrs []string) bool {
 	return false
 }
 
-// dateCompletionContext holds context for date completion
+// dateCompletionContext holds contextual information for date completion functions.
+// This includes whether the completion is for the end date flag, the parsed start date,
+// and the current time.
 type dateCompletionContext struct {
 	isEndFlag bool
 	startDate time.Time
 	now       time.Time
 }
 
-// getDateCompletionContext extracts context from command flags
+// getDateCompletionContext extracts completion context from the cobra command.
+// It determines if the '--end' flag is being completed and parses the '--start'
+// flag value if available.
 func getDateCompletionContext(cmd *cobra.Command) dateCompletionContext {
 	ctx := dateCompletionContext{
 		now: time.Now(),
@@ -234,7 +239,8 @@ func getDateCompletionContext(cmd *cobra.Command) dateCompletionContext {
 	return ctx
 }
 
-// completeYear suggests year values (YYYY-)
+// completeYear provides completion suggestions for the year part of a date.
+// It suggests the current year and the next two years.
 func completeYear(ctx dateCompletionContext) ([]string, cobra.ShellCompDirective) {
 	currentYear := ctx.now.Year()
 	minYear := currentYear
@@ -250,7 +256,8 @@ func completeYear(ctx dateCompletionContext) ([]string, cobra.ShellCompDirective
 	return suggestions, cobra.ShellCompDirectiveNoSpace
 }
 
-// completeMonth suggests month values (YYYY-MM-)
+// completeMonth provides completion suggestions for the month part of a date.
+// It takes the partial date string `toComplete` and the completion context.
 func completeMonth(toComplete string, ctx dateCompletionContext) ([]string, cobra.ShellCompDirective) {
 	yearStr := toComplete[:4]
 	year, _ := strconv.Atoi(yearStr)
@@ -272,7 +279,7 @@ func completeMonth(toComplete string, ctx dateCompletionContext) ([]string, cobr
 	return suggestions, cobra.ShellCompDirectiveNoSpace
 }
 
-// completeDay suggests day values (YYYY-MM-DDT)
+// completeDay provides completion suggestions for the day part of a date.
 func completeDay(toComplete string, ctx dateCompletionContext) ([]string, cobra.ShellCompDirective) {
 	prefix := toComplete[:8]
 	yearStr := toComplete[:4]
@@ -287,7 +294,9 @@ func completeDay(toComplete string, ctx dateCompletionContext) ([]string, cobra.
 	return suggestions, cobra.ShellCompDirectiveNoSpace
 }
 
-// getMinDay calculates minimum valid day
+// getMinDay calculates the minimum valid day for completion based on the context.
+// If completing the start date, it's the current day. If completing the end date,
+// it's the day after the start date.
 func getMinDay(year, month int, ctx dateCompletionContext) int {
 	minDay := 1
 
@@ -301,7 +310,8 @@ func getMinDay(year, month int, ctx dateCompletionContext) int {
 	return minDay
 }
 
-// suggestDays generates day suggestions
+// suggestDays generates a list of day suggestions for completion.
+// It prioritizes common day values and the last day of the month.
 func suggestDays(prefix string, minDay, maxDay int) []string {
 	suggestions := []string{}
 	commonDays := []int{1, 2, 3, 5, 10, 15, 20, 25, 28}
@@ -327,7 +337,7 @@ func suggestDays(prefix string, minDay, maxDay int) []string {
 	return suggestions
 }
 
-// completeHour suggests hour values (YYYY-MM-DDTHH:)
+// completeHour provides completion suggestions for the hour part of a date.
 func completeHour(toComplete string) ([]string, cobra.ShellCompDirective) {
 	prefix := toComplete[:11]
 	return []string{
@@ -338,7 +348,7 @@ func completeHour(toComplete string) ([]string, cobra.ShellCompDirective) {
 	}, cobra.ShellCompDirectiveNoSpace
 }
 
-// completeMinute suggests minute values (YYYY-MM-DDTHH:MM:)
+// completeMinute provides completion suggestions for the minute part of a date.
 func completeMinute(toComplete string) ([]string, cobra.ShellCompDirective) {
 	prefix := toComplete[:14]
 	return []string{
@@ -346,7 +356,7 @@ func completeMinute(toComplete string) ([]string, cobra.ShellCompDirective) {
 	}, cobra.ShellCompDirectiveNoSpace
 }
 
-// completeSecondAndTimezone suggests second and timezone values
+// completeSecondAndTimezone provides completion suggestions for the second and timezone parts of a date.
 func completeSecondAndTimezone(toComplete string) ([]string, cobra.ShellCompDirective) {
 	prefix := toComplete[:17]
 	return []string{
@@ -360,7 +370,7 @@ func completeSecondAndTimezone(toComplete string) ([]string, cobra.ShellCompDire
 	}, cobra.ShellCompDirectiveNoFileComp
 }
 
-// completeFallback provides full example dates
+// completeFallback provides full example dates as a fallback for completion.
 func completeFallback(ctx dateCompletionContext) ([]string, cobra.ShellCompDirective) {
 	suggestions := []string{}
 
@@ -382,7 +392,8 @@ func completeFallback(ctx dateCompletionContext) ([]string, cobra.ShellCompDirec
 	return suggestions, cobra.ShellCompDirectiveNoFileComp
 }
 
-// dateCompletion provides intelligent autocomplete for RFC3339 date format
+// dateCompletion is the main function for RFC3339 date completion.
+// It delegates to more specific completion functions based on the input length.
 func dateCompletion(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	length := len(toComplete)
 	ctx := getDateCompletionContext(cmd)
@@ -421,7 +432,7 @@ func dateCompletion(cmd *cobra.Command, _ []string, toComplete string) ([]string
 	return completeFallback(ctx)
 }
 
-// padZero adds leading zero to single digit numbers
+// padZero adds a leading zero to single-digit numbers for consistent date formatting.
 func padZero(n int) string {
 	if n < 10 {
 		return "0" + strconv.Itoa(n)
@@ -429,7 +440,8 @@ func padZero(n int) string {
 	return strconv.Itoa(n)
 }
 
-// eventNameCompletion provides autocomplete suggestions for event names and flags
+// eventNameCompletion provides autocomplete suggestions for event names and associated flags.
+// If an event name is already provided, it suggests the required flags.
 func eventNameCompletion(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 	// If event name is already provided, suggest flags
 	if len(args) >= 1 {

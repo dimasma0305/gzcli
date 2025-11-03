@@ -13,7 +13,8 @@ const (
 	CONFIG_FILE = "conf.yaml"
 )
 
-// Config represents the combined application configuration (server + event)
+// Config represents the combined application configuration, merging server-wide and
+// event-specific settings.
 type Config struct {
 	Url         string       `yaml:"url"`
 	Creds       gzapi.Creds  `yaml:"creds"`
@@ -22,14 +23,15 @@ type Config struct {
 	EventName   string       `yaml:"-"` // Current event name
 }
 
-// loadConfigFromCache loads cached config data (backward compatibility wrapper)
+// loadConfigFromCache is a backward-compatibility wrapper for loading configuration data from the cache.
 //
-//nolint:unused // Kept for backward compatibility
+//nolint:unused
 func loadConfigFromCache(config *Config, getCache func(string, interface{}) error) {
 	loadConfigFromCacheWithKey(config, getCache, "config")
 }
 
-// loadConfigFromCacheWithKey loads cached config data with a specific cache key
+// loadConfigFromCacheWithKey attempts to load configuration data from a cache using a specific key.
+// If cached data is found, it populates the relevant fields in the provided config object.
 func loadConfigFromCacheWithKey(config *Config, getCache func(string, interface{}) error, cacheKey string) {
 	var configCache Config
 	cacheErr := getCache(cacheKey, &configCache)
@@ -41,14 +43,15 @@ func loadConfigFromCacheWithKey(config *Config, getCache func(string, interface{
 	}
 }
 
-// validateCachedGame validates if a cached game ID still exists on the server (backward compatibility wrapper)
+// validateCachedGame is a backward-compatibility wrapper for validating the cached game data against the server.
 //
-//nolint:unused // Kept for backward compatibility
+//nolint:unused
 func validateCachedGame(config *Config, api *gzapi.GZAPI, deleteCache func(string)) error {
 	return validateCachedGameWithKey(config, api, deleteCache, "config")
 }
 
-// validateCachedGameWithKey validates if a cached game ID still exists on the server with a specific cache key
+// validateCachedGameWithKey checks if a cached game ID is still valid on the server. If the game
+// no longer exists, it clears the relevant cache entry.
 func validateCachedGameWithKey(config *Config, api *gzapi.GZAPI, deleteCache func(string), cacheKey string) error {
 	if config.Event.Id == 0 {
 		return nil
@@ -77,14 +80,16 @@ func validateCachedGameWithKey(config *Config, api *gzapi.GZAPI, deleteCache fun
 	return nil
 }
 
-// ensureGameExists ensures a game exists by title or creates a new one (backward compatibility wrapper)
+// ensureGameExists is a backward-compatibility wrapper to ensure that a game exists on the server,
+// creating it if necessary.
 //
-//nolint:unused // Kept for backward compatibility
+//nolint:unused
 func ensureGameExists(config *Config, api *gzapi.GZAPI, setCache func(string, interface{}) error, createNewGame func(*Config, *gzapi.GZAPI) (*gzapi.Game, error)) error {
 	return ensureGameExistsWithKey(config, api, setCache, createNewGame, "config")
 }
 
-// ensureGameExistsWithKey ensures a game exists by title or creates a new one with a specific cache key
+// ensureGameExistsWithKey makes sure that a game corresponding to the configuration exists on the server.
+// If it doesn't find a game by title, it proceeds to create a new one.
 func ensureGameExistsWithKey(config *Config, api *gzapi.GZAPI, setCache func(string, interface{}) error, createNewGame func(*Config, *gzapi.GZAPI) (*gzapi.Game, error), cacheKey string) error {
 	if config.Event.Id != 0 {
 		return nil

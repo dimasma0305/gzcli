@@ -49,7 +49,8 @@ var (
 	fileWriteMutexesMu sync.Mutex
 )
 
-// getFileWriteMutex returns a mutex for a specific cache key
+// getFileWriteMutex returns a file-specific mutex to prevent race conditions during file writes,
+// which is particularly important on operating systems like Windows.
 func getFileWriteMutex(key string) *sync.Mutex {
 	fileWriteMutexesMu.Lock()
 	defer fileWriteMutexesMu.Unlock()
@@ -63,7 +64,7 @@ func getFileWriteMutex(key string) *sync.Mutex {
 	return mu
 }
 
-// newLRUCache creates a new LRU cache
+// newLRUCache initializes a new LRUCache with a specified capacity and time-to-live (TTL).
 func newLRUCache(capacity int, ttl time.Duration) *lruCache {
 	return &lruCache{
 		capacity: capacity,
@@ -73,7 +74,8 @@ func newLRUCache(capacity int, ttl time.Duration) *lruCache {
 	}
 }
 
-// get retrieves a value from the LRU cache
+// get retrieves a value from the LRU cache. It returns the data and a boolean indicating
+// whether the key was found and the data is still valid.
 func (c *lruCache) get(key string) ([]byte, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -96,7 +98,8 @@ func (c *lruCache) get(key string) ([]byte, bool) {
 	return entry.data, true
 }
 
-// put adds or updates a value in the LRU cache
+// put adds a key-value pair to the LRU cache. If the key already exists, it updates the value
+// and moves it to the front of the cache. If the cache is full, it evicts the least recently used item.
 func (c *lruCache) put(key string, data []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -125,7 +128,7 @@ func (c *lruCache) put(key string, data []byte) {
 	}
 }
 
-// remove removes a key from the cache
+// remove deletes a key-value pair from the LRU cache.
 func (c *lruCache) remove(key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -135,14 +138,15 @@ func (c *lruCache) remove(key string) {
 	}
 }
 
-// removeElement removes an element from the cache (must be called with lock held)
+// removeElement is an internal helper to remove an element from the cache. It must be called
+// with the mutex held.
 func (c *lruCache) removeElement(element *list.Element) {
 	c.lruList.Remove(element)
 	entry := element.Value.(*cacheEntry)
 	delete(c.entries, entry.key)
 }
 
-// evictOldest removes the least recently used entry
+// evictOldest removes the least recently used item from the cache.
 func (c *lruCache) evictOldest() {
 	element := c.lruList.Back()
 	if element != nil {
@@ -150,7 +154,8 @@ func (c *lruCache) evictOldest() {
 	}
 }
 
-// setCache atomically writes data to two-tier cache (memory + disk)
+// setCache atomically writes data to a two-tier cache (memory and disk). It handles serialization
+// to YAML and ensures file writes are safe across different operating systems.
 func setCache(key string, data any) error {
 	// Serialize writes to the same key to prevent Windows file locking issues
 	mu := getFileWriteMutex(key)
@@ -199,7 +204,8 @@ func setCache(key string, data any) error {
 	return nil
 }
 
-// renameWithRetry handles file renaming with retry logic for Windows
+// renameWithRetry attempts to rename a file with retry logic, which is particularly useful on Windows
+// where file locking can cause transient errors.
 func renameWithRetry(src, dst string) error {
 	const maxRetries = 10
 	const retryDelay = 50 * time.Millisecond
@@ -234,7 +240,8 @@ func renameWithRetry(src, dst string) error {
 	return lastErr
 }
 
-// GetCache reads cached data from two-tier cache (memory first, then disk)
+// GetCache retrieves cached data from a two-tier cache, checking the in-memory cache first
+// before falling back to the disk cache.
 func GetCache(key string, data any) error {
 	// Try memory cache first
 	if cachedData, found := memoryCache.get(key); found {
@@ -282,7 +289,7 @@ func GetCache(key string, data any) error {
 	return nil
 }
 
-// DeleteCache removes cache from both memory and disk
+// DeleteCache removes a cache entry from both the in-memory and disk caches.
 func DeleteCache(key string) error {
 	// Remove from memory cache
 	memoryCache.remove(key)

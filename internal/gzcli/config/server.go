@@ -10,7 +10,8 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 )
 
-// ServerConfig represents server-level configuration
+// ServerConfig represents the server-specific configuration, including the URL of the
+// GZCTF instance and the credentials for authentication.
 type ServerConfig struct {
 	Url   string      `yaml:"url"`
 	Creds gzapi.Creds `yaml:"creds"`

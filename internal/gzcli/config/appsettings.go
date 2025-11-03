@@ -140,11 +140,13 @@ type AppSettings struct {
 	} `json:"Kestrel"`
 }
 
+// Label represents a key-value pair used for logging labels in Loki.
 type Label struct {
 	Key   string `json:"Key"`
 	Value string `json:"Value"`
 }
 
+// GetAppSettings reads and parses the appsettings.json file, returning an AppSettings struct.
 func GetAppSettings() (*AppSettings, error) {
 	dir, err := os.Getwd()
 	if err != nil {

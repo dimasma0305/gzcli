@@ -61,7 +61,9 @@ func init() {
 	migrateCmd.Flags().BoolVar(&migrateDryRun, "dry-run", false, "Show what would be done without making changes")
 }
 
-// validateMigrationPreconditions checks if migration is possible
+// validateMigrationPreconditions checks if the current directory is a valid candidate for migration.
+// It ensures that the project has not already been migrated and that the old configuration file exists.
+// It returns the path to the old configuration file if the preconditions are met.
 func validateMigrationPreconditions(cwd string) (string, error) {
 	// Check if already migrated
 	if _, err := os.Stat(filepath.Join(cwd, "events")); err == nil {
@@ -79,7 +81,10 @@ func validateMigrationPreconditions(cwd string) (string, error) {
 	return oldConfPath, nil
 }
 
-// determineEventName extracts event name from config or uses provided name
+// determineEventName determines the name for the new event being created during migration.
+// It prioritizes the event name provided via the --event-name flag. If not provided,
+// it generates a name from the event title in the old configuration.
+// As a fallback, it uses "default-event".
 func determineEventName(oldConfig map[interface{}]interface{}) string {
 	eventName := migrateEventName
 	if eventName == "" {
@@ -93,7 +98,11 @@ func determineEventName(oldConfig map[interface{}]interface{}) string {
 	return eventName
 }
 
-// performMigrationSteps executes all migration steps in sequence
+// performMigrationSteps executes all the necessary steps for the migration in a predefined order.
+// This includes creating directories, splitting configurations, moving challenges and cache files,
+// setting the default event, and updating the .gitignore file.
+// It takes the current working directory, the new event name, and the old configuration as input.
+// It returns an error if any of the critical migration steps fail.
 func performMigrationSteps(cwd, eventName string, oldConfig map[interface{}]interface{}) error {
 	steps := []struct {
 		name string
@@ -122,6 +131,9 @@ func performMigrationSteps(cwd, eventName string, oldConfig map[interface{}]inte
 	return nil
 }
 
+// runMigration is the main function that orchestrates the entire migration process.
+// It validates preconditions, reads the old configuration, determines the new event name,
+// handles backups, and executes the migration steps. It also supports a dry-run mode.
 func runMigration() error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -165,6 +177,7 @@ func runMigration() error {
 	return performMigrationSteps(cwd, eventName, oldConfig)
 }
 
+// readOldConfig reads and parses the old YAML configuration file.
 func readOldConfig(path string) (map[interface{}]interface{}, error) {
 	//nolint:gosec // G304: Path comes from command argument, validated before use
 	data, err := os.ReadFile(path)
@@ -180,6 +193,8 @@ func readOldConfig(path string) (map[interface{}]interface{}, error) {
 	return config, nil
 }
 
+// showMigrationPlan displays the planned migration steps without executing them.
+// This is used in dry-run mode to inform the user about the changes that will be made.
 func showMigrationPlan(cwd, eventName string, _ map[interface{}]interface{}) error {
 	log.Info("\n📋 Migration Plan:")
 	log.Info("  └─ Create events/%s/", eventName)
@@ -203,6 +218,9 @@ func showMigrationPlan(cwd, eventName string, _ map[interface{}]interface{}) err
 	return nil
 }
 
+// createBackup handles the backup process for the migration.
+// In the current implementation, it logs a message informing the user
+// that original files are not moved, effectively serving as a backup.
 func createBackup(_, _ string) error {
 	// Simple backup: just note the structure, don't actually copy
 	log.Info("   Note: Original files will remain in place")
@@ -210,6 +228,7 @@ func createBackup(_, _ string) error {
 	return nil
 }
 
+// createDirectories creates the necessary directory structure for the new multi-event layout.
 func createDirectories(cwd, eventName string) error {
 	dirs := []string{
 		filepath.Join(cwd, ".gzcli", "cache"),
@@ -227,6 +246,8 @@ func createDirectories(cwd, eventName string) error {
 	return nil
 }
 
+// splitConfig splits the old monolithic configuration file into a server configuration
+// and an event-specific configuration.
 func splitConfig(cwd, eventName string, oldConfig map[interface{}]interface{}) error {
 	// Extract server config
 	serverConfig := map[string]interface{}{
@@ -257,6 +278,8 @@ func splitConfig(cwd, eventName string, oldConfig map[interface{}]interface{}) e
 	return nil
 }
 
+// moveChallenges moves the challenge directories from the old root-level location
+// to the new event-specific directory.
 func moveChallenges(cwd, eventName string) error {
 	categories := config.CHALLENGE_CATEGORY
 	movedAny := false
@@ -282,6 +305,7 @@ func moveChallenges(cwd, eventName string) error {
 	return nil
 }
 
+// moveCacheFiles moves old cache files from the .gzcli/ directory to the new .gzcli/cache/ subdirectory.
 func moveCacheFiles(cwd string) error {
 	oldCacheDir := filepath.Join(cwd, ".gzcli")
 	newCacheDir := filepath.Join(cwd, ".gzcli", "cache")
@@ -316,6 +340,7 @@ func moveCacheFiles(cwd string) error {
 	return nil
 }
 
+// setDefaultEvent sets the newly created event as the current default event for the project.
 func setDefaultEvent(cwd, eventName string) error {
 	defaultEventFile := filepath.Join(cwd, ".gzcli", "current-event")
 	if err := os.WriteFile(defaultEventFile, []byte(eventName), 0600); err != nil {
@@ -325,6 +350,7 @@ func setDefaultEvent(cwd, eventName string) error {
 	return nil
 }
 
+// updateGitignore updates the .gitignore file to include new paths that should be ignored in the multi-event structure.
 func updateGitignore(cwd string) error {
 	gitignorePath := filepath.Join(cwd, ".gitignore")
 
@@ -370,6 +396,7 @@ func updateGitignore(cwd string) error {
 	return nil
 }
 
+// writeYAML serializes the given data to YAML format and writes it to the specified path.
 func writeYAML(path string, data interface{}) error {
 	out, err := yaml.Marshal(data)
 	if err != nil {

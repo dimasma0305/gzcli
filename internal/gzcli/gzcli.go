@@ -100,7 +100,8 @@ func (c *Config) SetAppSettings(settings *AppSettings) {
 	c.Appsettings = settings
 }
 
-// GetAppSettingsField returns the settings
+// GetAppSettingsField returns the application settings from the configuration.
+// It checks both the public and private fields to ensure compatibility.
 func (c *Config) GetAppSettingsField() *AppSettings {
 	if c.Appsettings != nil {
 		return c.Appsettings
@@ -405,6 +406,7 @@ func (gz *GZ) MustScoreboard2CTFTimeFeed() *event.CTFTimeFeed {
 }
 
 // MustRunScripts executes scripts or fatally logs error
+//
 // Deprecated: Use RunScripts directly with event parameter
 func MustRunScripts(script string, eventName string) {
 	if err := RunScripts(script, eventName); err != nil {

@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+// Challenge represents a challenge in the CTF, including its configuration, content,
+// and associated metadata.
 type Challenge struct {
 	Id                   int         `json:"id" yaml:"id"`
 	Title                string      `json:"title" yaml:"title"`
@@ -33,6 +35,7 @@ type Challenge struct {
 	CS                   *GZAPI      `json:"-" yaml:"-"`
 }
 
+// Delete sends a request to the server to delete the challenge.
 func (c *Challenge) Delete() error {
 	if c.CS == nil {
 		return fmt.Errorf("GZAPI client is not initialized")
@@ -40,6 +43,7 @@ func (c *Challenge) Delete() error {
 	return c.CS.delete(fmt.Sprintf("/api/edit/games/%d/challenges/%d", c.GameId, c.Id), nil)
 }
 
+// Update sends a request to the server to update the challenge with new data.
 func (c *Challenge) Update(challenge Challenge) (*Challenge, error) {
 	if c.CS == nil {
 		return nil, fmt.Errorf("GZAPI client is not initialized")
@@ -50,6 +54,7 @@ func (c *Challenge) Update(challenge Challenge) (*Challenge, error) {
 	return &challenge, nil
 }
 
+// Refresh fetches the latest challenge data from the server and updates the current object.
 func (c *Challenge) Refresh() (*Challenge, error) {
 	if c.CS == nil {
 		return nil, fmt.Errorf("GZAPI client is not initialized")
