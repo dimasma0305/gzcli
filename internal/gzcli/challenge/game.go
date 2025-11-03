@@ -9,6 +9,8 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// FindCurrentGame searches for a game by its title in a slice of games and returns it.
+// If found, it also associates the API client with the game object.
 func FindCurrentGame(games []*gzapi.Game, title string, api *gzapi.GZAPI) *gzapi.Game {
 	for _, game := range games {
 		if game.Title == title {
@@ -19,6 +21,8 @@ func FindCurrentGame(games []*gzapi.Game, title string, api *gzapi.GZAPI) *gzapi
 	return nil
 }
 
+// CreateNewGame handles the creation of a new game on the server. It uses the local configuration
+// to set up the game, uploads a poster, and updates the cache with the new game information.
 func CreateNewGame(conf *config.Config, api *gzapi.GZAPI, createPosterFunc func(string, *gzapi.Game, *gzapi.GZAPI) (string, error), setCache func(string, interface{}) error) (*gzapi.Game, error) {
 	log.Info("Create new game")
 	event := gzapi.CreateGameForm{
@@ -53,6 +57,8 @@ func CreateNewGame(conf *config.Config, api *gzapi.GZAPI, createPosterFunc func(
 	return game, nil
 }
 
+// UpdateGameIfNeeded compares the local game configuration with the current game data on the
+// server and performs an update if there are any differences.
 func UpdateGameIfNeeded(conf *config.Config, currentGame *gzapi.Game, api *gzapi.GZAPI, createPosterFunc func(string, *gzapi.Game, *gzapi.GZAPI) (string, error), setCache func(string, interface{}) error) error {
 	poster, err := createPosterFunc(conf.Event.Poster, currentGame, api)
 	if err != nil {

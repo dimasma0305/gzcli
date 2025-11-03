@@ -153,7 +153,8 @@ func (b *Bot) sendWelcomeMessage() error {
 	return nil
 }
 
-// sanitizeTeamName removes invalid characters from team names
+// sanitizeTeamName removes characters that are not typically allowed in team names,
+// although the specific filtering rules might need adjustment based on the platform's requirements.
 func sanitizeTeamName(name string) string {
 	// Remove invalid characters
 	sanitized := regexp.MustCompile(`[^a-zA-Z0-9!@#$%^&*()_+\-={}\[\]:"';<>,.?/\\]`).ReplaceAllString(name, "")

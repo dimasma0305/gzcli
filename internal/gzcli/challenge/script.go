@@ -83,6 +83,8 @@ func RunScript(challengeConf config.ChallengeYaml, script string) error {
 	return runShell(command, challengeConf.Cwd)
 }
 
+// runShell executes a shell command in a specified working directory.
+//
 //nolint:gosec // G204: Script execution is the intended purpose of this function
 func runShell(script string, cwd string) error {
 	args := append(getShellArgs(), script)

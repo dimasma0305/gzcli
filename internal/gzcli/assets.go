@@ -9,6 +9,9 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 )
 
+// createPosterIfNotExistOrDifferent checks if a poster asset exists on the server and matches the local file.
+// If the poster doesn't exist or the hash is different, it uploads the new poster.
+// It returns the asset URL path for the poster.
 func createPosterIfNotExistOrDifferent(file string, game *gzapi.Game, client *gzapi.GZAPI) (string, error) {
 	assets, err := client.GetAssets()
 	if err != nil {

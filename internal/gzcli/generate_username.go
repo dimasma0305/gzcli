@@ -7,7 +7,7 @@ import (
 	"unicode"
 )
 
-// LeetSpeakMap defines rune replacements for leetspeak transformations
+// LeetSpeakMap defines common rune replacements for leetspeak transformations.
 var LeetSpeakMap = map[rune]rune{
 	'a': '4',
 	'e': '3',
@@ -18,7 +18,9 @@ var LeetSpeakMap = map[rune]rune{
 	'g': '9',
 }
 
-// transformRandomly applies leetspeak and random uppercase transformations
+// transformRandomly applies a series of random transformations to a string to generate a username.
+// These transformations include converting spaces to underscores, applying leetspeak replacements,
+// and randomly changing the case of letters.
 func transformRandomly(s string) string {
 	//nolint:gosec // G404: Weak RNG acceptable for non-security username generation
 	localRand := rand.New(rand.NewSource(rand.Int63())) // Local generator seeded from global source
@@ -47,7 +49,10 @@ func transformRandomly(s string) string {
 	return transformed.String()
 }
 
-// generateUsername generates a unique username with leetspeak transformations
+// generateUsername creates a unique username based on a real name, with a specified maximum length.
+// It uses a set of existing usernames to ensure the generated username is unique.
+// The function cleans the real name, applies random transformations, and appends a numerical suffix
+// if necessary to ensure uniqueness.
 func generateUsername(realName string, maxLength int, existingUsernames map[string]struct{}) (string, error) {
 	// Clean and normalize base username
 	var baseBuilder strings.Builder

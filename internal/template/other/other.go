@@ -46,6 +46,7 @@ type EventInfo struct {
 	End   string
 }
 
+// randomize generates a random hexadecimal string of a given length.
 func randomize(n int) string {
 	b := make([]byte, n)
 	_, err := rand.Read(b)

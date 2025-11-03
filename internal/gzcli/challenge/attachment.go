@@ -13,6 +13,8 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// HandleChallengeAttachments processes the attachments for a given challenge based on its configuration.
+// It supports remote URLs, local files (which are zipped and uploaded), and removing existing attachments.
 func HandleChallengeAttachments(challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
 	log.InfoH3("Processing attachments for challenge: %s", challengeConf.Name)
 
@@ -52,6 +54,8 @@ func HandleChallengeAttachments(challengeConf config.ChallengeYaml, challengeDat
 	return nil
 }
 
+// HandleLocalAttachment manages the process of uploading a local file as a challenge attachment.
+// It zips directories, creates a unique file version to ensure a unique hash, and handles the asset upload.
 func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
 	log.InfoH3("Creating local attachment for %s", challengeConf.Name)
 

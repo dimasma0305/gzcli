@@ -170,7 +170,7 @@ func NormalizeChallengeCategory(category string, challengeName string) (string, 
 	return category, challengeName
 }
 
-// processChallengeFile processes a single challenge file
+// processChallengeFile reads and parses a challenge.yaml file.
 func processChallengeFile(path string, category string, content []byte) (ChallengeYaml, error) {
 	var challenge ChallengeYaml
 	if err := fileutil.ParseYamlFromBytes(content, &challenge); err != nil {
@@ -185,7 +185,7 @@ func processChallengeFile(path string, category string, content []byte) (Challen
 	return challenge, nil
 }
 
-// ProcessChallengeTemplate processes challenge template and returns final challenge
+// ProcessChallengeTemplate executes template substitutions in the challenge configuration.
 func ProcessChallengeTemplate(eventName string, content []byte, challenge ChallengeYaml, path string) (ChallengeYaml, error) {
 	t, err := template.New("chall").Parse(string(content))
 	if err != nil {
@@ -209,7 +209,8 @@ func ProcessChallengeTemplate(eventName string, content []byte, challenge Challe
 	return challenge, nil
 }
 
-// walkCategoryPath walks a category directory and processes challenge files
+// walkCategoryPath traverses a directory for a specific category, finds challenge.yaml files,
+// and sends them to a channel for processing.
 func walkCategoryPath(eventName, categoryPath, category string, challengeChan chan<- ChallengeYaml) error {
 	return filepath.Walk(categoryPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !challengeFileRegex.MatchString(info.Name()) {
@@ -237,7 +238,7 @@ func walkCategoryPath(eventName, categoryPath, category string, challengeChan ch
 	})
 }
 
-// processCategoryAsync processes a category directory asynchronously
+// processCategoryAsync is a helper function to process a single category directory in a goroutine.
 func processCategoryAsync(eventName, dir, category string, challengeChan chan<- ChallengeYaml, errChan chan<- error, wg *sync.WaitGroup) {
 	defer wg.Done()
 	categoryPath := filepath.Join(dir, category)

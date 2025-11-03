@@ -93,7 +93,8 @@ func init() {
 	_ = rootCmd.RegisterFlagCompletionFunc("event", validEventNames)
 }
 
-// GetEventFlag returns the current event flag value
+// GetEventFlag returns the value of the global --event flag.
+// This function provides a clean way for other commands to access the globally specified event.
 func GetEventFlag() string {
 	return globalEventFlag
 }

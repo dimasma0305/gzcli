@@ -96,7 +96,8 @@ func ValidateChallenges(challengesConf []config.ChallengeYaml) error {
 	return nil
 }
 
-// ValidateInterval validates that an interval is within acceptable bounds
+// ValidateInterval checks if a given time duration is within a predefined acceptable
+// range for script execution intervals.
 func ValidateInterval(interval time.Duration, scriptName string) bool {
 	if interval < MinInterval {
 		log.Error("Interval %v too short for script '%s', minimum is %v", interval, scriptName, MinInterval)

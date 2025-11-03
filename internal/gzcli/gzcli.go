@@ -100,7 +100,8 @@ func (c *Config) SetAppSettings(settings *AppSettings) {
 	c.Appsettings = settings
 }
 
-// GetAppSettingsField returns the settings
+// GetAppSettingsField returns the application settings from the configuration.
+// It checks both the public and private fields to ensure compatibility.
 func (c *Config) GetAppSettingsField() *AppSettings {
 	if c.Appsettings != nil {
 		return c.Appsettings

@@ -8,6 +8,7 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// Attachment represents a file or link attached to a challenge.
 type Attachment struct {
 	Id          int    `json:"id"`
 	Type        string `json:"type"`
@@ -18,6 +19,7 @@ type Attachment struct {
 	CS          *GZAPI `json:"-" yaml:"-"`
 }
 
+// Delete removes the attachment from the server.
 func (a *Attachment) Delete() error {
 	if a.CS == nil {
 		return fmt.Errorf("GZAPI client is not initialized")
@@ -25,12 +27,14 @@ func (a *Attachment) Delete() error {
 	return a.CS.delete(fmt.Sprintf("/api/edit/games/%d/challenges/%d/attachment/%d", a.GameId, a.ChallengeId, a.Id), nil)
 }
 
+// CreateAttachmentForm is used to create a new attachment for a challenge.
 type CreateAttachmentForm struct {
 	AttachmentType string `json:"attachmentType"`
 	FileHash       string `json:"fileHash,omitempty"`
 	RemoteUrl      string `json:"remoteUrl,omitempty"`
 }
 
+// CreateAttachment sends a request to the server to create a new attachment for the challenge.
 func (c *Challenge) CreateAttachment(attachment CreateAttachmentForm) error {
 	if c.CS == nil {
 		return fmt.Errorf("GZAPI client is not initialized")

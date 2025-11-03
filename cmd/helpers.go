@@ -57,7 +57,8 @@ func ResolveTargetEvents(eventFlags []string, excludeFlags []string) ([]string, 
 	return allEvents, nil
 }
 
-// contains checks if a string slice contains a specific string
+// contains checks if a string slice contains a specific string.
+// It returns true if the item is found in the slice, otherwise false.
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {

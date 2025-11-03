@@ -8,20 +8,25 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/structure"
 )
 
-// Wrapper functions to bridge between old and new package structures
-
+// deleteCacheWrapper provides a simplified interface for deleting cache entries,
+// intended for use as a callback in other packages.
 func deleteCacheWrapper(key string) {
 	_ = DeleteCache(key)
 }
 
+// getConfigWrapper retrieves the application configuration, injecting the necessary cache
+// and game creation functions as dependencies.
 func getConfigWrapper(api *gzapi.GZAPI) (*config.Config, error) {
 	return config.GetConfig(api, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
 }
 
+// createNewGameWrapper is a wrapper around the challenge.CreateNewGame function,
+// providing the necessary dependencies for poster creation and caching.
 func createNewGameWrapper(conf *config.Config, api *gzapi.GZAPI) (*gzapi.Game, error) {
 	return challenge.CreateNewGame(conf, api, createPosterIfNotExistOrDifferent, setCache)
 }
 
+// genStructureWrapper adapts the challenge data and calls the structure generation logic.
 func genStructureWrapper(challenges []interface{ GetCwd() string }) error {
 	// Convert to structure.ChallengeData
 	converted := make([]structure.ChallengeData, len(challenges))
@@ -31,7 +36,8 @@ func genStructureWrapper(challenges []interface{ GetCwd() string }) error {
 	return structure.GenerateStructure(converted)
 }
 
-// RunScripts executes scripts for all challenges using a worker pool
+// RunScripts executes a named script for all challenges in a given event.
+// It uses a worker pool for parallel execution of the scripts.
 func RunScripts(scriptName string, eventName string) error {
 	// Get config for the specific event
 	configPkg, err := config.GetConfigWithEvent(&gzapi.GZAPI{}, eventName, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
@@ -62,15 +68,17 @@ func RunScripts(scriptName string, eventName string) error {
 	})
 }
 
-// Adapter types
+// challengeConfAdapter adapts the config.ChallengeYaml type to the script.ChallengeConf interface.
 type challengeConfAdapter struct {
 	c config.ChallengeYaml
 }
 
+// GetName returns the name of the challenge.
 func (c challengeConfAdapter) GetName() string {
 	return c.c.Name
 }
 
+// GetScripts returns the scripts defined for the challenge, adapted to the script.ScriptValue interface.
 func (c challengeConfAdapter) GetScripts() map[string]script.ScriptValue {
 	result := make(map[string]script.ScriptValue)
 	for k, v := range c.c.Scripts {
@@ -79,10 +87,12 @@ func (c challengeConfAdapter) GetScripts() map[string]script.ScriptValue {
 	return result
 }
 
+// scriptValueAdapter adapts the config.ScriptValue type to the script.ScriptValue interface.
 type scriptValueAdapter struct {
 	v config.ScriptValue
 }
 
+// GetCommand returns the command string for the script.
 func (s scriptValueAdapter) GetCommand() string {
 	return s.v.GetCommand()
 }

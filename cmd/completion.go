@@ -9,7 +9,8 @@ import (
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 )
 
-// validEventNames returns a list of valid event names for completion
+// validEventNames returns a list of valid event names for shell completion.
+// It is used by cobra to provide suggestions for commands that take an event name as an argument.
 func validEventNames(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	eventNames, err := getAvailableEvents()
 	if err != nil {
@@ -18,7 +19,8 @@ func validEventNames(_ *cobra.Command, _ []string, _ string) ([]string, cobra.Sh
 	return eventNames, cobra.ShellCompDirectiveNoFileComp
 }
 
-// getAvailableEvents scans the events directory and returns available event names
+// getAvailableEvents scans the events directory and returns a list of available event names.
+// An event is considered available if it has a .gzevent file in its directory.
 func getAvailableEvents() ([]string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {

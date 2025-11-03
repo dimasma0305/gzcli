@@ -10,6 +10,8 @@ import (
 	"github.com/dimasma0305/gzcli/internal/template"
 )
 
+// GenStructure generates the directory and file structure for a list of challenges
+// based on a template defined in a .structure directory.
 func GenStructure(challenges []config.ChallengeYaml) error {
 	// Read the .structure file
 	_, err := os.ReadDir(".structure")
