@@ -1,0 +1,208 @@
+{{define "home"}}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Title}}</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      crossorigin="anonymous"
+    />
+    <style>
+      .template-card-link .card {
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .template-card-link .card:hover {
+        transform: translateY(-2px);
+        border-color: var(--bs-primary);
+        box-shadow: 0 0.5rem 1rem rgba(88, 166, 255, 0.15);
+      }
+      .list-group-item {
+        background-color: var(--bs-dark);
+      }
+    </style>
+  </head>
+  <body class="bg-body-tertiary text-body">
+    <div class="container py-5">
+      <header class="d-flex flex-column flex-lg-row justify-content-between gap-4 mb-4">
+        <div class="d-flex flex-column gap-2">
+          <h1 class="fs-1 text-primary mb-0">{{.Title}}</h1>
+          <p class="text-secondary mb-0">
+            Upload a challenge bundle for your event. Make sure it follows the official gzcli layout
+            and validations before syncing it to the CTF platform.
+          </p>
+        </div>
+        <dl class="row row-cols-1 row-cols-sm-3 g-2 text-center text-sm-start mb-0 flex-grow-1">
+          <div class="col">
+            <div class="card bg-dark border-secondary h-100">
+              <div class="card-body py-3">
+                <dt class="text-uppercase text-secondary small fw-semibold mb-1">Upload Limit</dt>
+                <dd class="fs-5 fw-semibold mb-0 text-light">{{.MaxUpload}}</dd>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card bg-dark border-secondary h-100">
+              <div class="card-body py-3">
+                <dt class="text-uppercase text-secondary small fw-semibold mb-1">Archive Ceiling</dt>
+                <dd class="fs-5 fw-semibold mb-0 text-light">{{.MaxExtract}}</dd>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card bg-dark border-secondary h-100">
+              <div class="card-body py-3">
+                <dt class="text-uppercase text-secondary small fw-semibold mb-1">Max Attachment</dt>
+                <dd class="fs-5 fw-semibold mb-0 text-light">{{.MaxEntry}}</dd>
+              </div>
+            </div>
+          </div>
+        </dl>
+      </header>
+
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <div class="card bg-dark border-secondary shadow-sm h-100">
+            <div class="card-body d-flex flex-column gap-4">
+              <div>
+                <h2 class="h4 text-light mb-2">Upload Challenge</h2>
+                <p class="text-secondary mb-0">
+                  Provide the event, category, and compressed challenge package. The server validates
+                  structure, solver, and manifest before installing it into your workspace.
+                </p>
+              </div>
+
+              {{if .SuccessMsg}}
+              <div class="alert alert-success mb-0" role="alert">{{.SuccessMsg}}</div>
+              {{end}} {{if .ErrorMsg}}
+              <div class="alert alert-danger mb-0" role="alert">{{.ErrorMsg}}</div>
+              {{end}}
+
+              {{if .Templates}}
+              <section>
+                <h3 class="h5 text-light mb-2">Starter Templates</h3>
+                <p class="text-secondary mb-3">
+                  Grab a prebuilt challenge skeleton to speed up authoring.
+                </p>
+                <div class="row row-cols-1 row-cols-sm-2 g-3">
+                  {{range .Templates}}
+                  <div class="col template-card-link">
+                    <a class="card h-100 bg-dark border-secondary text-decoration-none" href="/templates/{{.Slug}}.zip" download>
+                      <div class="card-body d-flex flex-column gap-2">
+                        <span class="template-name h6 mb-0 text-primary">{{.Name}}</span>
+                        <span class="template-summary text-secondary">{{.Summary}}</span>
+                      </div>
+                    </a>
+                  </div>
+                  {{end}}
+                </div>
+              </section>
+              {{end}}
+
+              <form
+                class="d-flex flex-column gap-3"
+                action="/upload"
+                method="post"
+                enctype="multipart/form-data"
+              >
+                <div>
+                  <label for="event" class="form-label">Event</label>
+                  <select id="event" name="event" class="form-select bg-dark border-secondary text-light" required>
+                    <option value="" disabled selected>Select an event</option>
+                    {{range .Events}}
+                    <option value="{{.}}">{{.}}</option>
+                    {{end}}
+                  </select>
+                </div>
+
+                <div>
+                  <label for="category" class="form-label">Category</label>
+                  <select id="category" name="category" class="form-select bg-dark border-secondary text-light" required>
+                    <option value="" disabled selected>Select a category</option>
+                    {{range .Categories}}
+                    <option value="{{.}}">{{.}}</option>
+                    {{end}}
+                  </select>
+                </div>
+
+                <div>
+                  <label for="challenge" class="form-label">Challenge ZIP</label>
+                  <input
+                    id="challenge"
+                    name="challenge"
+                    class="form-control bg-dark border-secondary text-light"
+                    type="file"
+                    accept=".zip,application/zip"
+                    required
+                  />
+                </div>
+
+                <button type="submit" class="btn btn-success btn-lg">Upload challenge</button>
+              </form>
+
+              <div class="d-flex flex-wrap gap-3 small text-secondary">
+                <span>
+                  Validate locally with <code class="text-light bg-dark px-1 rounded">gzcli challenge validate</code>
+                  before uploading.
+                </span>
+                <span>Service status endpoint: <code class="text-light bg-dark px-1 rounded">/healthz</code></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card bg-dark border-secondary shadow-sm h-100">
+            <div class="card-body d-flex flex-column gap-3">
+              <div>
+                <h2 class="h4 text-light mb-2">Packaging Checklist</h2>
+                <p class="text-secondary mb-0">
+                  Confirm every upload follows the expected directory layout so deployments stay consistent across events.
+                </p>
+              </div>
+
+              <ul class="list-group list-group-flush">
+                <li class="list-group-item border-secondary">
+                  <span class="fw-semibold text-primary">Root Layout:</span>
+                  Archive expands to a single directory containing <code class="text-light">challenge.yml</code> plus
+                  subdirectories referenced in the manifest.
+                </li>
+                <li class="list-group-item border-secondary">
+                  <span class="fw-semibold text-primary">Manifest:</span>
+                  Define <code class="text-light">name</code>, <code class="text-light">category</code>,
+                  <code class="text-light">flag</code>, <code class="text-light">description</code>, and any deployment configuration.
+                </li>
+                <li class="list-group-item border-secondary">
+                  <span class="fw-semibold text-primary">Solver:</span>
+                  Include a <code class="text-light">solver/</code> directory with a working exploit or write-up that demonstrates the intended solve path.
+                </li>
+                <li class="list-group-item border-secondary">
+                  <span class="fw-semibold text-primary">Attachments:</span>
+                  Store downloadable artifacts in <code class="text-light">dist/</code>. If the challenge ships without attachments, remove the
+                  <code class="text-light">provide</code> section from <code class="text-light">challenge.yml</code>.
+                </li>
+                <li class="list-group-item border-secondary">
+                  <span class="fw-semibold text-primary">Source:</span>
+                  Place challenge implementation files under <code class="text-light">src/</code>, keeping the paths referenced in
+                  <code class="text-light">challenge.yml</code> aligned with that root.
+                </li>
+              </ul>
+
+              <p class="text-secondary mb-0">
+                Need inspiration? Start from a template on the left or visit the docs for a deeper dive into challenge authoring best practices.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>
+{{end}}

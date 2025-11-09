@@ -9,6 +9,7 @@ This guide provides comprehensive information for developers who want to contrib
   - [Project Structure](#project-structure)
   - [Development Setup](#development-setup)
   - [Building and Running](#building-and-running)
+    - [Challenge Upload Server](#challenge-upload-server)
   - [Adding New Features](#adding-new-features)
   - [Debugging](#debugging)
   - [Performance Profiling](#performance-profiling)
@@ -236,6 +237,24 @@ go run . --help
 # Run specific command
 ./gzcli init --help
 ```
+
+#### Challenge Upload Server
+
+Use the dedicated upload server when you need a simple web UI for packaging and ingesting challenges.
+
+```bash
+# Start the upload server on localhost:8090
+gzcli upload-server
+
+# Custom host/port
+gzcli upload-server --host 0.0.0.0 --port 4000
+```
+
+- The server reads events from the current workspace (`events/<event>/`) and requires those events to exist locally.
+- The home page lists built-in templates sourced from the project samples (e.g. Static Container, Static Attachment variants); download them at `/templates/<slug>.zip`.
+- Uploads accept ZIP archives only; the server locates `challenge.yml`, validates it with the existing challenge checks, and ensures a `writeup/` directory is present.
+- The selected event and category determine the destination (`events/<event>/<category>/<challenge-name>/`). If a challenge with the same name already exists, its contents are replaced.
+- Authentication is intentionally not enforced—run the server only on trusted networks or wrap it with your own access controls if required.
 
 ### Adding New Features
 

@@ -19,8 +19,3 @@ provide: "./dist"
 dashboard:
   type: "compose"
   config: "./src/docker-compose.yml"
-
-scripts:
-    start: cd src && docker compose -p {{.slug}} up --build -d
-    stop: cd src && docker compose -p {{.slug}} down --volumes
-    restart: cd src && docker compose -p {{.slug}} down --volumes && docker compose -p {{.slug}} up --build -d
