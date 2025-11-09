@@ -16,6 +16,7 @@ NC=\033[0m # No Color
 
 all: build
 
+
 ## help: Display this help message
 help:
 	@echo "${BLUE}gzcli Makefile${NC}"

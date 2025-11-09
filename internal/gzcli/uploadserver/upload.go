@@ -308,7 +308,11 @@ func copyWithArchiveLimits(dst io.Writer, src io.Reader, limiter *extractionLimi
 	for {
 		n, readErr := src.Read(buf)
 		if n > 0 {
-			if err := limiter.recordBytes(uint64(n)); err != nil {
+			if n > len(buf) {
+				return written, fmt.Errorf("invalid read length %d exceeds buffer capacity", n)
+			}
+			chunkLen := uint64(len(buf[:n]))
+			if err := limiter.recordBytes(chunkLen); err != nil {
 				return written, err
 			}
 
@@ -320,7 +324,7 @@ func copyWithArchiveLimits(dst io.Writer, src io.Reader, limiter *extractionLimi
 				return written, io.ErrShortWrite
 			}
 
-			written += uint64(n)
+			written += chunkLen
 		}
 
 		if readErr != nil {

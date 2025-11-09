@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/dimasma0305/gzcli/internal/log"
 )
@@ -46,8 +47,9 @@ func Run(opts Options) error {
 
 	addr := fmt.Sprintf("%s:%d", opts.Host, opts.Port)
 	httpServer := &http.Server{
-		Addr:    addr,
-		Handler: srv.routes(),
+		Addr:              addr,
+		Handler:           srv.routes(),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	log.Info("Upload server listening on http://%s", addr)

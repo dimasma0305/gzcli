@@ -166,7 +166,7 @@ func TestGetFileHashHex_Success(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "test.txt")
 
 	content := []byte("Hello, World!")
-        if err := os.WriteFile(testFile, content, 0600); err != nil {
+	if err := os.WriteFile(testFile, content, 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -192,7 +192,7 @@ func TestGetFileHashHex_EmptyFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "empty.txt")
 
-        if err := os.WriteFile(testFile, []byte{}, 0600); err != nil {
+	if err := os.WriteFile(testFile, []byte{}, 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -227,7 +227,7 @@ func TestGetFileHashHex_LargeFile(t *testing.T) {
 		largeContent[i] = byte(i % 256)
 	}
 
-        if err := os.WriteFile(testFile, largeContent, 0600); err != nil {
+	if err := os.WriteFile(testFile, largeContent, 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -332,7 +332,7 @@ func TestZipSource_Success(t *testing.T) {
 	targetFile := filepath.Join(tmpDir, "archive.zip")
 
 	// Create source directory with files
-        if err := os.MkdirAll(sourceDir, 0750); err != nil {
+	if err := os.MkdirAll(sourceDir, 0750); err != nil {
 		t.Fatalf("Failed to create source dir: %v", err)
 	}
 
@@ -380,7 +380,7 @@ func TestZipSource_EmptyDirectory(t *testing.T) {
 	sourceDir := filepath.Join(tmpDir, "empty")
 	targetFile := filepath.Join(tmpDir, "empty.zip")
 
-        if err := os.MkdirAll(sourceDir, 0750); err != nil {
+	if err := os.MkdirAll(sourceDir, 0750); err != nil {
 		t.Fatalf("Failed to create source dir: %v", err)
 	}
 
@@ -403,7 +403,7 @@ func TestZipSource_NestedDirectories(t *testing.T) {
 
 	// Create nested structure
 	subDir := filepath.Join(sourceDir, "subdir")
-        if err := os.MkdirAll(subDir, 0750); err != nil {
+	if err := os.MkdirAll(subDir, 0750); err != nil {
 		t.Fatalf("Failed to create nested dir: %v", err)
 	}
 
@@ -457,7 +457,7 @@ func TestZipSource_InvalidTarget(t *testing.T) {
 	tmpDir := t.TempDir()
 	sourceDir := filepath.Join(tmpDir, "source")
 
-        if err := os.MkdirAll(sourceDir, 0750); err != nil {
+	if err := os.MkdirAll(sourceDir, 0750); err != nil {
 		t.Fatalf("Failed to create source dir: %v", err)
 	}
 
@@ -477,7 +477,7 @@ func TestZipSource_LargeFiles(t *testing.T) {
 	sourceDir := filepath.Join(tmpDir, "source")
 	targetFile := filepath.Join(tmpDir, "large.zip")
 
-        if err := os.MkdirAll(sourceDir, 0750); err != nil {
+	if err := os.MkdirAll(sourceDir, 0750); err != nil {
 		t.Fatalf("Failed to create source dir: %v", err)
 	}
 

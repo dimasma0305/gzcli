@@ -1,3 +1,4 @@
+// Package uploadserver hosts the HTTP handlers and templates for the challenge upload server.
 package uploadserver
 
 import (

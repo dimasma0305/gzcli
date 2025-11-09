@@ -404,14 +404,6 @@ func (gz *GZ) MustScoreboard2CTFTimeFeed() *event.CTFTimeFeed {
 	return feed
 }
 
-// MustRunScripts executes scripts or fatally logs error
-// Deprecated: Use RunScripts directly with event parameter
-func MustRunScripts(script string, eventName string) {
-	if err := RunScripts(script, eventName); err != nil {
-		log.Fatal("Script execution failed: ", err)
-	}
-}
-
 // MustCreateTeams creates teams or fatally logs error
 func (gz *GZ) MustCreateTeams(url string, sendEmail bool) {
 	if err := gz.CreateTeams(url, sendEmail); err != nil {
