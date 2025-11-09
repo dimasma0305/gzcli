@@ -1,3 +1,9 @@
+## [1.11.2](https://github.com/dimasma0305/gzcli/compare/v1.11.1...v1.11.2) (2025-11-09)
+
+### Code Refactoring
+
+* remove local validation instructions from upload page ([89507d9](https://github.com/dimasma0305/gzcli/commit/89507d9d4bd6ad1da95671da8f13842e0ebeb473))
+
 ## [1.11.1](https://github.com/dimasma0305/gzcli/compare/v1.11.0...v1.11.1) (2025-11-09)
 
 ### Code Refactoring
