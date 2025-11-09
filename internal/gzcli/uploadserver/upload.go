@@ -181,7 +181,7 @@ func extractArchive(ctx context.Context, src, dst string) error {
 		}
 
 		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(targetPath, fileModeOrDefault(file.FileInfo(), 0750)); err != nil {
+			if err := os.MkdirAll(targetPath, ensureDirWritable(fileModeOrDefault(file.FileInfo(), 0750))); err != nil {
 				return fmt.Errorf("failed to create directory %q: %w", targetPath, err)
 			}
 			continue
@@ -349,6 +349,13 @@ func fileModeOrDefault(info fs.FileInfo, fallback fs.FileMode) fs.FileMode {
 	return mode
 }
 
+func ensureDirWritable(mode fs.FileMode) fs.FileMode {
+	if mode == 0 {
+		mode = 0750
+	}
+	return (mode | 0700) & fs.ModePerm
+}
+
 func locateChallengeYML(root string) (string, error) {
 	var matches []string
 
@@ -437,7 +444,7 @@ func copyDir(src, dst string) error {
 		target := filepath.Join(dst, rel)
 
 		if info.IsDir() {
-			if err := os.MkdirAll(target, info.Mode()); err != nil {
+			if err := os.MkdirAll(target, ensureDirWritable(info.Mode())); err != nil {
 				return fmt.Errorf("failed to create directory %q: %w", target, err)
 			}
 			return nil
