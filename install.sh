@@ -15,6 +15,25 @@ BINARY_NAME="gzcli"
 INSTALL_DIR_SYSTEM="/usr/local/bin"
 INSTALL_DIR_USER="$HOME/.local/bin"
 
+# Utility helpers
+is_root() {
+    [ "$(id -u)" -eq 0 ]
+}
+
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+run_with_privileges() {
+    if is_root; then
+        "$@"
+    elif command_exists sudo; then
+        sudo "$@"
+    else
+        return 1
+    fi
+}
+
 # Print functions
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -210,9 +229,9 @@ install_binary() {
     # Move binary to install directory
     print_info "Installing to $INSTALL_DIR..."
     if ! mv "$BINARY_NAME" "$INSTALL_DIR/"; then
-        # Try with sudo if regular move fails
-        if ! sudo mv "$BINARY_NAME" "$INSTALL_DIR/"; then
-            print_error "Failed to install binary"
+        if ! run_with_privileges mv "$BINARY_NAME" "$INSTALL_DIR/"; then
+            print_error "Failed to install binary (insufficient permissions)"
+            print_info "Try running this script as root or install manually by moving $BINARY_NAME to $INSTALL_DIR"
             return 1
         fi
     fi
@@ -342,12 +361,22 @@ install_go() {
     # Remove old Go installation if exists
     if [ -d "/usr/local/go" ]; then
         print_info "Removing old Go installation..."
-        sudo rm -rf /usr/local/go
+        if ! run_with_privileges rm -rf /usr/local/go; then
+            print_error "Failed to remove old Go installation (insufficient permissions)"
+            cd - > /dev/null
+            rm -rf "$TMP_DIR"
+            exit 1
+        fi
     fi
 
     # Extract and install
     print_info "Extracting Go..."
-    sudo tar -C /usr/local -xzf "$GO_TARBALL"
+    if ! run_with_privileges tar -C /usr/local -xzf "$GO_TARBALL"; then
+        print_error "Failed to extract Go archive (insufficient permissions)"
+        cd - > /dev/null
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
 
     # Cleanup
     cd - > /dev/null
