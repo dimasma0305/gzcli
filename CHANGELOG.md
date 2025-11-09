@@ -1,3 +1,9 @@
+## [1.11.1](https://github.com/dimasma0305/gzcli/compare/v1.11.0...v1.11.1) (2025-11-09)
+
+### Code Refactoring
+
+* enhance permission handling in install script ([5acd436](https://github.com/dimasma0305/gzcli/commit/5acd436f11c7452fc867d097048f4c6f2ec59071))
+
 ## [1.11.0](https://github.com/dimasma0305/gzcli/compare/v1.10.1...v1.11.0) (2025-11-09)
 
 ### Features
