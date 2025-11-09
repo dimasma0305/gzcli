@@ -1,3 +1,14 @@
+## [1.11.0](https://github.com/dimasma0305/gzcli/compare/v1.10.1...v1.11.0) (2025-11-09)
+
+### Features
+
+* add upload server feature ([7452dcc](https://github.com/dimasma0305/gzcli/commit/7452dccc3a00b71cfc73d5359e97125f3322302f))
+
+### Bug Fixes
+
+*  directory creation logic to ensure writable permissions ([bd95cc9](https://github.com/dimasma0305/gzcli/commit/bd95cc9c365e3c1168333d5fc59f6600c95ed584))
+* lint issue ([537936f](https://github.com/dimasma0305/gzcli/commit/537936f4563c8405122a232c8192c20f92ab3b0c))
+
 ## [1.10.1](https://github.com/dimasma0305/gzcli/compare/v1.10.0...v1.10.1) (2025-10-12)
 
 ### Bug Fixes
