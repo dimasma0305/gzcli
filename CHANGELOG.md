@@ -1,3 +1,9 @@
+## [1.11.3](https://github.com/dimasma0305/gzcli/compare/v1.11.2...v1.11.3) (2025-11-10)
+
+### Bug Fixes
+
+* enhance upload server validation and template handling ([44359c5](https://github.com/dimasma0305/gzcli/commit/44359c5836a2dca6102c9967137c9df47b6990e5))
+
 ## [1.11.2](https://github.com/dimasma0305/gzcli/compare/v1.11.1...v1.11.2) (2025-11-09)
 
 ### Code Refactoring
