@@ -2,13 +2,15 @@
 
 name: "static-container"
 author: "dimas"
+
+# support markdown & html tags
 description: |
   Example static container
 
   Connect: nc {{ .host }} 8011
 
-type: "StaticContainer"
-value: 1000
+type: "StaticContainer" # don't touch this value
+value: 1000 # don't touch this value
 
 flags:
   - "flag{testing}"

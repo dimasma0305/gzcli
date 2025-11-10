@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
@@ -38,7 +38,7 @@ type viewData struct {
 }
 
 func (s *server) loadTemplates() error {
-	tmpl, err := template.ParseFS(assetsFS, filepath.Join("assets", templateHomeFile))
+	tmpl, err := template.New(templateHome).ParseFS(assetsFS, path.Join("assets", templateHomeFile))
 	if err != nil {
 		return err
 	}

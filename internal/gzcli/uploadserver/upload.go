@@ -9,7 +9,9 @@ import (
 	"io/fs"
 	"mime/multipart"
 	"os"
+	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -21,11 +23,16 @@ import (
 )
 
 var (
-	challengeFileRegex = regexp.MustCompile(`(?i)^challenge\.(ya?ml)$`)
-	errInvalidCategory = errors.New("invalid category")
-	errNoChallengeYML  = errors.New("challenge.yml not found in archive")
-	errMultiChallenge  = errors.New("multiple challenge.yml files found in archive")
-	errMissingSolver   = errors.New("solver directory missing from challenge package")
+	challengeFileRegex            = regexp.MustCompile(`(?i)^challenge\.(ya?ml)$`)
+	errInvalidCategory            = errors.New("invalid category")
+	errNoChallengeYML             = errors.New("challenge.yml not found in archive")
+	errMultiChallenge             = errors.New("multiple challenge.yml files found in archive")
+	errMissingSolver              = errors.New("solver directory missing from challenge package")
+	errInvalidRootContents        = errors.New("challenge root contains unexpected entries")
+	errMissingDist                = errors.New("dist directory missing from challenge package")
+	errMissingSrc                 = errors.New("src directory missing from challenge package")
+	errEmptyDistProvided          = errors.New("dist directory is empty while challenge.yml provides it")
+	errChallengeTemplateUnchanged = errors.New("challenge.yml matches a default template")
 
 	errArchiveTooManyEntries = errors.New("archive contains too many entries")
 	errArchiveEntryTooLarge  = errors.New("archive entry exceeds maximum size")
@@ -82,7 +89,7 @@ func (s *server) processUpload(ctx context.Context, event, category string, file
 	}
 
 	challengeRoot := filepath.Dir(challengeYMLPath)
-	if err := ensureSolverDir(challengeRoot); err != nil {
+	if err := validateChallengeRoot(challengeRoot, challengeYMLPath); err != nil {
 		return err
 	}
 
@@ -91,7 +98,15 @@ func (s *server) processUpload(ctx context.Context, event, category string, file
 		return fmt.Errorf("failed to parse challenge.yml: %w", err)
 	}
 
+	if err := ensureChallengeCustomized(chall); err != nil {
+		return err
+	}
+
 	if err := challenge.IsGoodChallenge(chall); err != nil {
+		return err
+	}
+
+	if err := ensureProvideDistConsistency(challengeRoot, chall); err != nil {
 		return err
 	}
 
@@ -354,6 +369,148 @@ func ensureDirWritable(mode fs.FileMode) fs.FileMode {
 		mode = 0750
 	}
 	return (mode | 0700) & fs.ModePerm
+}
+
+func validateChallengeRoot(root, challengeYMLPath string) error {
+	if filepath.Base(challengeYMLPath) != "challenge.yml" {
+		return fmt.Errorf("challenge definition file must be named challenge.yml")
+	}
+
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return fmt.Errorf("failed to inspect challenge root: %w", err)
+	}
+
+	var (
+		hasChallenge bool
+		hasDist      bool
+		hasSolver    bool
+		hasSrc       bool
+	)
+
+	for _, entry := range entries {
+		name := entry.Name()
+		switch name {
+		case "challenge.yml":
+			if entry.IsDir() {
+				return fmt.Errorf("challenge.yml must be a file, not a directory")
+			}
+			hasChallenge = true
+		case "dist":
+			if !entry.IsDir() {
+				return fmt.Errorf("dist exists but is not a directory")
+			}
+			hasDist = true
+		case "solver":
+			if !entry.IsDir() {
+				return fmt.Errorf("solver exists but is not a directory")
+			}
+			hasSolver = true
+		case "src":
+			if !entry.IsDir() {
+				return fmt.Errorf("src exists but is not a directory")
+			}
+			hasSrc = true
+		default:
+			return fmt.Errorf("%w: %s", errInvalidRootContents, name)
+		}
+	}
+
+	if !hasChallenge {
+		return errNoChallengeYML
+	}
+	if !hasDist {
+		return errMissingDist
+	}
+	if !hasSrc {
+		return errMissingSrc
+	}
+	if !hasSolver {
+		return errMissingSolver
+	}
+
+	if err := ensureSolverDir(root); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ensureChallengeCustomized(chall config.ChallengeYaml) error {
+	for _, tpl := range challengeTemplates {
+		templatePath := path.Join(tpl.SourcePath, "challenge.yml")
+		content, err := fs.ReadFile(templateFS, templatePath)
+		if err != nil {
+			return fmt.Errorf("failed to load challenge template %s: %w", tpl.Slug, err)
+		}
+
+		var templateChall config.ChallengeYaml
+		if err := fileutil.ParseYamlFromBytes(content, &templateChall); err != nil {
+			return fmt.Errorf("failed to parse embedded template %s: %w", tpl.Slug, err)
+		}
+
+		if reflect.DeepEqual(templateChall, chall) {
+			return errChallengeTemplateUnchanged
+		}
+	}
+
+	return nil
+}
+
+func ensureProvideDistConsistency(root string, chall config.ChallengeYaml) error {
+	if chall.Provide == nil {
+		return nil
+	}
+
+	if !referencesDist(*chall.Provide) {
+		return nil
+	}
+
+	distPath := filepath.Join(root, "dist")
+	defaultState, err := isDefaultDist(distPath)
+	if err != nil {
+		return err
+	}
+
+	if defaultState {
+		return errEmptyDistProvided
+	}
+
+	return nil
+}
+
+func referencesDist(provide string) bool {
+	p := strings.TrimSpace(provide)
+	if p == "" {
+		return false
+	}
+
+	clean := filepath.Clean(p)
+	clean = filepath.ToSlash(clean)
+	clean = strings.TrimPrefix(clean, "./")
+	clean = strings.Trim(clean, "/")
+
+	return clean == "dist"
+}
+
+func isDefaultDist(distPath string) (bool, error) {
+	entries, err := os.ReadDir(distPath)
+	if err != nil {
+		return false, fmt.Errorf("failed to inspect dist directory: %w", err)
+	}
+
+	if len(entries) == 0 {
+		return true, nil
+	}
+
+	if len(entries) == 1 {
+		entry := entries[0]
+		if entry.Name() == ".gitkeep" && !entry.IsDir() {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func locateChallengeYML(root string) (string, error) {

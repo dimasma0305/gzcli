@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -26,6 +27,10 @@ scripts:
   stop: echo stop
 `
 
+const sampleChallengeProvideDist = sampleChallengeYAML + `
+provide: "./dist"
+`
+
 func TestProcessUpload_Success(t *testing.T) {
 	const (
 		event    = "TestEvent"
@@ -33,7 +38,14 @@ func TestProcessUpload_Success(t *testing.T) {
 	)
 
 	workspace := setupWorkspace(t, event, category)
-	archive := buildChallengeArchive(t, true, "initial solver")
+	archive := buildChallengeArchive(t, buildChallengeArchiveConfig{
+		ChallengeYAML: sampleChallengeYAML,
+		IncludeSolver: true,
+		SolverReadme:  "initial solver",
+		SrcFiles: map[string]string{
+			"README.md": "source file",
+		},
+	})
 
 	file, err := os.Open(filepath.Clean(archive)) // #nosec G304 -- archive resides in a controlled temp directory
 	if err != nil {
@@ -91,7 +103,9 @@ func TestProcessUpload_MissingSolver(t *testing.T) {
 	)
 
 	_ = setupWorkspace(t, event, category)
-	archive := buildChallengeArchive(t, false)
+	archive := buildChallengeArchive(t, buildChallengeArchiveConfig{
+		IncludeSolver: false,
+	})
 
 	file, err := os.Open(filepath.Clean(archive)) // #nosec G304 -- archive resides in a controlled temp directory
 	if err != nil {
@@ -115,7 +129,10 @@ func TestProcessUpload_ReplacesExistingChallenge(t *testing.T) {
 
 	workspace := setupWorkspace(t, event, category)
 
-	archiveV1 := buildChallengeArchive(t, true, "v1")
+	archiveV1 := buildChallengeArchive(t, buildChallengeArchiveConfig{
+		IncludeSolver: true,
+		SolverReadme:  "v1",
+	})
 
 	file1, err := os.Open(filepath.Clean(archiveV1)) // #nosec G304 -- archive resides in a controlled temp directory
 	if err != nil {
@@ -130,7 +147,10 @@ func TestProcessUpload_ReplacesExistingChallenge(t *testing.T) {
 	}
 	_ = file1.Close()
 
-	archiveV2 := buildChallengeArchive(t, true, "v2")
+	archiveV2 := buildChallengeArchive(t, buildChallengeArchiveConfig{
+		IncludeSolver: true,
+		SolverReadme:  "v2",
+	})
 
 	file2, err := os.Open(filepath.Clean(archiveV2)) // #nosec G304 -- archive resides in a controlled temp directory
 	if err != nil {
@@ -155,6 +175,94 @@ func TestProcessUpload_ReplacesExistingChallenge(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dest, "src", "old.txt")); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("expected old.txt to be removed, err=%v", err)
+	}
+}
+
+func TestProcessUpload_InvalidRootContents(t *testing.T) {
+	const (
+		event    = "EventInvalid"
+		category = "Web"
+	)
+
+	_ = setupWorkspace(t, event, category)
+	archive := buildChallengeArchive(t, buildChallengeArchiveConfig{
+		IncludeSolver: true,
+		ExtraRootFiles: map[string]string{
+			"README.txt": "unexpected",
+		},
+	})
+
+	file, err := os.Open(filepath.Clean(archive)) // #nosec G304
+	if err != nil {
+		t.Fatalf("failed to open archive: %v", err)
+	}
+	t.Cleanup(func() { _ = file.Close() })
+
+	srv := newTestServer(t)
+
+	err = srv.processUpload(context.Background(), event, category, file, "invalid.zip")
+	if !errors.Is(err, errInvalidRootContents) {
+		t.Fatalf("expected errInvalidRootContents, got %v", err)
+	}
+}
+
+func TestProcessUpload_EmptyDistProvided(t *testing.T) {
+	const (
+		event    = "EventDist"
+		category = "Web"
+	)
+
+	_ = setupWorkspace(t, event, category)
+	archive := buildChallengeArchive(t, buildChallengeArchiveConfig{
+		ChallengeYAML: sampleChallengeProvideDist,
+		IncludeSolver: true,
+	})
+
+	file, err := os.Open(filepath.Clean(archive)) // #nosec G304
+	if err != nil {
+		t.Fatalf("failed to open archive: %v", err)
+	}
+	t.Cleanup(func() { _ = file.Close() })
+
+	srv := newTestServer(t)
+
+	err = srv.processUpload(context.Background(), event, category, file, "emptydist.zip")
+	if !errors.Is(err, errEmptyDistProvided) {
+		t.Fatalf("expected errEmptyDistProvided, got %v", err)
+	}
+}
+
+func TestProcessUpload_DefaultChallengeYAML(t *testing.T) {
+	const (
+		event    = "EventTemplate"
+		category = "Web"
+	)
+
+	templateContent, err := fs.ReadFile(templateFS, path.Join(templateStaticAttachmentPath, "challenge.yml"))
+	if err != nil {
+		t.Fatalf("failed to read template: %v", err)
+	}
+
+	_ = setupWorkspace(t, event, category)
+	archive := buildChallengeArchive(t, buildChallengeArchiveConfig{
+		ChallengeYAML: string(templateContent),
+		IncludeSolver: true,
+		DistFiles: map[string]string{
+			"placeholder.txt": "content",
+		},
+	})
+
+	file, err := os.Open(filepath.Clean(archive)) // #nosec G304
+	if err != nil {
+		t.Fatalf("failed to open archive: %v", err)
+	}
+	t.Cleanup(func() { _ = file.Close() })
+
+	srv := newTestServer(t)
+
+	err = srv.processUpload(context.Background(), event, category, file, "template.zip")
+	if !errors.Is(err, errChallengeTemplateUnchanged) {
+		t.Fatalf("expected errChallengeTemplateUnchanged, got %v", err)
 	}
 }
 
@@ -233,7 +341,18 @@ func setupWorkspace(t *testing.T, event, category string) string {
 	return workspace
 }
 
-func buildChallengeArchive(t *testing.T, includeSolver bool, solverContent ...string) string {
+type buildChallengeArchiveConfig struct {
+	ChallengeYAML  string
+	IncludeSolver  bool
+	SolverReadme   string
+	SolverFiles    map[string]string
+	DistFiles      map[string]string
+	SrcFiles       map[string]string
+	ExtraRootFiles map[string]string
+	ExtraRootDirs  []string
+}
+
+func buildChallengeArchive(t *testing.T, cfg buildChallengeArchiveConfig) string {
 	t.Helper()
 
 	root := t.TempDir()
@@ -243,22 +362,57 @@ func buildChallengeArchive(t *testing.T, includeSolver bool, solverContent ...st
 		t.Fatalf("failed to create challenge directory: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(challengeDir, "challenge.yml"), []byte(sampleChallengeYAML), 0o600); err != nil {
+	challengeContent := cfg.ChallengeYAML
+	if challengeContent == "" {
+		challengeContent = sampleChallengeYAML
+	}
+	if err := os.WriteFile(filepath.Join(challengeDir, "challenge.yml"), []byte(challengeContent), 0o600); err != nil {
 		t.Fatalf("failed to write challenge.yml: %v", err)
 	}
 
-	if includeSolver {
-		content := "default solver"
-		if len(solverContent) > 0 && solverContent[0] != "" {
-			content = solverContent[0]
-		}
+	if err := os.MkdirAll(filepath.Join(challengeDir, "dist"), 0o750); err != nil {
+		t.Fatalf("failed to create dist directory: %v", err)
+	}
+	distDir := filepath.Join(challengeDir, "dist")
+	writeFiles(t, distDir, cfg.DistFiles)
+	if len(cfg.DistFiles) == 0 {
+		ensurePlaceholderFile(t, distDir)
+	}
+
+	if err := os.MkdirAll(filepath.Join(challengeDir, "src"), 0o750); err != nil {
+		t.Fatalf("failed to create src directory: %v", err)
+	}
+	srcDir := filepath.Join(challengeDir, "src")
+	writeFiles(t, srcDir, cfg.SrcFiles)
+	if len(cfg.SrcFiles) == 0 {
+		ensurePlaceholderFile(t, srcDir)
+	}
+
+	if cfg.IncludeSolver {
 		solverDir := filepath.Join(challengeDir, "solver")
 		if err := os.MkdirAll(solverDir, 0o750); err != nil {
 			t.Fatalf("failed to create solver directory: %v", err)
 		}
-		solverFile := filepath.Join(solverDir, "README.md")
-		if err := os.WriteFile(solverFile, []byte(content), 0o600); err != nil {
-			t.Fatalf("failed to write solver file: %v", err)
+
+		if len(cfg.SolverFiles) == 0 {
+			readme := cfg.SolverReadme
+			if readme == "" {
+				readme = "default solver"
+			}
+			cfg.SolverFiles = map[string]string{"README.md": readme}
+		}
+		writeFiles(t, solverDir, cfg.SolverFiles)
+	}
+
+	for name, content := range cfg.ExtraRootFiles {
+		if err := os.WriteFile(filepath.Join(challengeDir, name), []byte(content), 0o600); err != nil {
+			t.Fatalf("failed to write extra root file %s: %v", name, err)
+		}
+	}
+
+	for _, dir := range cfg.ExtraRootDirs {
+		if err := os.MkdirAll(filepath.Join(challengeDir, dir), 0o750); err != nil {
+			t.Fatalf("failed to create extra root directory %s: %v", dir, err)
 		}
 	}
 
@@ -268,6 +422,27 @@ func buildChallengeArchive(t *testing.T, includeSolver bool, solverContent ...st
 	}
 
 	return archivePath
+}
+
+func writeFiles(t *testing.T, base string, files map[string]string) {
+	t.Helper()
+	for name, content := range files {
+		target := filepath.Join(base, name)
+		if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+			t.Fatalf("failed to create directory for %s: %v", name, err)
+		}
+		if err := os.WriteFile(target, []byte(content), 0o600); err != nil {
+			t.Fatalf("failed to write %s: %v", name, err)
+		}
+	}
+}
+
+func ensurePlaceholderFile(t *testing.T, dir string) {
+	t.Helper()
+	placeholder := filepath.Join(dir, ".gitkeep")
+	if err := os.WriteFile(placeholder, []byte{}, 0o600); err != nil {
+		t.Fatalf("failed to write placeholder file in %s: %v", dir, err)
+	}
 }
 
 func buildArchiveWithoutChallengeYML(t *testing.T) string {

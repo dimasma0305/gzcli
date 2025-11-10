@@ -2,11 +2,13 @@
 
 name: "dynamic-container"
 author: "test"
+
+# support markdown & html tags
 description: |
   Testing dynamic container
 
-type: "DynamicContainer"
-value: 1000
+type: "DynamicContainer" # don't touch this value
+value: 1000 # don't touch this value
 
 provide: "./dist"
 

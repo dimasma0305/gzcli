@@ -2,13 +2,15 @@
 
 name: "static-attachment-with-compose"
 author: "dimas"
+
+# support markdown & html tags
 description: |
   Example static attachment
 
   Connect: nc {{ .host }} 8011
 
-type: "StaticAttachment"
-value: 1000
+type: "StaticAttachment" # don't touch this value
+value: 1000 # don't touch this value
 
 flags:
   - "flag{testing}"
