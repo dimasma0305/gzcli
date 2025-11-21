@@ -131,38 +131,101 @@ func joinTeamToGame(api *gzapi.GZAPI, config ConfigInterface) error {
 	return nil
 }
 
-// CreateTeamAndUser creates a team and user, ensuring the team name is unique and within the specified length.
-func CreateTeamAndUser(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error) {
-	log.Info("Creating user %s with team %s", teamCreds.Username, teamCreds.TeamName)
+// TeamCreator handles the logic for creating a team and user.
+type TeamCreator struct {
+	teamCreds         *TeamCreds
+	config            ConfigInterface
+	existingTeamNames map[string]struct{}
+	existingUserNames map[string]struct{}
+	credsCache        []*TeamCreds
+	isSendEmail       bool
+	generateUsername  func(string, int, map[string]struct{}) (string, error)
+	currentCreds      *TeamCreds
+	api               *gzapi.GZAPI
+	err               error
+}
 
-	currentCreds, err := initializeCredentials(teamCreds, existingTeamNames, existingUserNames, credsCache, generateUsername)
-	if err != nil {
-		return nil, err
+// NewTeamCreator creates a new TeamCreator.
+func NewTeamCreator(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) *TeamCreator {
+	return &TeamCreator{
+		teamCreds:         teamCreds,
+		config:            config,
+		existingTeamNames: existingTeamNames,
+		existingUserNames: existingUserNames,
+		credsCache:        credsCache,
+		isSendEmail:       isSendEmail,
+		generateUsername:  generateUsername,
 	}
+}
 
-	// Check if we found existing credentials in cache
+// Execute runs the team creation process.
+func (tc *TeamCreator) Execute() (*TeamCreds, error) {
+	log.Info("Creating user %s with team %s", tc.teamCreds.Username, tc.teamCreds.TeamName)
+
+	tc.handle("initializing credentials", tc.initialize)
+	tc.handle("authenticating user", tc.authenticate)
+	tc.handle("ensuring team is created", tc.ensureTeamCreated)
+	tc.handle("sending credentials email", tc.sendCredentialsEmail)
+	tc.handle("joining team to game", tc.joinTeamToGame)
+
+	return tc.currentCreds, tc.err
+}
+
+// handle wraps a function call with error checking.
+func (tc *TeamCreator) handle(step string, fn func() error) {
+	if tc.err != nil {
+		return
+	}
+	if err := fn(); err != nil {
+		tc.err = fmt.Errorf("step '%s' failed: %w", step, err)
+	}
+}
+
+// initialize initializes the credentials for the new user.
+func (tc *TeamCreator) initialize() error {
+	var err error
+	tc.currentCreds, err = initializeCredentials(tc.teamCreds, tc.existingTeamNames, tc.existingUserNames, tc.credsCache, tc.generateUsername)
+	return err
+}
+
+// authenticate authenticates the user.
+func (tc *TeamCreator) authenticate() error {
 	isExistingCreds := false
-	for _, creds := range credsCache {
-		if creds.Email == teamCreds.Email && creds == currentCreds {
+	for _, creds := range tc.credsCache {
+		if creds.Email == tc.teamCreds.Email && creds == tc.currentCreds {
 			isExistingCreds = true
 			break
 		}
 	}
+	var err error
+	tc.api, err = authenticateUser(tc.currentCreds, tc.config, isExistingCreds)
+	return err
+}
 
-	api, err := authenticateUser(currentCreds, config, isExistingCreds)
-	if err != nil {
-		return nil, err
-	}
+// ensureTeamCreated ensures the team is created.
+func (tc *TeamCreator) ensureTeamCreated() error {
+	ensureTeamCreated(tc.api, tc.currentCreds, tc.currentCreds.Username, tc.currentCreds.TeamName)
+	return nil
+}
 
-	ensureTeamCreated(api, currentCreds, currentCreds.Username, currentCreds.TeamName)
-	sendCredentialsEmail(teamCreds, currentCreds, config, isSendEmail)
+// sendCredentialsEmail sends the credentials email.
+func (tc *TeamCreator) sendCredentialsEmail() error {
+	sendCredentialsEmail(tc.teamCreds, tc.currentCreds, tc.config, tc.isSendEmail)
+	return nil
+}
 
-	if err := joinTeamToGame(api, config); err != nil {
+// joinTeamToGame joins the team to the game.
+func (tc *TeamCreator) joinTeamToGame() error {
+	if err := joinTeamToGame(tc.api, tc.config); err != nil {
 		// Log error but don't fail the entire operation
 		log.Error("Failed to join game: %v", err)
 	}
+	return nil
+}
 
-	return currentCreds, nil
+// CreateTeamAndUser creates a team and user, ensuring the team name is unique and within the specified length.
+func CreateTeamAndUser(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error) {
+	return NewTeamCreator(teamCreds, config, existingTeamNames, existingUserNames, credsCache, isSendEmail, generateUsername).Execute()
 }
 
 // NormalizeTeamName ensures team name is unique and within length limit

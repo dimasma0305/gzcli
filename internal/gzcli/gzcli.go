@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/challenge"
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
@@ -64,48 +65,27 @@ type Config struct {
 	Url         string       `yaml:"url"` //nolint:revive // Field name required for watcher.go compatibility
 	Creds       gzapi.Creds  `yaml:"creds"`
 	Event       gzapi.Game   `yaml:"event"`
-	appsettings *AppSettings `yaml:"-"`
-	Appsettings *AppSettings `yaml:"-"` // Public field for external access
+	AppSettings *AppSettings `yaml:"-"`
 }
 
 // ToConfigPackage converts to config.Config
 func (c *Config) ToConfigPackage() *config.Config {
-	settings := c.Appsettings
-	if settings == nil {
-		settings = c.appsettings
-	}
 	return &config.Config{
 		Url:         c.Url,
 		Creds:       c.Creds,
 		Event:       c.Event,
-		Appsettings: settings,
+		Appsettings: c.AppSettings,
 	}
 }
 
 // FromConfigPackage converts from config.Config
 func FromConfigPackage(conf *config.Config) *Config {
-	settings := conf.Appsettings
 	return &Config{
 		Url:         conf.Url,
 		Creds:       conf.Creds,
 		Event:       conf.Event,
-		appsettings: settings,
-		Appsettings: settings,
+		AppSettings: conf.Appsettings,
 	}
-}
-
-// SetAppSettings sets both appsettings fields
-func (c *Config) SetAppSettings(settings *AppSettings) {
-	c.appsettings = settings
-	c.Appsettings = settings
-}
-
-// GetAppSettingsField returns the settings
-func (c *Config) GetAppSettingsField() *AppSettings {
-	if c.Appsettings != nil {
-		return c.Appsettings
-	}
-	return c.appsettings
 }
 
 // Compatibility functions for watcher.go
@@ -220,8 +200,9 @@ func (gz *GZ) GenerateStructure() error {
 	if err != nil {
 		return err
 	}
-	conf := &Config{}
-	conf.SetAppSettings(appsettings)
+	conf := &Config{
+		AppSettings: appsettings,
+	}
 	challenges, err := config.GetChallengesYaml(conf.ToConfigPackage())
 	if err != nil {
 		return err
@@ -266,24 +247,21 @@ func (gz *GZ) Sync() error {
 func (gz *GZ) syncWithRetry(retryCount int) error {
 	const maxRetries = 2 // Prevent infinite recursion
 
-	// Use the event name stored in the GZ instance
+	// Step 1: Get configuration
 	conf, err := config.GetConfigWithEvent(gz.api, gz.eventName, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
 	if err != nil {
-		log.Error("Failed to get config: %v", err)
 		return fmt.Errorf("config error: %w", err)
 	}
 
-	// Get fresh challenges config
+	// Step 2: Get local challenge configurations
 	challengesConf, err := config.GetChallengesYaml(conf)
 	if err != nil {
-		log.Error("Failed to get challenges YAML: %v", err)
 		return fmt.Errorf("challenges config error: %w", err)
 	}
 
-	// Get fresh games list
+	// Step 3: Find the current game on the server
 	games, err := gz.api.GetGames()
 	if err != nil {
-		log.Error("Failed to get games: %v", err)
 		return fmt.Errorf("games fetch error: %w", err)
 	}
 
@@ -291,56 +269,50 @@ func (gz *GZ) syncWithRetry(retryCount int) error {
 	if currentGame == nil {
 		if retryCount >= maxRetries {
 			log.Error("Game '%s' not found after %d retries", conf.Event.Title, maxRetries)
-			log.Error("Available games:")
-			for _, g := range games {
-				log.Error("  - %s (ID: %d)", g.Title, g.Id)
-			}
-			return fmt.Errorf("game '%s' not found on server. Check that the event title in .gzevent matches an existing game", conf.Event.Title)
+			return fmt.Errorf("game '%s' not found", conf.Event.Title)
 		}
-
-		// Use event-specific cache key
-		cacheKey := fmt.Sprintf("config-%s", gz.eventName)
-		_ = DeleteCache(cacheKey)
+		_ = DeleteCache(fmt.Sprintf("config-%s", gz.eventName))
 		return gz.syncWithRetry(retryCount + 1)
 	}
 
+	// Step 4: Update game if needed
 	if gz.UpdateGame {
 		if err := challenge.UpdateGameIfNeeded(conf, currentGame, gz.api, createPosterIfNotExistOrDifferent, setCache); err != nil {
-			log.Error("Failed to update game: %v", err)
 			return fmt.Errorf("game update error: %w", err)
 		}
 	}
 
+	// Step 5: Validate local challenges
 	if err := challenge.ValidateChallenges(challengesConf); err != nil {
-		log.Error("Challenge validation failed: %v", err)
 		return fmt.Errorf("validation error: %w", err)
 	}
 
-	// Get fresh challenges list
+	// Step 6: Get remote challenges
 	conf.Event.CS = gz.api
-	challenges, err := conf.Event.GetChallenges()
+	remoteChallenges, err := conf.Event.GetChallenges()
 	if err != nil {
-		log.Error("Failed to get challenges from API: %v", err)
 		return fmt.Errorf("API challenges fetch error: %w", err)
 	}
 
-	// Process challenges
+	// Step 7: Process all challenges concurrently
+	return gz.processChallenges(conf, challengesConf, remoteChallenges)
+}
+
+// processChallenges handles the concurrent processing of challenges
+func (gz *GZ) processChallenges(conf *config.Config, challengesConf []config.ChallengeYaml, remoteChallenges []gzapi.Challenge) error {
 	log.Info("Syncing %d challenges...", len(challengesConf))
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(challengesConf))
-	successCount := 0
-	failureCount := 0
+	var successCount, failureCount int32
 
-	// Create per-challenge mutexes to prevent race conditions
 	challengeMutexes := make(map[string]*sync.Mutex)
 	var mutexesMu sync.RWMutex
 
-	for _, challengeConf := range challengesConf {
+	for _, localChallenge := range challengesConf {
 		wg.Add(1)
 		go func(c config.ChallengeYaml) {
 			defer wg.Done()
 
-			// Get or create mutex for this challenge to prevent duplicates
 			mutexesMu.Lock()
 			if challengeMutexes[c.Name] == nil {
 				challengeMutexes[c.Name] = &sync.Mutex{}
@@ -348,20 +320,19 @@ func (gz *GZ) syncWithRetry(retryCount int) error {
 			mutex := challengeMutexes[c.Name]
 			mutexesMu.Unlock()
 
-			// Synchronize access per challenge to prevent race conditions
 			mutex.Lock()
 			defer mutex.Unlock()
 
 			log.Info("Processing challenge: %s", c.Name)
-			if err := challenge.SyncChallenge(conf, c, challenges, gz.api, GetCache, setCache); err != nil {
+			if err := challenge.SyncChallenge(conf, c, remoteChallenges, gz.api, GetCache, setCache); err != nil {
 				log.Error("Failed to sync challenge %s: %v", c.Name, err)
 				errChan <- fmt.Errorf("challenge sync failed for %s: %w", c.Name, err)
-				failureCount++
+				atomic.AddInt32(&failureCount, 1)
 			} else {
 				log.Info("Successfully synced challenge: %s", c.Name)
-				successCount++
+				atomic.AddInt32(&successCount, 1)
 			}
-		}(challengeConf)
+		}(localChallenge)
 	}
 
 	wg.Wait()
@@ -369,14 +340,13 @@ func (gz *GZ) syncWithRetry(retryCount int) error {
 
 	log.Info("Sync completed. Success: %d, Failures: %d", successCount, failureCount)
 
-	// Return first error if any
-	select {
-	case err := <-errChan:
+	// Return the first error encountered, if any
+	if err := <-errChan; err != nil {
 		return err
-	default:
-		log.Info("All challenges synced successfully!")
-		return nil
 	}
+
+	log.Info("All challenges synced successfully!")
+	return nil
 }
 
 // MustInit initializes GZ or fatally logs error
@@ -487,31 +457,28 @@ func (gz *GZ) MustStopWatcher() {
 
 // CreateTeams creates teams from a CSV file
 func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool) error {
+	// Step 1: Get configuration
 	conf, err := getConfigWrapper(gz.api)
 	if err != nil {
-		return fmt.Errorf("failed to get config")
+		return fmt.Errorf("failed to get config: %w", err)
 	}
 
+	// Step 2: Get CSV data from URL
 	csvData, err := team.GetData(csvURL)
 	if err != nil {
-		return fmt.Errorf("failed to get CSV data")
+		return fmt.Errorf("failed to get CSV data: %w", err)
 	}
 
-	// Load existing team credentials from cache
+	// Step 3: Load existing team credentials from cache
 	var teamsCredsCache []*team.TeamCreds
 	if err := GetCache("teams_creds", &teamsCredsCache); err != nil {
-		log.Error("%s", err.Error())
+		log.Info("Could not load team credentials cache: %v", err)
 	}
 
-	// Create config adapter
+	// Step 4: Parse CSV and create teams
 	configAdapter := &teamConfigAdapter{conf: conf}
-
-	err = team.ParseCSV(csvData, configAdapter, teamsCredsCache, isSendEmail,
-		team.CreateTeamAndUser,
-		generateUsername,
-		setCache)
-	if err != nil {
-		return err
+	if err := team.ParseCSV(csvData, configAdapter, teamsCredsCache, isSendEmail, team.CreateTeamAndUser, generateUsername, setCache); err != nil {
+		return fmt.Errorf("failed to parse CSV and create teams: %w", err)
 	}
 
 	return nil
@@ -547,7 +514,7 @@ func (t *teamConfigAdapter) GetInviteCode() string {
 }
 
 func (t *teamConfigAdapter) GetAppSettings() team.AppSettingsInterface {
-	return &appSettingsAdapter{settings: t.conf.GetAppSettingsField()}
+	return &appSettingsAdapter{settings: t.conf.Appsettings}
 }
 
 type appSettingsAdapter struct {
