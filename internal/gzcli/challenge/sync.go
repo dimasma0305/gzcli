@@ -172,47 +172,92 @@ func handleExistingChallenge(conf *config.Config, challengeConf config.Challenge
 	return challengeData, nil
 }
 
-func SyncChallenge(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
-	return SyncChallengeWithExisting(conf, challengeConf, challenges, api, getCache, setCache, nil)
+// SyncOrchestrator manages the challenge synchronization process.
+type SyncOrchestrator struct {
+	conf              *config.Config
+	challengeConf     config.ChallengeYaml
+	challenges        []gzapi.Challenge
+	api               *gzapi.GZAPI
+	getCache          func(string, interface{}) error
+	setCache          func(string, interface{}) error
+	existingChallenge *gzapi.Challenge
+	challengeData     *gzapi.Challenge
+	err               error
 }
 
-// SyncChallengeWithExisting syncs a challenge with an optional existing challenge to force update mode
-func SyncChallengeWithExisting(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error, existingChallenge *gzapi.Challenge) error {
-	var challengeData *gzapi.Challenge
-	var err error
+// NewSyncOrchestrator creates a new orchestrator for syncing a challenge.
+func NewSyncOrchestrator(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error, existingChallenge *gzapi.Challenge) *SyncOrchestrator {
+	return &SyncOrchestrator{
+		conf:              conf,
+		challengeConf:     challengeConf,
+		challenges:        challenges,
+		api:               api,
+		getCache:          getCache,
+		setCache:          setCache,
+		existingChallenge: existingChallenge,
+	}
+}
 
-	// Determine the sync path based on challenge state
-	switch {
-	case existingChallenge != nil:
-		// If an existing challenge is provided, use it directly (force update mode)
-		challengeData = existingChallenge
-		challengeData.CS = api
-		challengeData.IsEnabled = nil // fix bug isEnable always be false after sync
-	case !IsChallengeExist(challengeConf.Name, challenges):
-		// Check existence using the original challenges list first to avoid unnecessary API calls
-		challengeData, err = handleNewChallenge(conf, challengeConf, challenges, api)
-		if err != nil {
-			return err
-		}
-	default:
-		challengeData, err = handleExistingChallenge(conf, challengeConf, api, getCache)
-		if err != nil {
-			return err
-		}
+// Execute runs the synchronization process.
+func (s *SyncOrchestrator) Execute() error {
+	s.handle("determining sync path", s.determineSyncPath)
+	s.handle("processing attachments and flags", s.processAttachmentsAndFlags)
+	s.handle("merging and updating challenge", s.mergeAndupdate)
+
+	if s.err != nil {
+		log.Error("Failed to sync challenge '%s': %v", s.challengeConf.Name, s.err)
+		return s.err
 	}
 
-	if err := processAttachmentsAndFlags(conf, challengeConf, challengeData, api); err != nil {
-		return err
-	}
-
-	challengeData = MergeChallengeData(&challengeConf, challengeData)
-
-	if err := updateChallengeIfNeeded(conf, &challengeConf, challengeData, getCache, setCache); err != nil {
-		return err
-	}
-
-	log.Info("✓ %s", challengeConf.Name)
+	log.Info("✓ %s", s.challengeConf.Name)
 	return nil
+}
+
+// handle wraps a function call with error checking.
+func (s *SyncOrchestrator) handle(step string, fn func() error) {
+	if s.err != nil {
+		return
+	}
+	if err := fn(); err != nil {
+		s.err = fmt.Errorf("step '%s' failed: %w", step, err)
+	}
+}
+
+// determineSyncPath determines whether to create a new challenge or update an existing one.
+func (s *SyncOrchestrator) determineSyncPath() error {
+	var err error
+	switch {
+	case s.existingChallenge != nil:
+		s.challengeData = s.existingChallenge
+		s.challengeData.CS = s.api
+		s.challengeData.IsEnabled = nil
+	case !IsChallengeExist(s.challengeConf.Name, s.challenges):
+		s.challengeData, err = handleNewChallenge(s.conf, s.challengeConf, s.challenges, s.api)
+	default:
+		s.challengeData, err = handleExistingChallenge(s.conf, s.challengeConf, s.api, s.getCache)
+	}
+	return err
+}
+
+// processAttachmentsAndFlags handles attachments and flags for the challenge.
+func (s *SyncOrchestrator) processAttachmentsAndFlags() error {
+	return processAttachmentsAndFlags(s.conf, s.challengeConf, s.challengeData, s.api)
+}
+
+// mergeAndupdate merges challenge data and updates the challenge if needed.
+func (s *SyncOrchestrator) mergeAndupdate() error {
+	s.challengeData = MergeChallengeData(&s.challengeConf, s.challengeData)
+	return updateChallengeIfNeeded(s.conf, &s.challengeConf, s.challengeData, s.getCache, s.setCache)
+}
+
+// SyncChallenge synchronizes a single challenge.
+func SyncChallenge(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
+	return NewSyncOrchestrator(conf, challengeConf, challenges, api, getCache, setCache, nil).Execute()
+}
+
+// SyncChallengeWithExisting syncs a challenge with an optional existing challenge to force update mode.
+func SyncChallengeWithExisting(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI, getCache func(string, interface{}) error, setCache func(string, interface{}) error, existingChallenge *gzapi.Challenge) error {
+	return NewSyncOrchestrator(conf, challengeConf, challenges, api, getCache, setCache, existingChallenge).Execute()
 }
 
 // processAttachmentsAndFlags handles attachments and flags for a challenge
