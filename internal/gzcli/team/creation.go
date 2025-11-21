@@ -217,6 +217,7 @@ func (tc *TeamCreator) sendCredentialsEmail() error {
 // joinTeamToGame joins the team to the game.
 func (tc *TeamCreator) joinTeamToGame() error {
 	if err := joinTeamToGame(tc.api, tc.config); err != nil {
+		// Log error but don't fail the entire operation
 		log.Error("Failed to join game: %v", err)
 	}
 	return nil
