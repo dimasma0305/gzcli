@@ -1,3 +1,9 @@
+## [1.12.0](https://github.com/dimasma0305/gzcli/compare/v1.11.3...v1.12.0) (2025-11-21)
+
+### Features
+
+* Refactor core logic for improved readability and maintainability ([2f3e968](https://github.com/dimasma0305/gzcli/commit/2f3e968fd309a80ecd29d21d81a596e3ff55a904))
+
 ## [1.11.3](https://github.com/dimasma0305/gzcli/compare/v1.11.2...v1.11.3) (2025-11-10)
 
 ### Bug Fixes
