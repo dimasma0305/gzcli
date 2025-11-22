@@ -527,6 +527,7 @@ func (wm *WSManager) broadcastStatus(slug string) {
 	statusMsg := StatusMessage{
 		Status:         string(challenge.GetStatus()),
 		ConnectedUsers: challenge.GetConnectedUsers(),
+		AllocatedPorts: challenge.GetAllocatedPorts(),
 	}
 
 	msg := WSMessage{

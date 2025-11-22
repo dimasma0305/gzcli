@@ -99,7 +99,6 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,
@@ -136,7 +135,6 @@ func (e *Executor) stopCompose(challenge *ChallengeInfo, dashboard *Dashboard) e
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,
@@ -184,19 +182,58 @@ func (e *Executor) startDockerfile(challenge *ChallengeInfo, dashboard *Dashboar
 
 	args := []string{"run", "-d", "--name", challenge.Slug}
 
-	// Add port mappings
-	for _, portMap := range dashboard.Ports {
-		args = append(args, "-p", portMap)
+	// Get currently used ports on Docker host
+	usedDockerPorts, err := GetDockerUsedPorts()
+	if err != nil {
+		// Just log warning and continue with empty map (optimistic allocation)
+		log.Error("Failed to get used docker ports: %v", err)
+		usedDockerPorts = make(map[int]bool)
 	}
+
+	// Add port mappings with randomization
+	allocatedPorts := make([]string, 0, len(dashboard.Ports))
+	// Track allocated ports for this container to avoid duplicates
+	allocatedHostPorts := make(map[int]bool)
+
+	for _, portMap := range dashboard.Ports {
+		// portMap could be "host:container" or "container" or "*:container"
+		parts := strings.Split(portMap, ":")
+		containerPort := parts[len(parts)-1] // Always the last part
+
+		// Combine global used ports with local allocated ports
+		excludedPorts := make(map[int]bool)
+		for p := range usedDockerPorts {
+			excludedPorts[p] = true
+		}
+		for p := range allocatedHostPorts {
+			excludedPorts[p] = true
+		}
+
+		// Get a random free port on host, excluding already allocated ones
+		hostPort, err := GetRandomPort(30000, 65535, excludedPorts)
+		if err != nil {
+			return fmt.Errorf("failed to allocate port: %w", err)
+		}
+
+		allocatedHostPorts[hostPort] = true
+		mapping := fmt.Sprintf("%d:%s", hostPort, containerPort)
+		args = append(args, "-p", mapping)
+		allocatedPorts = append(allocatedPorts, mapping)
+		log.Info("Allocated port mapping: %s", mapping)
+	}
+
+	// Store allocated ports
+	challenge.SetAllocatedPorts(allocatedPorts)
 
 	args = append(args, fmt.Sprintf("%s:latest", challenge.Slug))
 
-	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	runCmd := exec.Command("docker", args...)
 	runCmd.Dir = challenge.Cwd
 
 	output, err = runCmd.CombinedOutput()
 	if err != nil {
+		// Clear allocated ports on failure
+		challenge.SetAllocatedPorts(nil)
 		return fmt.Errorf("docker run failed: %w\nOutput: %s", err, string(output))
 	}
 
@@ -207,6 +244,9 @@ func (e *Executor) startDockerfile(challenge *ChallengeInfo, dashboard *Dashboar
 // stopDockerfile stops a Dockerfile-based challenge
 func (e *Executor) stopDockerfile(challenge *ChallengeInfo) error {
 	log.InfoH2("Stopping Dockerfile container: %s", challenge.Name)
+
+	// Clear allocated ports
+	challenge.SetAllocatedPorts(nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
@@ -244,7 +284,6 @@ func (e *Executor) startKubernetes(challenge *ChallengeInfo, dashboard *Dashboar
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	//nolint:gosec // G204: Kubectl commands with challenge config are intentional
 	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", configPath)
 	cmd.Dir = challenge.Cwd
 
@@ -269,7 +308,6 @@ func (e *Executor) stopKubernetes(challenge *ChallengeInfo, dashboard *Dashboard
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	//nolint:gosec // G204: Kubectl commands with challenge config are intentional
 	cmd := exec.CommandContext(ctx, "kubectl", "delete", "-f", configPath)
 	cmd.Dir = challenge.Cwd
 
@@ -317,7 +355,6 @@ func (e *Executor) checkHealthCompose(challenge *ChallengeInfo) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	//nolint:gosec // G204: Docker commands for health checks are intentional
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,
