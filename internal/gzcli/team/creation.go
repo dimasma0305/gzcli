@@ -131,8 +131,8 @@ func joinTeamToGame(api *gzapi.GZAPI, config ConfigInterface) error {
 	return nil
 }
 
-// TeamCreator handles the logic for creating a team and user.
-type TeamCreator struct {
+// Creator handles the logic for creating a team and user.
+type Creator struct {
 	teamCreds         *TeamCreds
 	config            ConfigInterface
 	existingTeamNames map[string]struct{}
@@ -145,9 +145,9 @@ type TeamCreator struct {
 	err               error
 }
 
-// NewTeamCreator creates a new TeamCreator.
-func NewTeamCreator(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) *TeamCreator {
-	return &TeamCreator{
+// NewCreator creates a new Creator.
+func NewCreator(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) *Creator {
+	return &Creator{
 		teamCreds:         teamCreds,
 		config:            config,
 		existingTeamNames: existingTeamNames,
@@ -159,7 +159,7 @@ func NewTeamCreator(teamCreds *TeamCreds, config ConfigInterface, existingTeamNa
 }
 
 // Execute runs the team creation process.
-func (tc *TeamCreator) Execute() (*TeamCreds, error) {
+func (tc *Creator) Execute() (*TeamCreds, error) {
 	log.Info("Creating user %s with team %s", tc.teamCreds.Username, tc.teamCreds.TeamName)
 
 	tc.handle("initializing credentials", tc.initialize)
@@ -172,7 +172,7 @@ func (tc *TeamCreator) Execute() (*TeamCreds, error) {
 }
 
 // handle wraps a function call with error checking.
-func (tc *TeamCreator) handle(step string, fn func() error) {
+func (tc *Creator) handle(step string, fn func() error) {
 	if tc.err != nil {
 		return
 	}
@@ -182,14 +182,14 @@ func (tc *TeamCreator) handle(step string, fn func() error) {
 }
 
 // initialize initializes the credentials for the new user.
-func (tc *TeamCreator) initialize() error {
+func (tc *Creator) initialize() error {
 	var err error
 	tc.currentCreds, err = initializeCredentials(tc.teamCreds, tc.existingTeamNames, tc.existingUserNames, tc.credsCache, tc.generateUsername)
 	return err
 }
 
 // authenticate authenticates the user.
-func (tc *TeamCreator) authenticate() error {
+func (tc *Creator) authenticate() error {
 	isExistingCreds := false
 	for _, creds := range tc.credsCache {
 		if creds.Email == tc.teamCreds.Email && creds == tc.currentCreds {
@@ -203,19 +203,19 @@ func (tc *TeamCreator) authenticate() error {
 }
 
 // ensureTeamCreated ensures the team is created.
-func (tc *TeamCreator) ensureTeamCreated() error {
+func (tc *Creator) ensureTeamCreated() error {
 	ensureTeamCreated(tc.api, tc.currentCreds, tc.currentCreds.Username, tc.currentCreds.TeamName)
 	return nil
 }
 
 // sendCredentialsEmail sends the credentials email.
-func (tc *TeamCreator) sendCredentialsEmail() error {
+func (tc *Creator) sendCredentialsEmail() error {
 	sendCredentialsEmail(tc.teamCreds, tc.currentCreds, tc.config, tc.isSendEmail)
 	return nil
 }
 
 // joinTeamToGame joins the team to the game.
-func (tc *TeamCreator) joinTeamToGame() error {
+func (tc *Creator) joinTeamToGame() error {
 	if err := joinTeamToGame(tc.api, tc.config); err != nil {
 		// Log error but don't fail the entire operation
 		log.Error("Failed to join game: %v", err)
@@ -225,7 +225,7 @@ func (tc *TeamCreator) joinTeamToGame() error {
 
 // CreateTeamAndUser creates a team and user, ensuring the team name is unique and within the specified length.
 func CreateTeamAndUser(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error) {
-	return NewTeamCreator(teamCreds, config, existingTeamNames, existingUserNames, credsCache, isSendEmail, generateUsername).Execute()
+	return NewCreator(teamCreds, config, existingTeamNames, existingUserNames, credsCache, isSendEmail, generateUsername).Execute()
 }
 
 // NormalizeTeamName ensures team name is unique and within length limit

@@ -99,6 +99,8 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	//nolint:gosec // G204: Docker commands with challenge config are intentional
+	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,
@@ -227,6 +229,7 @@ func (e *Executor) startDockerfile(challenge *ChallengeInfo, dashboard *Dashboar
 
 	args = append(args, fmt.Sprintf("%s:latest", challenge.Slug))
 
+	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	runCmd := exec.Command("docker", args...)
 	runCmd.Dir = challenge.Cwd
 

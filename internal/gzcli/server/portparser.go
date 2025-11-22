@@ -17,6 +17,7 @@ import (
 func loadEnvFile(envFilePath string) map[string]string {
 	envVars := make(map[string]string)
 
+	//nolint:gosec // G304: Reading env files is intentional
 	file, err := os.Open(envFilePath)
 	if err != nil {
 		// .env file is optional, don't error out
@@ -191,6 +192,7 @@ func extractServicePorts(serviceMap map[interface{}]interface{}, envVars map[str
 
 // parseComposePorts parses ports from docker-compose.yml
 func (pp *PortParser) parseComposePorts(configPath string) []string {
+	//nolint:gosec // G304: Reading challenge configuration files is intentional
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Error("Failed to read compose file %s: %v", configPath, err)
@@ -230,6 +232,7 @@ func (pp *PortParser) parseComposePorts(configPath string) []string {
 
 // parseDockerfilePorts parses EXPOSE directives from Dockerfile
 func (pp *PortParser) parseDockerfilePorts(configPath string) []string {
+	//nolint:gosec // G304: Reading challenge configuration files is intentional
 	file, err := os.Open(configPath)
 	if err != nil {
 		log.Error("Failed to open Dockerfile %s: %v", configPath, err)
@@ -280,6 +283,7 @@ func (pp *PortParser) parseDockerfilePorts(configPath string) []string {
 
 // parseKubernetesPorts parses ports from Kubernetes manifest
 func (pp *PortParser) parseKubernetesPorts(configPath string) []string {
+	//nolint:gosec // G304: Reading challenge configuration files is intentional
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Error("Failed to read Kubernetes manifest %s: %v", configPath, err)
