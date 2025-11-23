@@ -149,6 +149,18 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 		return fmt.Errorf("docker compose up failed: %w", err)
 	}
 
+	// Extract and store allocated port mappings
+	portMappings, err := GetComposePortMappings(configPath, challenge.Slug, challenge.Cwd)
+	if err != nil {
+		log.Error("Failed to extract compose port mappings: %v", err)
+		// Don't fail the start operation, just log the error
+	} else {
+		challenge.SetAllocatedPorts(portMappings)
+		if len(portMappings) > 0 {
+			log.Info("Allocated port mappings: %v", portMappings)
+		}
+	}
+
 	log.InfoH3("Docker Compose started successfully")
 	log.Debug("Output: %s", stdout.String())
 	return nil
@@ -166,6 +178,9 @@ func (e *Executor) stopCompose(challenge *ChallengeInfo, dashboard *Dashboard) e
 	}
 
 	log.InfoH2("Stopping Docker Compose: %s", challenge.Name)
+
+	// Clear allocated ports
+	challenge.SetAllocatedPorts(nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
@@ -359,6 +374,9 @@ func (e *Executor) stopKubernetes(challenge *ChallengeInfo, dashboard *Dashboard
 
 	log.InfoH2("Stopping Kubernetes: %s", challenge.Name)
 
+	// Clear allocated ports
+	challenge.SetAllocatedPorts(nil)
+
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
@@ -410,6 +428,7 @@ func (e *Executor) checkHealthCompose(challenge *ChallengeInfo) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,

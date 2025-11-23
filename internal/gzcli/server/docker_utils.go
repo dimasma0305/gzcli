@@ -2,8 +2,10 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -53,4 +55,68 @@ func GetDockerUsedPorts() (map[int]bool, error) {
 
 	log.Debug("Found %d ports used by Docker", len(usedPorts))
 	return usedPorts, nil
+}
+
+// GetComposePortMappings extracts port mappings from Docker Compose containers
+// Returns a slice of port mappings in "host:container" format
+func GetComposePortMappings(configPath, projectName, cwd string) ([]string, error) {
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(cwd, configPath)
+	}
+
+	cmd := exec.Command("docker", "compose",
+		"-f", configPath,
+		"-p", projectName,
+		"ps", "--format", "json")
+	cmd.Dir = cwd
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to list compose containers: %w", err)
+	}
+
+	var portMappings []string
+	output := out.String()
+
+	// Parse JSON output - each line is a JSON object
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		var container struct {
+			ID    string `json:"ID"`
+			Ports string `json:"Ports"`
+		}
+
+		if err := json.Unmarshal([]byte(line), &container); err != nil {
+			log.Debug("Failed to parse container JSON: %v", err)
+			continue
+		}
+
+		if container.Ports == "" {
+			continue
+		}
+
+		// Parse port string format: "0.0.0.0:30000->80/tcp, :::30000->80/tcp"
+		// Extract mappings like "30000->80"
+		re := regexp.MustCompile(`:(\d+)->(\d+)/`)
+		matches := re.FindAllStringSubmatch(container.Ports, -1)
+
+		for _, match := range matches {
+			if len(match) == 3 {
+				hostPort := match[1]
+				containerPort := match[2]
+				mapping := fmt.Sprintf("%s:%s", hostPort, containerPort)
+				portMappings = append(portMappings, mapping)
+			}
+		}
+	}
+
+	log.Debug("Extracted %d port mappings from compose project %s", len(portMappings), projectName)
+	return portMappings, nil
 }

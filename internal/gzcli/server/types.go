@@ -50,13 +50,13 @@ type Dashboard struct {
 
 // ChallengeInfo holds information about a discovered challenge
 type ChallengeInfo struct {
-	Slug         string
-	EventName    string
-	Category     string
-	Name         string
-	Description  string
-	Cwd          string // Working directory for scripts
-	Dashboard    *Dashboard
+	Slug           string
+	EventName      string
+	Category       string
+	Name           string
+	Description    string
+	Cwd            string // Working directory for scripts
+	Dashboard      *Dashboard
 	Scripts        map[string]config.ScriptValue
 	Status         ChallengeStatus
 	LastRestart    time.Time
