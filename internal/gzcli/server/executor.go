@@ -13,6 +13,34 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// isValidSlug returns true for safe slugs (lowercase letters, digits, hyphen, underscore)
+func isValidSlug(s string) bool {
+	for _, r := range s {
+		if !(r >= 'a' && r <= 'z') && !(r >= '0' && r <= '9') && r != '-' && r != '_' {
+			return false
+		}
+	}
+	return s != ""
+}
+
+// isSafeConfigPath ensures configPath is absolute and under baseDir
+func isSafeConfigPath(configPath, baseDir string) bool {
+	// clean and make absolute
+	p := filepath.Clean(configPath)
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(baseDir, p)
+	}
+	rel, err := filepath.Rel(baseDir, p)
+	if err != nil {
+		return false
+	}
+	// disallow paths that escape baseDir via .. and ensure file exists is optional
+	if strings.HasPrefix(rel, "..") {
+		return false
+	}
+	return true
+}
+
 // Executor handles challenge lifecycle operations
 type Executor struct {
 	timeout time.Duration
@@ -101,6 +129,7 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 
 	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	//nolint:gosec // G204: Docker commands with challenge config are intentional
+	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,
@@ -132,11 +161,16 @@ func (e *Executor) stopCompose(challenge *ChallengeInfo, dashboard *Dashboard) e
 		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
+	if !isSafeConfigPath(configPath, challenge.Cwd) {
+		return fmt.Errorf("unsafe compose config path: %s", dashboard.Config)
+	}
+
 	log.InfoH2("Stopping Docker Compose: %s", challenge.Name)
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	//nolint:gosec // G204: Docker commands with challenge config are intentional and configPath is validated
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,
@@ -281,12 +315,21 @@ func (e *Executor) startKubernetes(challenge *ChallengeInfo, dashboard *Dashboar
 		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
+	if !isSafeConfigPath(configPath, challenge.Cwd) {
+		return fmt.Errorf("unsafe kubernetes manifest path: %s", dashboard.Config)
+	}
+
+	if !isValidSlug(challenge.Slug) {
+		return fmt.Errorf("invalid challenge slug: %s", challenge.Slug)
+	}
+
 	log.InfoH2("Starting Kubernetes: %s", challenge.Name)
 	log.InfoH3("Manifest: %s", configPath)
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	//nolint:gosec // G204: kubectl apply is intended; manifest path is validated above
 	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", configPath)
 	cmd.Dir = challenge.Cwd
 
@@ -306,11 +349,20 @@ func (e *Executor) stopKubernetes(challenge *ChallengeInfo, dashboard *Dashboard
 		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
+	if !isSafeConfigPath(configPath, challenge.Cwd) {
+		return fmt.Errorf("unsafe kubernetes manifest path: %s", dashboard.Config)
+	}
+
+	if !isValidSlug(challenge.Slug) {
+		return fmt.Errorf("invalid challenge slug: %s", challenge.Slug)
+	}
+
 	log.InfoH2("Stopping Kubernetes: %s", challenge.Name)
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	//nolint:gosec // G204: kubectl delete is intended; manifest path is validated above
 	cmd := exec.CommandContext(ctx, "kubectl", "delete", "-f", configPath)
 	cmd.Dir = challenge.Cwd
 
