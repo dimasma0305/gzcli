@@ -210,43 +210,6 @@ func randomizeComposePorts(compose map[string]interface{}, usedDockerPorts map[i
 	return modifiedCompose, allocatedPorts, nil
 }
 
-// ensureGitignorePattern ensures a pattern is in .gitignore in the given directory
-func ensureGitignorePattern(dir, pattern string) error {
-	gitignorePath := filepath.Join(dir, ".gitignore")
-
-	// Read existing .gitignore if it exists
-	var existing string
-	//nolint:gosec // G304: Path is constructed from challenge directory
-	if data, err := os.ReadFile(gitignorePath); err == nil {
-		existing = string(data)
-	}
-
-	// Check if pattern already exists
-	if strings.Contains(existing, pattern) {
-		return nil // Already present
-	}
-
-	// Append pattern if .gitignore exists, otherwise create new
-	var content string
-	if existing != "" {
-		if !strings.HasSuffix(existing, "\n") {
-			existing += "\n"
-		}
-		content = existing + pattern + "\n"
-	} else {
-		content = pattern + "\n"
-	}
-
-	// Write .gitignore
-	//nolint:gosec // G304: Path is constructed from challenge directory
-	if err := os.WriteFile(gitignorePath, []byte(content), 0644); err != nil {
-		return fmt.Errorf("failed to update .gitignore: %w", err)
-	}
-
-	log.Debug("Added %s to .gitignore in %s", pattern, dir)
-	return nil
-}
-
 // startCompose starts a Docker Compose challenge
 func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) error {
 	configPath := dashboard.Config
@@ -284,14 +247,6 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 
 	// Create temporary compose file in the same directory
 	composeDir := filepath.Dir(configPath)
-
-	// Ensure temp file pattern is gitignored
-	tempPattern := "docker-compose.*.tmp.yml"
-	if err := ensureGitignorePattern(composeDir, tempPattern); err != nil {
-		log.Error("Failed to update .gitignore: %v", err)
-		// Continue anyway - not critical
-	}
-
 	tempFile, err := os.CreateTemp(composeDir, fmt.Sprintf("docker-compose.%s.tmp.yml", challenge.Slug))
 	if err != nil {
 		return fmt.Errorf("failed to create temp compose file: %w", err)

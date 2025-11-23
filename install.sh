@@ -721,6 +721,40 @@ setup_all_completions() {
     return 0
 }
 
+# Print usage/help
+print_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --install-go    Also install Go and build from source if binary installation fails"
+    echo "  --with-go       Alias for --install-go"
+    echo "  -h, --help      Show this help message"
+    echo ""
+    echo "By default, only the pre-built binary will be installed."
+    echo "Use --install-go to enable Go installation and source build fallback."
+}
+
+# Parse command line arguments
+INSTALL_GO=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --install-go|--with-go)
+            INSTALL_GO=true
+            shift
+            ;;
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+        *)
+            print_error "Unknown option: $1"
+            echo ""
+            print_usage
+            exit 1
+            ;;
+    esac
+done
+
 # Main installation flow
 main() {
     echo ""
@@ -747,30 +781,39 @@ main() {
         fi
     fi
 
-    # Fall back to source installation if binary installation failed
+    # Fall back to source installation only if requested and binary installation failed
     if [ "$BINARY_INSTALL_SUCCESS" = false ]; then
-        echo ""
-        print_warning "Binary installation failed or not available"
-        print_info "Falling back to source installation..."
-        echo ""
+        if [ "$INSTALL_GO" = true ]; then
+            echo ""
+            print_warning "Binary installation failed or not available"
+            print_info "Falling back to source installation (--install-go flag was set)..."
+            echo ""
 
-        # Check and install Go if needed
-        if ! check_go_version; then
-            print_warning "Go is required to install gzcli from source"
-            print_info "Installing latest Go version automatically..."
-            get_latest_go_version
-            install_go
-        fi
+            # Check and install Go if needed
+            if ! check_go_version; then
+                print_warning "Go is required to install gzcli from source"
+                print_info "Installing latest Go version automatically..."
+                get_latest_go_version
+                install_go
+            fi
 
-        # Verify Go installation
-        if ! command -v go &> /dev/null; then
-            print_error "Go installation failed or not in PATH"
-            print_info "Please restart your shell and run this script again"
+            # Verify Go installation
+            if ! command -v go &> /dev/null; then
+                print_error "Go installation failed or not in PATH"
+                print_info "Please restart your shell and run this script again"
+                exit 1
+            fi
+
+            # Install gzcli from source
+            install_from_source
+        else
+            echo ""
+            print_error "Binary installation failed or not available"
+            print_info "To install from source, run with --install-go flag:"
+            print_info "  $0 --install-go"
+            echo ""
             exit 1
         fi
-
-        # Install gzcli from source
-        install_from_source
     fi
 
     # Verify gzcli installation
