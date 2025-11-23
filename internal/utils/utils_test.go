@@ -1,4 +1,4 @@
-package utils //nolint:revive // utils is a common and acceptable package name
+package utils //nolint:revive,nolintlint // utils is a common and acceptable package name
 
 import (
 	"strings"

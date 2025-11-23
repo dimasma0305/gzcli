@@ -173,6 +173,7 @@ func TestWatchStartCommand_ForegroundFlag(t *testing.T) {
 	flag := watchStartCmd.Flags().Lookup("foreground")
 	if flag == nil {
 		t.Fatal("watch start command should have --foreground flag")
+		return // Help staticcheck understand control flow
 	}
 
 	if flag.Shorthand != "f" {

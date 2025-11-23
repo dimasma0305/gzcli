@@ -14,6 +14,7 @@ func TestNew_Creation(t *testing.T) {
 	db := New(dbPath, true)
 	if db == nil {
 		t.Fatal("New() returned nil")
+		return // Help staticcheck understand control flow
 	}
 
 	if db.path != dbPath {
@@ -30,6 +31,7 @@ func TestNew_Disabled(t *testing.T) {
 	db := New("", false)
 	if db == nil {
 		t.Fatal("New() returned nil")
+		return // Help staticcheck understand control flow
 	}
 
 	if db.enabled {
@@ -219,6 +221,7 @@ func TestDB_ChallengeMapping_SetAndGet(t *testing.T) {
 
 	if mapping == nil {
 		t.Fatal("GetChallengeMapping() returned nil")
+		return // Help staticcheck understand control flow
 	}
 
 	if mapping.Event != event {

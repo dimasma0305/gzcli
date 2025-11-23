@@ -187,6 +187,7 @@ func TestCompletionCommand(t *testing.T) {
 
 	if completionCmd == nil {
 		t.Fatal("Completion command not found")
+		return // Help staticcheck understand control flow
 	}
 
 	// Verify valid args

@@ -5,10 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/dimasma0305/gzcli/internal/log"
 )
@@ -16,7 +20,7 @@ import (
 // isValidSlug returns true for safe slugs (lowercase letters, digits, hyphen, underscore)
 func isValidSlug(s string) bool {
 	for _, r := range s {
-		if !(r >= 'a' && r <= 'z') && !(r >= '0' && r <= '9') && r != '-' && r != '_' {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' && r != '_' {
 			return false
 		}
 	}
@@ -114,6 +118,135 @@ func (e *Executor) Restart(challenge *ChallengeInfo) error {
 	return nil
 }
 
+// randomizeComposePorts randomizes host ports in a compose file structure
+// Returns the modified compose structure and allocated port mappings
+func randomizeComposePorts(compose map[string]interface{}, usedDockerPorts map[int]bool) (map[string]interface{}, []string, error) {
+	// Deep copy the compose structure to avoid modifying the original
+	composeBytes, err := yaml.Marshal(compose)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to marshal compose: %w", err)
+	}
+
+	var modifiedCompose map[string]interface{}
+	if err := yaml.Unmarshal(composeBytes, &modifiedCompose); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal compose: %w", err)
+	}
+
+	services, ok := modifiedCompose["services"].(map[interface{}]interface{})
+	if !ok {
+		return modifiedCompose, []string{}, nil
+	}
+
+	var allocatedPorts []string
+	allocatedHostPorts := make(map[int]bool)
+
+	for _, serviceData := range services {
+		serviceMap, ok := serviceData.(map[interface{}]interface{})
+		if !ok {
+			continue
+		}
+
+		portsList, ok := serviceMap["ports"].([]interface{})
+		if !ok {
+			continue
+		}
+
+		modifiedPorts := make([]interface{}, 0, len(portsList))
+
+		for _, port := range portsList {
+			portStr := fmt.Sprintf("%v", port)
+			parts := strings.Split(portStr, ":")
+
+			// Handle different port formats: "host:container", "container", "*:container"
+			if len(parts) == 1 {
+				// Just container port, no host port - skip randomization
+				modifiedPorts = append(modifiedPorts, port)
+				continue
+			}
+
+			containerPort := parts[len(parts)-1]
+			hostPortStr := parts[0]
+
+			// Skip if host port is "*" (wildcard) or empty
+			if hostPortStr == "*" || hostPortStr == "" {
+				modifiedPorts = append(modifiedPorts, port)
+				continue
+			}
+
+			// Check if host port is already a number (explicit port)
+			_, err := strconv.Atoi(hostPortStr)
+			if err != nil {
+				// Not a number, might be a variable or other format - skip
+				modifiedPorts = append(modifiedPorts, port)
+				continue
+			}
+
+			// Combine global used ports with local allocated ports
+			excludedPorts := make(map[int]bool)
+			for p := range usedDockerPorts {
+				excludedPorts[p] = true
+			}
+			for p := range allocatedHostPorts {
+				excludedPorts[p] = true
+			}
+
+			// Get a random free port on host
+			randomHostPort, err := GetRandomPort(30000, 65535, excludedPorts)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to allocate random port: %w", err)
+			}
+
+			allocatedHostPorts[randomHostPort] = true
+			newPortMapping := fmt.Sprintf("%d:%s", randomHostPort, containerPort)
+			modifiedPorts = append(modifiedPorts, newPortMapping)
+
+			allocatedPorts = append(allocatedPorts, newPortMapping)
+			log.Info("Randomized port mapping: %s -> %s", portStr, newPortMapping)
+		}
+
+		serviceMap["ports"] = modifiedPorts
+	}
+
+	return modifiedCompose, allocatedPorts, nil
+}
+
+// ensureGitignorePattern ensures a pattern is in .gitignore in the given directory
+func ensureGitignorePattern(dir, pattern string) error {
+	gitignorePath := filepath.Join(dir, ".gitignore")
+
+	// Read existing .gitignore if it exists
+	var existing string
+	//nolint:gosec // G304: Path is constructed from challenge directory
+	if data, err := os.ReadFile(gitignorePath); err == nil {
+		existing = string(data)
+	}
+
+	// Check if pattern already exists
+	if strings.Contains(existing, pattern) {
+		return nil // Already present
+	}
+
+	// Append pattern if .gitignore exists, otherwise create new
+	var content string
+	if existing != "" {
+		if !strings.HasSuffix(existing, "\n") {
+			existing += "\n"
+		}
+		content = existing + pattern + "\n"
+	} else {
+		content = pattern + "\n"
+	}
+
+	// Write .gitignore
+	//nolint:gosec // G304: Path is constructed from challenge directory
+	if err := os.WriteFile(gitignorePath, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to update .gitignore: %w", err)
+	}
+
+	log.Debug("Added %s to .gitignore in %s", pattern, dir)
+	return nil
+}
+
 // startCompose starts a Docker Compose challenge
 func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) error {
 	configPath := dashboard.Config
@@ -124,14 +257,84 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 	log.InfoH2("Starting Docker Compose: %s", challenge.Name)
 	log.InfoH3("Config: %s, Project: %s", configPath, challenge.Slug)
 
+	// Read and parse the compose file
+	//nolint:gosec // G304: Reading challenge configuration files is intentional
+	composeData, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read compose file: %w", err)
+	}
+
+	var compose map[string]interface{}
+	if err := yaml.Unmarshal(composeData, &compose); err != nil {
+		return fmt.Errorf("failed to parse compose file: %w", err)
+	}
+
+	// Get currently used ports on Docker host
+	usedDockerPorts, err := GetDockerUsedPorts()
+	if err != nil {
+		log.Error("Failed to get used docker ports: %v", err)
+		usedDockerPorts = make(map[int]bool)
+	}
+
+	// Randomize ports in the compose structure
+	modifiedCompose, allocatedPorts, err := randomizeComposePorts(compose, usedDockerPorts)
+	if err != nil {
+		return fmt.Errorf("failed to randomize ports: %w", err)
+	}
+
+	// Create temporary compose file in the same directory
+	composeDir := filepath.Dir(configPath)
+
+	// Ensure temp file pattern is gitignored
+	tempPattern := "docker-compose.*.tmp.yml"
+	if err := ensureGitignorePattern(composeDir, tempPattern); err != nil {
+		log.Error("Failed to update .gitignore: %v", err)
+		// Continue anyway - not critical
+	}
+
+	tempFile, err := os.CreateTemp(composeDir, fmt.Sprintf("docker-compose.%s.tmp.yml", challenge.Slug))
+	if err != nil {
+		return fmt.Errorf("failed to create temp compose file: %w", err)
+	}
+	tempFilePath := tempFile.Name()
+
+	// Ensure temp file is cleaned up
+	defer func() {
+		if err := os.Remove(tempFilePath); err != nil {
+			log.Error("Failed to remove temp compose file %s: %v", tempFilePath, err)
+		}
+	}()
+
+	// Write modified compose to temp file
+	modifiedComposeData, err := yaml.Marshal(modifiedCompose)
+	if err != nil {
+		return fmt.Errorf("failed to marshal modified compose: %w", err)
+	}
+
+	if _, err := tempFile.Write(modifiedComposeData); err != nil {
+		_ = tempFile.Close()
+		return fmt.Errorf("failed to write temp compose file: %w", err)
+	}
+
+	if err := tempFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp compose file: %w", err)
+	}
+
+	// Store allocated ports before starting
+	challenge.SetAllocatedPorts(allocatedPorts)
+	if len(allocatedPorts) > 0 {
+		log.Info("Allocated port mappings: %v", allocatedPorts)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	// Use the temp file for docker compose
 	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	cmd := exec.CommandContext(ctx, "docker", "compose",
-		"-f", configPath,
+		"-f", tempFilePath,
 		"-p", challenge.Slug,
 		"up", "-d", "--build")
 	cmd.Dir = challenge.Cwd
@@ -141,24 +344,14 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
+		// Clear allocated ports on failure
+		challenge.SetAllocatedPorts(nil)
 		log.Error("Docker Compose failed: %v", err)
 		log.Error("Stdout: %s", stdout.String())
 		log.Error("Stderr: %s", stderr.String())
 		return fmt.Errorf("docker compose up failed: %w", err)
-	}
-
-	// Extract and store allocated port mappings
-	portMappings, err := GetComposePortMappings(configPath, challenge.Slug, challenge.Cwd)
-	if err != nil {
-		log.Error("Failed to extract compose port mappings: %v", err)
-		// Don't fail the start operation, just log the error
-	} else {
-		challenge.SetAllocatedPorts(portMappings)
-		if len(portMappings) > 0 {
-			log.Info("Allocated port mappings: %v", portMappings)
-		}
 	}
 
 	log.InfoH3("Docker Compose started successfully")

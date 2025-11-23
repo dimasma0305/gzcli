@@ -17,6 +17,7 @@ func TestNewManager(t *testing.T) {
 
 	if mgr == nil {
 		t.Fatal("NewManager() returned nil")
+		return // Help staticcheck understand control flow
 	}
 
 	if mgr.repoPath != repoPath {
