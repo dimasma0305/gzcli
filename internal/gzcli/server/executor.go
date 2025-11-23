@@ -13,6 +13,34 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// isValidSlug returns true for safe slugs (lowercase letters, digits, hyphen, underscore)
+func isValidSlug(s string) bool {
+	for _, r := range s {
+		if !(r >= 'a' && r <= 'z') && !(r >= '0' && r <= '9') && r != '-' && r != '_' {
+			return false
+		}
+	}
+	return s != ""
+}
+
+// isSafeConfigPath ensures configPath is absolute and under baseDir
+func isSafeConfigPath(configPath, baseDir string) bool {
+	// clean and make absolute
+	p := filepath.Clean(configPath)
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(baseDir, p)
+	}
+	rel, err := filepath.Rel(baseDir, p)
+	if err != nil {
+		return false
+	}
+	// disallow paths that escape baseDir via .. and ensure file exists is optional
+	if strings.HasPrefix(rel, "..") {
+		return false
+	}
+	return true
+}
+
 // Executor handles challenge lifecycle operations
 type Executor struct {
 	timeout time.Duration
@@ -100,6 +128,8 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 	defer cancel()
 
 	//nolint:gosec // G204: Docker commands with challenge config are intentional
+	//nolint:gosec // G204: Docker commands with challenge config are intentional
+	//nolint:gosec // G204: Docker commands with challenge config are intentional
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,
@@ -131,12 +161,16 @@ func (e *Executor) stopCompose(challenge *ChallengeInfo, dashboard *Dashboard) e
 		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
+	if !isSafeConfigPath(configPath, challenge.Cwd) {
+		return fmt.Errorf("unsafe compose config path: %s", dashboard.Config)
+	}
+
 	log.InfoH2("Stopping Docker Compose: %s", challenge.Name)
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	//nolint:gosec // G204: Docker commands with challenge config are intentional
+	//nolint:gosec // G204: Docker commands with challenge config are intentional and configPath is validated
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,
@@ -184,10 +218,48 @@ func (e *Executor) startDockerfile(challenge *ChallengeInfo, dashboard *Dashboar
 
 	args := []string{"run", "-d", "--name", challenge.Slug}
 
-	// Add port mappings
-	for _, portMap := range dashboard.Ports {
-		args = append(args, "-p", portMap)
+	// Get currently used ports on Docker host
+	usedDockerPorts, err := GetDockerUsedPorts()
+	if err != nil {
+		// Just log warning and continue with empty map (optimistic allocation)
+		log.Error("Failed to get used docker ports: %v", err)
+		usedDockerPorts = make(map[int]bool)
 	}
+
+	// Add port mappings with randomization
+	allocatedPorts := make([]string, 0, len(dashboard.Ports))
+	// Track allocated ports for this container to avoid duplicates
+	allocatedHostPorts := make(map[int]bool)
+
+	for _, portMap := range dashboard.Ports {
+		// portMap could be "host:container" or "container" or "*:container"
+		parts := strings.Split(portMap, ":")
+		containerPort := parts[len(parts)-1] // Always the last part
+
+		// Combine global used ports with local allocated ports
+		excludedPorts := make(map[int]bool)
+		for p := range usedDockerPorts {
+			excludedPorts[p] = true
+		}
+		for p := range allocatedHostPorts {
+			excludedPorts[p] = true
+		}
+
+		// Get a random free port on host, excluding already allocated ones
+		hostPort, err := GetRandomPort(30000, 65535, excludedPorts)
+		if err != nil {
+			return fmt.Errorf("failed to allocate port: %w", err)
+		}
+
+		allocatedHostPorts[hostPort] = true
+		mapping := fmt.Sprintf("%d:%s", hostPort, containerPort)
+		args = append(args, "-p", mapping)
+		allocatedPorts = append(allocatedPorts, mapping)
+		log.Info("Allocated port mapping: %s", mapping)
+	}
+
+	// Store allocated ports
+	challenge.SetAllocatedPorts(allocatedPorts)
 
 	args = append(args, fmt.Sprintf("%s:latest", challenge.Slug))
 
@@ -197,6 +269,8 @@ func (e *Executor) startDockerfile(challenge *ChallengeInfo, dashboard *Dashboar
 
 	output, err = runCmd.CombinedOutput()
 	if err != nil {
+		// Clear allocated ports on failure
+		challenge.SetAllocatedPorts(nil)
 		return fmt.Errorf("docker run failed: %w\nOutput: %s", err, string(output))
 	}
 
@@ -207,6 +281,9 @@ func (e *Executor) startDockerfile(challenge *ChallengeInfo, dashboard *Dashboar
 // stopDockerfile stops a Dockerfile-based challenge
 func (e *Executor) stopDockerfile(challenge *ChallengeInfo) error {
 	log.InfoH2("Stopping Dockerfile container: %s", challenge.Name)
+
+	// Clear allocated ports
+	challenge.SetAllocatedPorts(nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
@@ -238,13 +315,21 @@ func (e *Executor) startKubernetes(challenge *ChallengeInfo, dashboard *Dashboar
 		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
+	if !isSafeConfigPath(configPath, challenge.Cwd) {
+		return fmt.Errorf("unsafe kubernetes manifest path: %s", dashboard.Config)
+	}
+
+	if !isValidSlug(challenge.Slug) {
+		return fmt.Errorf("invalid challenge slug: %s", challenge.Slug)
+	}
+
 	log.InfoH2("Starting Kubernetes: %s", challenge.Name)
 	log.InfoH3("Manifest: %s", configPath)
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	//nolint:gosec // G204: Kubectl commands with challenge config are intentional
+	//nolint:gosec // G204: kubectl apply is intended; manifest path is validated above
 	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", configPath)
 	cmd.Dir = challenge.Cwd
 
@@ -264,12 +349,20 @@ func (e *Executor) stopKubernetes(challenge *ChallengeInfo, dashboard *Dashboard
 		configPath = filepath.Join(challenge.Cwd, configPath)
 	}
 
+	if !isSafeConfigPath(configPath, challenge.Cwd) {
+		return fmt.Errorf("unsafe kubernetes manifest path: %s", dashboard.Config)
+	}
+
+	if !isValidSlug(challenge.Slug) {
+		return fmt.Errorf("invalid challenge slug: %s", challenge.Slug)
+	}
+
 	log.InfoH2("Stopping Kubernetes: %s", challenge.Name)
 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	//nolint:gosec // G204: Kubectl commands with challenge config are intentional
+	//nolint:gosec // G204: kubectl delete is intended; manifest path is validated above
 	cmd := exec.CommandContext(ctx, "kubectl", "delete", "-f", configPath)
 	cmd.Dir = challenge.Cwd
 
@@ -317,7 +410,6 @@ func (e *Executor) checkHealthCompose(challenge *ChallengeInfo) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	//nolint:gosec // G204: Docker commands for health checks are intentional
 	cmd := exec.CommandContext(ctx, "docker", "compose",
 		"-f", configPath,
 		"-p", challenge.Slug,

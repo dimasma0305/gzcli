@@ -419,6 +419,32 @@ const challengeTemplate = `{{define "challenge"}}
             document.getElementById('challenge-status').textContent = data.status;
             document.getElementById('user-count').textContent = '👥 ' + data.connected_users + ' user' + (data.connected_users !== 1 ? 's' : '');
 
+            // Update ports section
+            const portsContainer = document.querySelector('.ports');
+            if (data.status === 'running' && data.allocated_ports && data.allocated_ports.length > 0) {
+                let html = '<strong>Ports:</strong> ';
+                data.allocated_ports.forEach(port => {
+                    html += '<span class="port">' + port + '</span>';
+                });
+
+                if (portsContainer) {
+                    portsContainer.innerHTML = html;
+                    portsContainer.style.display = 'block';
+                } else {
+                    // Create if not exists
+                    const newContainer = document.createElement('div');
+                    newContainer.className = 'ports';
+                    newContainer.innerHTML = html;
+                    // Insert after meta
+                    const meta = document.querySelector('.meta');
+                    meta.parentNode.insertBefore(newContainer, meta.nextSibling);
+                }
+            } else {
+                if (portsContainer) {
+                    portsContainer.style.display = 'none';
+                }
+            }
+
             const startBtn = document.getElementById('btn-start');
             const restartBtn = document.getElementById('btn-restart');
 
@@ -563,6 +589,12 @@ func (s *Server) HandleChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Determine initial ports to display
+	var displayPorts []string
+	if challenge.GetStatus() == StatusRunning {
+		displayPorts = challenge.GetAllocatedPorts()
+	}
+
 	// Render challenge page
 	data := map[string]interface{}{
 		"Title":    challenge.Name,
@@ -570,7 +602,7 @@ func (s *Server) HandleChallenge(w http.ResponseWriter, r *http.Request) {
 		"Name":     challenge.Name,
 		"Event":    challenge.EventName,
 		"Category": challenge.Category,
-		"Ports":    challenge.Dashboard.Ports,
+		"Ports":    displayPorts,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "challenge", data); err != nil {

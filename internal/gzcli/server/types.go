@@ -57,11 +57,12 @@ type ChallengeInfo struct {
 	Description  string
 	Cwd          string // Working directory for scripts
 	Dashboard    *Dashboard
-	Scripts      map[string]config.ScriptValue
-	Status       ChallengeStatus
-	LastRestart  time.Time
-	ConnectedIPs map[string]bool // Track unique IPs connected
-	mu           sync.RWMutex
+	Scripts        map[string]config.ScriptValue
+	Status         ChallengeStatus
+	LastRestart    time.Time
+	AllocatedPorts []string        // Dynamically allocated ports (host:container)
+	ConnectedIPs   map[string]bool // Track unique IPs connected
+	mu             sync.RWMutex
 }
 
 // Client represents a WebSocket client connection
@@ -81,8 +82,9 @@ type WSMessage struct {
 
 // StatusMessage represents a status update message
 type StatusMessage struct {
-	Status         string `json:"status"`
-	ConnectedUsers int    `json:"connected_users"`
+	Status         string   `json:"status"`
+	ConnectedUsers int      `json:"connected_users"`
+	AllocatedPorts []string `json:"allocated_ports,omitempty"`
 }
 
 // VoteMessage represents a vote-related message
@@ -146,6 +148,20 @@ func (c *ChallengeInfo) GetStatus() ChallengeStatus {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.Status
+}
+
+// SetAllocatedPorts safely sets the allocated ports
+func (c *ChallengeInfo) SetAllocatedPorts(ports []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.AllocatedPorts = ports
+}
+
+// GetAllocatedPorts safely gets the allocated ports
+func (c *ChallengeInfo) GetAllocatedPorts() []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.AllocatedPorts
 }
 
 // IsInCooldown checks if the challenge is in restart cooldown period
