@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -114,14 +115,14 @@ func RunServer(host string, port int) error {
 	for _, challenge := range challengeManager.ListChallenges() {
 		if challenge.GetStatus() != StatusStopped {
 			wg.Add(1)
-			go func(challenge *ChallengeInfo) {
+			go func(c *ChallengeInfo) {
 				defer wg.Done()
-				log.Info("Stopping challenge: %s", challenge.Name)
-				if err := executor.Stop(challenge); err != nil {
-					log.Error("Failed to stop challenge %s: %v", challenge.Name, err)
+				log.Info("Stopping challenge: %s", c.Name)
+				if err := executor.Stop(c); err != nil {
+					log.Error("Failed to stop challenge %s: %v", c.Name, err)
 				} else {
-					challenge.SetStatus(StatusStopped)
-					log.Info("Challenge %s stopped successfully", challenge.Name)
+					c.SetStatus(StatusStopped)
+					log.Info("Challenge %s stopped successfully", c.Name)
 				}
 			}(challenge)
 		}
