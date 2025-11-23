@@ -1,3 +1,9 @@
+## [1.13.2](https://github.com/dimasma0305/gzcli/compare/v1.13.1...v1.13.2) (2025-11-23)
+
+### Bug Fixes
+
+* port didn't randomize ([17cb6d8](https://github.com/dimasma0305/gzcli/commit/17cb6d89652930eb19c3f0fd5c36b69e2e011c9b))
+
 ## [1.13.1](https://github.com/dimasma0305/gzcli/compare/v1.13.0...v1.13.1) (2025-11-23)
 
 ### Bug Fixes
