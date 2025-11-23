@@ -1,3 +1,13 @@
+## [1.13.0](https://github.com/dimasma0305/gzcli/compare/v1.12.0...v1.13.0) (2025-11-23)
+
+### Features
+
+* randomize ports for dockerfile challenges ([7310e87](https://github.com/dimasma0305/gzcli/commit/7310e877234997e17afde7edbe229b8de3ec25e7))
+* randomize ports for dockerfile challenges ([35af664](https://github.com/dimasma0305/gzcli/commit/35af6641befac220c7ad0c587e9b8d6902d70ca9))
+* randomize ports for dockerfile challenges ([773f5a9](https://github.com/dimasma0305/gzcli/commit/773f5a94c38dc3d551a16185f1836a3e76eaff28))
+* randomize ports for dockerfile challenges ([cea22f6](https://github.com/dimasma0305/gzcli/commit/cea22f62939e666974f171a1094a53d6a3c1ffee))
+* randomize ports for dockerfile challenges ([895aa6a](https://github.com/dimasma0305/gzcli/commit/895aa6a83b18b7bd4883c8125b3d1c74cfc6ab25))
+
 ## [1.12.0](https://github.com/dimasma0305/gzcli/compare/v1.11.3...v1.12.0) (2025-11-21)
 
 ### Features
