@@ -6,6 +6,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/dimasma0305/gzcli/internal/log"
@@ -72,13 +75,52 @@ func RunServer(host string, port int) error {
 	log.Info("")
 	log.Info("Press Ctrl+C to stop the server")
 
+	// Channel to listen for errors coming from the listener.
+	serverErrors := make(chan error, 1)
+
 	// Start server
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			serverErrors <- err
+		}
+	}()
+
+	// Channel to listen for interrupt signals.
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+	// Blocking main and waiting for shutdown.
+	select {
+	case err := <-serverErrors:
 		return fmt.Errorf("server error: %w", err)
+	case sig := <-shutdown:
+		log.Info("Start shutdown... signal: %v", sig)
+
+		// Give outstanding requests a deadline for completion.
+		if err := GracefulShutdown(srv, 5*time.Second); err != nil {
+			log.Error("Graceful shutdown failed: %v", err)
+			if err := srv.Close(); err != nil {
+				log.Error("Error forcing server close: %v", err)
+			}
+		}
 	}
 
 	// Cleanup on shutdown
 	healthMonitor.Stop()
+
+	// Stop all running challenges
+	log.Info("Stopping all running challenges...")
+	for _, challenge := range challengeManager.ListChallenges() {
+		if challenge.GetStatus() != StatusStopped {
+			log.Info("Stopping challenge: %s", challenge.Name)
+			if err := executor.Stop(challenge); err != nil {
+				log.Error("Failed to stop challenge %s: %v", challenge.Name, err)
+			} else {
+				challenge.SetStatus(StatusStopped)
+				log.Info("Challenge %s stopped successfully", challenge.Name)
+			}
+		}
+	}
 
 	return nil
 }
