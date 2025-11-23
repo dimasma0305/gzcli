@@ -1,3 +1,10 @@
+## [1.15.0](https://github.com/dimasma0305/gzcli/compare/v1.14.0...v1.15.0) (2025-11-23)
+
+### Features
+
+* automatically stop running challenges on server shutdown ([61fa638](https://github.com/dimasma0305/gzcli/commit/61fa6384c2ef68336f010f012b04a8218905324c))
+* make challenge cleanup asynchronous on shutdown ([1280df0](https://github.com/dimasma0305/gzcli/commit/1280df00fd09e3f979b027936bfed33f9907a084))
+
 ## [1.13.2](https://github.com/dimasma0305/gzcli/compare/v1.13.1...v1.13.2) (2025-11-23)
 
 ### Bug Fixes
