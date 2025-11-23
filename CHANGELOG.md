@@ -1,3 +1,9 @@
+## [1.13.1](https://github.com/dimasma0305/gzcli/compare/v1.13.0...v1.13.1) (2025-11-23)
+
+### Bug Fixes
+
+* port didn't show in frontend ([d085278](https://github.com/dimasma0305/gzcli/commit/d085278b0f91b253ff9b2d5ffcdc6fb3f3801950))
+
 ## [1.13.0](https://github.com/dimasma0305/gzcli/compare/v1.12.0...v1.13.0) (2025-11-23)
 
 ### Features
