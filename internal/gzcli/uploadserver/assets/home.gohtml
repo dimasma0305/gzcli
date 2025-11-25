@@ -1,201 +1,256 @@
 {{define "home"}}
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" class="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{.Title}}</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      crossorigin="anonymous"
-    />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              background: '#050505',
+              surface: '#0a0a0a',
+              border: '#27272a',
+              'border-hover': '#52525b',
+              primary: '#ffffff',
+              'primary-fg': '#000000',
+              secondary: '#a1a1aa',
+              'text-main': '#f4f4f5',
+            }
+          }
+        }
+      }
+    </script>
     <style>
-      .template-card-link .card {
-        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      body {
+        background-color: #050505;
+        color: #f4f4f5;
+        -webkit-font-smoothing: antialiased;
       }
-      .template-card-link .card:hover {
-        transform: translateY(-2px);
-        border-color: var(--bs-primary);
-        box-shadow: 0 0.5rem 1rem rgba(88, 166, 255, 0.15);
+
+      /* Subtle grid background */
+      .bg-grid {
+        background-size: 40px 40px;
+        background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 500px;
+        z-index: -1;
+        pointer-events: none;
       }
-      .list-group-item {
-        background-color: var(--bs-dark);
+
+      .fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      @keyframes fadeIn {
+        to { opacity: 1; transform: translateY(0); }
       }
     </style>
   </head>
-  <body class="bg-body-tertiary text-body">
-    <div class="container py-5">
-      <header class="d-flex flex-column flex-lg-row justify-content-between gap-4 mb-4">
-        <div class="d-flex flex-column gap-2">
-          <h1 class="fs-1 text-primary mb-0">{{.Title}}</h1>
-          <p class="text-secondary mb-0">
-            Upload a challenge bundle for your event. Make sure it follows the official gzcli layout
-            and validations before syncing it to the CTF platform.
+  <body class="min-h-screen py-10 px-4 font-sans selection:bg-white/20">
+    <div class="bg-grid"></div>
+
+    <div class="max-w-5xl mx-auto fade-in">
+      <!-- Header -->
+      <header class="mb-12 pb-6 border-b border-border flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <h1 class="text-4xl font-semibold tracking-tight mb-3 text-white">{{.Title}}</h1>
+          <p class="text-secondary max-w-lg leading-relaxed">
+            Upload a challenge bundle for your event. Ensure it follows the official gzcli layout and validations.
           </p>
         </div>
-        <dl class="row row-cols-1 row-cols-sm-3 g-2 text-center text-sm-start mb-0 flex-grow-1">
-          <div class="col">
-            <div class="card bg-dark border-secondary h-100">
-              <div class="card-body py-3">
-                <dt class="text-uppercase text-secondary small fw-semibold mb-1">Upload Limit</dt>
-                <dd class="fs-5 fw-semibold mb-0 text-light">{{.MaxUpload}}</dd>
-              </div>
-            </div>
-          </div>
-          <div class="col">
-            <div class="card bg-dark border-secondary h-100">
-              <div class="card-body py-3">
-                <dt class="text-uppercase text-secondary small fw-semibold mb-1">Archive Ceiling</dt>
-                <dd class="fs-5 fw-semibold mb-0 text-light">{{.MaxExtract}}</dd>
-              </div>
-            </div>
-          </div>
-          <div class="col">
-            <div class="card bg-dark border-secondary h-100">
-              <div class="card-body py-3">
-                <dt class="text-uppercase text-secondary small fw-semibold mb-1">Max Attachment</dt>
-                <dd class="fs-5 fw-semibold mb-0 text-light">{{.MaxEntry}}</dd>
-              </div>
-            </div>
-          </div>
-        </dl>
+        <div class="flex gap-8 text-left md:text-right">
+           <div>
+             <div class="text-xs font-medium uppercase tracking-wider text-secondary mb-1">Upload Limit</div>
+             <div class="text-2xl font-semibold text-white tracking-tight">{{.MaxUpload}}</div>
+           </div>
+           <div>
+             <div class="text-xs font-medium uppercase tracking-wider text-secondary mb-1">Archive Ceiling</div>
+             <div class="text-2xl font-semibold text-white tracking-tight">{{.MaxExtract}}</div>
+           </div>
+           <div>
+             <div class="text-xs font-medium uppercase tracking-wider text-secondary mb-1">Max Attachment</div>
+             <div class="text-2xl font-semibold text-white tracking-tight">{{.MaxEntry}}</div>
+           </div>
+        </div>
       </header>
 
-      <div class="row g-4">
-        <div class="col-lg-6">
-          <div class="card bg-dark border-secondary shadow-sm h-100">
-            <div class="card-body d-flex flex-column gap-4">
-              <div>
-                <h2 class="h4 text-light mb-2">Upload Challenge</h2>
-                <p class="text-secondary mb-0">
-                  Provide the event, category, and compressed challenge package. The server validates
-                  structure, solver, and manifest before installing it into your workspace.
-                </p>
-              </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <!-- Main Content -->
+        <div class="lg:col-span-7 flex flex-col gap-10">
+
+          <!-- Upload Section -->
+          <section>
+            <h2 class="text-lg font-medium text-white mb-4">Upload Challenge</h2>
+            <div class="bg-surface border border-border rounded-lg p-6 hover:border-border-hover transition-colors duration-200">
 
               {{if .SuccessMsg}}
-              <div class="alert alert-success mb-0" role="alert">{{.SuccessMsg}}</div>
-              {{end}} {{if .ErrorMsg}}
-              <div class="alert alert-danger mb-0" role="alert">{{.ErrorMsg}}</div>
+              <div class="bg-green-500/10 text-green-400 text-sm font-medium px-4 py-3 rounded-md mb-6 flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                </svg>
+                {{.SuccessMsg}}
+              </div>
               {{end}}
 
-              {{if .Templates}}
-              <section>
-                <h3 class="h5 text-light mb-2">Starter Templates</h3>
-                <p class="text-secondary mb-3">
-                  Grab a prebuilt challenge skeleton to speed up authoring.
-                </p>
-                <div class="row row-cols-1 row-cols-sm-2 g-3">
-                  {{range .Templates}}
-                  <div class="col template-card-link">
-                    <a class="card h-100 bg-dark border-secondary text-decoration-none" href="/templates/{{.Slug}}.zip" download>
-                      <div class="card-body d-flex flex-column gap-2">
-                        <span class="template-name h6 mb-0 text-primary">{{.Name}}</span>
-                        <span class="template-summary text-secondary">{{.Summary}}</span>
+              {{if .ErrorMsg}}
+              <div class="bg-red-500/10 text-red-400 text-sm font-medium px-4 py-3 rounded-md mb-6 flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+                </svg>
+                {{.ErrorMsg}}
+              </div>
+              {{end}}
+
+              <form action="/upload" method="post" enctype="multipart/form-data" class="flex flex-col gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="flex flex-col gap-2">
+                    <label for="event" class="text-sm font-medium text-secondary">Event</label>
+                    <div class="relative">
+                      <select id="event" name="event" required class="w-full bg-surface border border-border text-white text-sm rounded-md px-3 py-2.5 focus:outline-none focus:border-white/40 focus:ring-0 transition-colors appearance-none">
+                        <option value="" disabled selected>Select an event</option>
+                        {{range .Events}}
+                        <option value="{{.}}">{{.}}</option>
+                        {{end}}
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-secondary">
+                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                       </div>
-                    </a>
+                    </div>
                   </div>
-                  {{end}}
-                </div>
-              </section>
-              {{end}}
-
-              <form
-                class="d-flex flex-column gap-3"
-                action="/upload"
-                method="post"
-                enctype="multipart/form-data"
-              >
-                <div>
-                  <label for="event" class="form-label">Event</label>
-                  <select id="event" name="event" class="form-select bg-dark border-secondary text-light" required>
-                    <option value="" disabled selected>Select an event</option>
-                    {{range .Events}}
-                    <option value="{{.}}">{{.}}</option>
-                    {{end}}
-                  </select>
+                  <div class="flex flex-col gap-2">
+                    <label for="category" class="text-sm font-medium text-secondary">Category</label>
+                    <div class="relative">
+                      <select id="category" name="category" required class="w-full bg-surface border border-border text-white text-sm rounded-md px-3 py-2.5 focus:outline-none focus:border-white/40 focus:ring-0 transition-colors appearance-none">
+                        <option value="" disabled selected>Select a category</option>
+                        {{range .Categories}}
+                        <option value="{{.}}">{{.}}</option>
+                        {{end}}
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-secondary">
+                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label for="category" class="form-label">Category</label>
-                  <select id="category" name="category" class="form-select bg-dark border-secondary text-light" required>
-                    <option value="" disabled selected>Select a category</option>
-                    {{range .Categories}}
-                    <option value="{{.}}">{{.}}</option>
-                    {{end}}
-                  </select>
-                </div>
-
-                <div>
-                  <label for="challenge" class="form-label">Challenge ZIP</label>
+                <div class="flex flex-col gap-2">
+                  <label for="challenge" class="text-sm font-medium text-secondary">Challenge ZIP</label>
                   <input
                     id="challenge"
                     name="challenge"
-                    class="form-control bg-dark border-secondary text-light"
                     type="file"
                     accept=".zip,application/zip"
                     required
+                    class="block w-full text-sm text-secondary
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-medium
+                      file:bg-border file:text-white
+                      hover:file:bg-border-hover
+                      file:transition-colors file:cursor-pointer
+                      cursor-pointer"
                   />
+                  <p class="text-xs text-secondary mt-1">Max file size: {{.MaxUpload}}</p>
                 </div>
 
-                <button type="submit" class="btn btn-success btn-lg">Upload challenge</button>
+                <div class="pt-2">
+                  <button type="submit" class="w-full bg-primary text-primary-fg font-medium py-2.5 rounded-md hover:bg-gray-200 transition-colors duration-200 text-sm">
+                    Upload Challenge
+                  </button>
+                </div>
               </form>
-
             </div>
-          </div>
+          </section>
+
+          <!-- Templates Section -->
+          {{if .Templates}}
+          <section>
+            <h2 class="text-lg font-medium text-white mb-4">Starter Templates</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {{range .Templates}}
+              <a href="/templates/{{.Slug}}.zip" download class="group block bg-surface border border-border rounded-lg p-5 hover:border-secondary hover:-translate-y-0.5 transition-all duration-200">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-medium text-white">{{.Name}}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-secondary group-hover:text-white transition-colors" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                  </svg>
+                </div>
+                <p class="text-sm text-secondary line-clamp-2">{{.Summary}}</p>
+              </a>
+              {{end}}
+            </div>
+          </section>
+          {{end}}
+
         </div>
 
-        <div class="col-lg-6">
-          <div class="card bg-dark border-secondary shadow-sm h-100">
-            <div class="card-body d-flex flex-column gap-3">
-              <div>
-                <h2 class="h4 text-light mb-2">Packaging Checklist</h2>
-                <p class="text-secondary mb-0">
-                  Confirm every upload follows the expected directory layout so deployments stay consistent across events.
-                </p>
-              </div>
-
-              <ul class="list-group list-group-flush">
-                <li class="list-group-item border-secondary">
-                  <span class="fw-semibold text-primary">Root Layout:</span>
-                  Archive expands to a single directory containing <code class="text-light">challenge.yml</code> plus
-                  subdirectories referenced in the manifest.
+        <!-- Sidebar -->
+        <div class="lg:col-span-5">
+          <section class="h-full">
+             <h2 class="text-lg font-medium text-white mb-4">Packaging Checklist</h2>
+             <div class="bg-surface border border-border rounded-lg h-full">
+              <ul class="divide-y divide-border">
+                <li class="p-5 flex gap-4">
+                  <span class="text-secondary font-mono text-sm mt-0.5">01</span>
+                  <div>
+                    <span class="block font-medium text-white mb-1">Root Layout</span>
+                    <span class="text-sm text-secondary">Archive must expand to a single directory containing <code class="bg-border px-1.5 py-0.5 rounded text-xs text-white">challenge.yml</code>.</span>
+                  </div>
                 </li>
-                <li class="list-group-item border-secondary">
-                  <span class="fw-semibold text-primary">Manifest:</span>
-                  Define <code class="text-light">name</code>, <code class="text-light">category</code>,
-                  <code class="text-light">flag</code>, <code class="text-light">description</code>, and any deployment configuration.
+                <li class="p-5 flex gap-4">
+                  <span class="text-secondary font-mono text-sm mt-0.5">02</span>
+                  <div>
+                    <span class="block font-medium text-white mb-1">Manifest</span>
+                    <span class="text-sm text-secondary">Define <code class="bg-border px-1.5 py-0.5 rounded text-xs text-white">name</code>, <code class="bg-border px-1.5 py-0.5 rounded text-xs text-white">category</code>, <code class="bg-border px-1.5 py-0.5 rounded text-xs text-white">flag</code>, and <code class="bg-border px-1.5 py-0.5 rounded text-xs text-white">description</code>.</span>
+                  </div>
                 </li>
-                <li class="list-group-item border-secondary">
-                  <span class="fw-semibold text-primary">Solver:</span>
-                  Include a <code class="text-light">solver/</code> directory with a working exploit or write-up that demonstrates the intended solve path.
+                <li class="p-5 flex gap-4">
+                  <span class="text-secondary font-mono text-sm mt-0.5">03</span>
+                  <div>
+                    <span class="block font-medium text-white mb-1">Solver</span>
+                    <span class="text-sm text-secondary">Include <code class="bg-border px-1.5 py-0.5 rounded text-xs text-white">solver/</code> with a working exploit or write-up.</span>
+                  </div>
                 </li>
-                <li class="list-group-item border-secondary">
-                  <span class="fw-semibold text-primary">Attachments:</span>
-                  Store downloadable artifacts in <code class="text-light">dist/</code>. If the challenge ships without attachments, remove the
-                  <code class="text-light">provide</code> section from <code class="text-light">challenge.yml</code>.
+                <li class="p-5 flex gap-4">
+                  <span class="text-secondary font-mono text-sm mt-0.5">04</span>
+                  <div>
+                    <span class="block font-medium text-white mb-1">Attachments</span>
+                    <span class="text-sm text-secondary">Store downloadable artifacts in <code class="bg-border px-1.5 py-0.5 rounded text-xs text-white">dist/</code>.</span>
+                  </div>
                 </li>
-                <li class="list-group-item border-secondary">
-                  <span class="fw-semibold text-primary">Source:</span>
-                  Place challenge implementation files under <code class="text-light">src/</code>, keeping the paths referenced in
-                  <code class="text-light">challenge.yml</code> aligned with that root.
+                <li class="p-5 flex gap-4">
+                  <span class="text-secondary font-mono text-sm mt-0.5">05</span>
+                  <div>
+                    <span class="block font-medium text-white mb-1">Source</span>
+                    <span class="text-sm text-secondary">Place implementation files under <code class="bg-border px-1.5 py-0.5 rounded text-xs text-white">src/</code>.</span>
+                  </div>
                 </li>
               </ul>
-
-              <p class="text-secondary mb-0">
-                Need inspiration? Start from a template on the left or visit the docs for a deeper dive into challenge authoring best practices.
-              </p>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>
-
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-      crossorigin="anonymous"
-    ></script>
   </body>
 </html>
 {{end}}
