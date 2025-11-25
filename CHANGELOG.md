@@ -1,3 +1,9 @@
+## [1.15.1](https://github.com/dimasma0305/gzcli/compare/v1.15.0...v1.15.1) (2025-11-25)
+
+### Code Refactoring
+
+* migrate UI from Bootstrap to Tailwind CSS and remove starter templates section ([e5f785c](https://github.com/dimasma0305/gzcli/commit/e5f785c1836eaf7da1f5093dd23d99e2f6aa2131))
+
 ## [1.15.0](https://github.com/dimasma0305/gzcli/compare/v1.14.0...v1.15.0) (2025-11-23)
 
 ### Features
