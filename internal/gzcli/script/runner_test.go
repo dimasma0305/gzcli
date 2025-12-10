@@ -65,9 +65,12 @@ func TestRunScripts_Success(t *testing.T) {
 		return nil
 	}
 
-	err := RunScripts("build", challenges, runScript)
+	failures, err := RunScripts("build", challenges, runScript)
 	if err != nil {
 		t.Errorf("RunScripts() failed: %v", err)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("expected no failures, got %d", len(failures))
 	}
 
 	// Verify all challenges were executed
@@ -105,16 +108,17 @@ func TestRunScripts_Error(t *testing.T) {
 		return nil
 	}
 
-	err := RunScripts("build", challenges, runScript)
+	failures, err := RunScripts("build", challenges, runScript)
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
 
-	if !errors.Is(err, expectedError) {
-		// Check if error contains the challenge name
-		if err.Error() == "" {
-			t.Errorf("Expected error containing challenge name, got: %v", err)
-		}
+	if len(failures) != 1 {
+		t.Fatalf("expected 1 failure, got %d", len(failures))
+	}
+
+	if !errors.Is(failures[0].Err, expectedError) && failures[0].Err.Error() == "" {
+		t.Errorf("Expected error containing challenge name, got: %v", failures[0].Err)
 	}
 }
 
@@ -127,9 +131,12 @@ func TestRunScripts_EmptyChallengeList(t *testing.T) {
 		return nil
 	}
 
-	err := RunScripts("build", challenges, runScript)
+	failures, err := RunScripts("build", challenges, runScript)
 	if err != nil {
 		t.Errorf("RunScripts() with empty list failed: %v", err)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("expected 0 failures, got %d", len(failures))
 	}
 }
 
@@ -156,9 +163,12 @@ func TestRunScripts_NoMatchingScript(t *testing.T) {
 		return nil
 	}
 
-	err := RunScripts("build", challenges, runScript)
+	failures, err := RunScripts("build", challenges, runScript)
 	if err != nil {
 		t.Errorf("RunScripts() failed: %v", err)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("expected 0 failures, got %d", len(failures))
 	}
 
 	if executionCount != 0 {
@@ -183,9 +193,12 @@ func TestRunScripts_EmptyCommand(t *testing.T) {
 		return nil
 	}
 
-	err := RunScripts("build", challenges, runScript)
+	failures, err := RunScripts("build", challenges, runScript)
 	if err != nil {
 		t.Errorf("RunScripts() failed: %v", err)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("expected 0 failures, got %d", len(failures))
 	}
 
 	// Empty command should not be executed
@@ -219,9 +232,12 @@ func TestRunScripts_Concurrency(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := RunScripts("build", challenges, runScript)
+		failures, err := RunScripts("build", challenges, runScript)
 		if err != nil {
 			t.Errorf("RunScripts() failed: %v", err)
+		}
+		if len(failures) != 0 {
+			t.Fatalf("expected 0 failures, got %d", len(failures))
 		}
 	}()
 
@@ -266,9 +282,12 @@ func TestRunScripts_PartialMatch(t *testing.T) {
 		return nil
 	}
 
-	err := RunScripts("build", challenges, runScript)
+	failures, err := RunScripts("build", challenges, runScript)
 	if err != nil {
 		t.Errorf("RunScripts() failed: %v", err)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("expected 0 failures, got %d", len(failures))
 	}
 
 	// Only Challenge1 and Challenge3 should be executed
@@ -300,9 +319,12 @@ func TestRunScripts_NilScripts(t *testing.T) {
 		return nil
 	}
 
-	err := RunScripts("build", challenges, runScript)
+	failures, err := RunScripts("build", challenges, runScript)
 	if err != nil {
 		t.Errorf("RunScripts() with nil scripts failed: %v", err)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("expected 0 failures, got %d", len(failures))
 	}
 
 	if executionCount != 0 {
@@ -336,18 +358,13 @@ func TestRunScripts_ErrorPropagation(t *testing.T) {
 		return nil
 	}
 
-	err := RunScripts("build", challenges, runScript)
+	failures, err := RunScripts("build", challenges, runScript)
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
 
-	// Execution count should be less than total challenges due to early termination
-	finalCount := atomic.LoadInt32(&executionCount)
-	t.Logf("Execution stopped after %d challenges (expected early termination)", finalCount)
-
-	// At least 5 should have been executed (the one that failed)
-	if finalCount < 5 {
-		t.Errorf("Expected at least 5 executions, got %d", finalCount)
+	if len(failures) == 0 {
+		t.Fatalf("expected at least one failure")
 	}
 }
 
@@ -381,9 +398,12 @@ func TestRunScripts_MaxParallelScripts(t *testing.T) {
 		return nil
 	}
 
-	err := RunScripts("build", challenges, runScript)
+	failures, err := RunScripts("build", challenges, runScript)
 	if err != nil {
 		t.Errorf("RunScripts() failed: %v", err)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("expected 0 failures, got %d", len(failures))
 	}
 
 	maxObserved := atomic.LoadInt32(&maxConcurrent)
@@ -459,9 +479,12 @@ func TestRunScripts_MultipleScriptTypes(t *testing.T) {
 				return nil
 			}
 
-			err := RunScripts(scriptType, challenges, runScript)
+			failures, err := RunScripts(scriptType, challenges, runScript)
 			if err != nil {
 				t.Errorf("RunScripts(%q) failed: %v", scriptType, err)
+			}
+			if len(failures) != 0 {
+				t.Fatalf("expected 0 failures, got %d", len(failures))
 			}
 
 			if !executed {

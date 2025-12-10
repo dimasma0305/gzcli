@@ -18,12 +18,17 @@
 package script
 
 import (
-	"context"
 	"fmt"
 	"sync"
 )
 
 const maxParallelScripts = 10
+
+// ScriptFailure captures a failed script execution for a specific challenge.
+type ScriptFailure struct {
+	Challenge string
+	Err       error
+}
 
 // ChallengeConf interface for accessing challenge configuration
 type ChallengeConf interface {
@@ -38,38 +43,27 @@ type ScriptValue interface {
 	GetCommand() string
 }
 
-// RunScripts executes scripts with a worker pool
-func RunScripts(script string, challengesConf []ChallengeConf, runScript func(ChallengeConf, string) error) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+// RunScripts executes scripts with a worker pool and returns all failures (it does not stop at the first error).
+func RunScripts(script string, challengesConf []ChallengeConf, runScript func(ChallengeConf, string) error) ([]ScriptFailure, error) {
 	workChan := make(chan ChallengeConf, len(challengesConf))
-	errChan := make(chan error, 1)
+	failChan := make(chan ScriptFailure, len(challengesConf))
 	var wg sync.WaitGroup
 
-	// Create worker pool
 	for i := 0; i < maxParallelScripts; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for challengeConf := range workChan {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					if err := runScript(challengeConf, script); err != nil {
-						select {
-						case errChan <- fmt.Errorf("script error in %s: %w", challengeConf.GetName(), err):
-							cancel()
-						default:
-						}
+				if err := runScript(challengeConf, script); err != nil {
+					failChan <- ScriptFailure{
+						Challenge: challengeConf.GetName(),
+						Err:       fmt.Errorf("script error in %s: %w", challengeConf.GetName(), err),
 					}
 				}
 			}
 		}()
 	}
 
-	// Distribute work
 	for _, conf := range challengesConf {
 		scripts := conf.GetScripts()
 		if scriptValue, ok := scripts[script]; ok && scriptValue.GetCommand() != "" {
@@ -78,11 +72,15 @@ func RunScripts(script string, challengesConf []ChallengeConf, runScript func(Ch
 	}
 	close(workChan)
 	wg.Wait()
+	close(failChan)
 
-	select {
-	case err := <-errChan:
-		return err
-	default:
-		return nil
+	failures := make([]ScriptFailure, 0, len(failChan))
+	for f := range failChan {
+		failures = append(failures, f)
 	}
+
+	if len(failures) > 0 {
+		return failures, fmt.Errorf("%d script failures", len(failures))
+	}
+	return nil, nil
 }

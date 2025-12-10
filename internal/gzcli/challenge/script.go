@@ -3,6 +3,8 @@ package challenge
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"runtime"
@@ -88,9 +90,17 @@ func runShell(script string, cwd string) error {
 	args := append(getShellArgs(), script)
 	cmd := exec.Command(getShell(), args...)
 	cmd.Dir = cwd
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+
+	var buf bytes.Buffer
+	writer := io.MultiWriter(os.Stdout, &buf)
+	cmd.Stdout = writer
+	cmd.Stderr = writer
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("command failed (cwd=%s): %w\n--- output tail ---\n%s", cwd, err, tailLines(buf.String(), 20))
+	}
+
+	return nil
 }
 
 // RunShellWithContext executes a shell command with context cancellation support
@@ -158,6 +168,19 @@ func RunShellForInterval(ctx context.Context, script string, cwd string, timeout
 	}
 
 	return err
+}
+
+// tailLines returns the last n lines from the given string for concise error reporting.
+func tailLines(s string, n int) string {
+	if n <= 0 || s == "" {
+		return ""
+	}
+
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) <= n {
+		return strings.Join(lines, "\n")
+	}
+	return strings.Join(lines[len(lines)-n:], "\n")
 }
 
 // RunIntervalScript executes a script at regular intervals with context cancellation

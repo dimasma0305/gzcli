@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli"
@@ -45,6 +47,7 @@ or --exclude-event to exclude certain events.`,
 		successCount := 0
 		failureCount := 0
 		var failedEvents []string
+		var failureDetails []string
 
 		log.Info("Running script '%s' for %d event(s): %v", scriptName, len(events), events)
 
@@ -52,20 +55,34 @@ or --exclude-event to exclude certain events.`,
 		for _, eventName := range events {
 			log.InfoH2("[%s] Running script '%s'...", eventName, scriptName)
 
-			if err := gzcli.RunScripts(scriptName, eventName); err != nil {
+			failures, err := gzcli.RunScripts(scriptName, eventName)
+			if err != nil || len(failures) > 0 {
+				for _, f := range failures {
+					failureDetails = append(failureDetails, fmt.Sprintf("[%s] %s: %v", eventName, f.Challenge, f.Err))
+				}
+				if err != nil && len(failures) == 0 {
+					failureDetails = append(failureDetails, fmt.Sprintf("[%s] %v", eventName, err))
+				}
 				log.Error("[%s] Script execution failed: %v", eventName, err)
 				failureCount++
 				failedEvents = append(failedEvents, eventName)
-			} else {
-				log.Info("[%s] Script '%s' executed successfully", eventName, scriptName)
-				successCount++
+				continue
 			}
+
+			log.Info("[%s] Script '%s' executed successfully", eventName, scriptName)
+			successCount++
 		}
 
 		// Display summary
 		log.Info("Script Execution Summary: %d succeeded, %d failed", successCount, failureCount)
 		if failureCount > 0 {
 			log.Error("Failed events: %v", failedEvents)
+			if len(failureDetails) > 0 {
+				log.Error("Failure details:")
+				for _, detail := range failureDetails {
+					log.Error("  %s", detail)
+				}
+			}
 			log.Fatal("Some events failed to execute script")
 		}
 	},

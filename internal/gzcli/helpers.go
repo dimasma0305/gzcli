@@ -32,16 +32,17 @@ func genStructureWrapper(challenges []interface{ GetCwd() string }) error {
 }
 
 // RunScripts executes scripts for all challenges using a worker pool
-func RunScripts(scriptName string, eventName string) error {
+// Returns any per-challenge failures for summary reporting.
+func RunScripts(scriptName string, eventName string) ([]script.ScriptFailure, error) {
 	// Get config for the specific event
 	configPkg, err := config.GetConfigWithEvent(&gzapi.GZAPI{}, eventName, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	challengesConf, err := config.GetChallengesYaml(configPkg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Convert to interface for script package
@@ -55,11 +56,13 @@ func RunScripts(scriptName string, eventName string) error {
 		challengeInterfaces[i] = challenges[i]
 	}
 
-	return script.RunScripts(scriptName, challengeInterfaces, func(conf script.ChallengeConf, script string) error {
+	failures, err := script.RunScripts(scriptName, challengeInterfaces, func(conf script.ChallengeConf, script string) error {
 		adapter := conf.(challengeConfAdapter)
 		// Pass config.ChallengeYaml directly - challenge package now uses this type
 		return challenge.RunScript(adapter.c, script)
 	})
+
+	return failures, err
 }
 
 // Adapter types
