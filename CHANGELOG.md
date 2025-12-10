@@ -1,3 +1,9 @@
+## [1.17.0](https://github.com/dimasma0305/gzcli/compare/v1.16.0...v1.17.0) (2025-12-10)
+
+### Features
+
+* enhance script execution error handling and reporting ([c69e024](https://github.com/dimasma0305/gzcli/commit/c69e0249f8fd56ee57bb7a6860a818a1474b560d))
+
 ## [1.16.0](https://github.com/dimasma0305/gzcli/compare/v1.15.1...v1.16.0) (2025-12-10)
 
 ### Features
