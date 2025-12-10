@@ -1,3 +1,9 @@
+## [1.17.1](https://github.com/dimasma0305/gzcli/compare/v1.17.0...v1.17.1) (2025-12-10)
+
+### Code Refactoring
+
+* update script failure handling and improve test coverage ([13f6b5b](https://github.com/dimasma0305/gzcli/commit/13f6b5b5b6a5d3d703d4a07fa0e2796c41300aa9))
+
 ## [1.17.0](https://github.com/dimasma0305/gzcli/compare/v1.16.0...v1.17.0) (2025-12-10)
 
 ### Features
