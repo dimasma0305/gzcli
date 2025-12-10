@@ -11,6 +11,7 @@ func (cs *GZAPI) Login() error {
 	if err := cs.post("/api/account/login", cs.Creds, &response); err != nil {
 		return err
 	}
+	cs.persistCookies()
 	// Note: We trust HTTP 200 status code (already validated in post())
 	// Empty response body (e.g., already authenticated) is acceptable
 	// Only check succeeded field if it was actually set in the response
@@ -30,6 +31,7 @@ func (cs *GZAPI) Register(registerForm *RegisterForm) error {
 	if err := cs.post("/api/account/register", registerForm, &response); err != nil {
 		return err
 	}
+	cs.persistCookies()
 	return nil
 }
 
@@ -38,6 +40,13 @@ func (cs *GZAPI) Logout() error {
 	var response map[string]interface{}
 	if err := cs.post("/api/account/logout", nil, &response); err != nil {
 		return err
+	}
+	if cs.cookieStore != nil {
+		if jar := cs.cookieStore.newJar(); jar != nil && cs.Client != nil {
+			cs.cookieJar = jar
+			cs.Client.SetCookieJar(jar)
+		}
+		cs.persistCookies()
 	}
 	return nil
 }

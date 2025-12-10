@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestInit_Success(t *testing.T) {
@@ -93,6 +94,137 @@ func TestInit_TrimTrailingSlash(t *testing.T) {
 	}
 }
 
+func TestInit_ReusesCachedCookies(t *testing.T) {
+	originalWD, _ := os.Getwd()
+	tempDir := t.TempDir()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to switch working directory: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(originalWD) })
+
+	loginCount := 0
+	server := mockServer(t, map[string]http.HandlerFunc{
+		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
+			loginCount++
+			http.SetCookie(w, &http.Cookie{
+				Name:    "session",
+				Value:   "token123",
+				Path:    "/",
+				Expires: time.Now().Add(time.Hour),
+			})
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		},
+		"/api/protected": func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie("session")
+			if err != nil || cookie.Value != "token123" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"ok": true}`))
+		},
+	})
+	defer server.Close()
+
+	creds := &Creds{Username: "test", Password: "test"}
+
+	api, err := Init(server.URL, creds)
+	if err != nil {
+		t.Fatalf("Init() failed: %v", err)
+	}
+
+	var resp map[string]bool
+	if err := api.get("/api/protected", &resp); err != nil {
+		t.Fatalf("Protected request failed with fresh login: %v", err)
+	}
+	if loginCount != 1 {
+		t.Fatalf("Expected 1 login, got %d", loginCount)
+	}
+
+	apiCached, err := Init(server.URL, creds)
+	if err != nil {
+		t.Fatalf("Init() with cached cookie failed: %v", err)
+	}
+
+	resp = map[string]bool{}
+	if err := apiCached.get("/api/protected", &resp); err != nil {
+		t.Fatalf("Protected request with cached cookie failed: %v", err)
+	}
+
+	if loginCount != 1 {
+		t.Fatalf("Expected cached cookies to prevent re-login, got %d logins", loginCount)
+	}
+}
+
+func TestInit_ReloginWhenCachedCookiesExpired(t *testing.T) {
+	originalWD, _ := os.Getwd()
+	tempDir := t.TempDir()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to switch working directory: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(originalWD) })
+
+	loginCount := 0
+	server := mockServer(t, map[string]http.HandlerFunc{
+		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
+			loginCount++
+			http.SetCookie(w, &http.Cookie{
+				Name:    "session",
+				Value:   "fresh",
+				Path:    "/",
+				Expires: time.Now().Add(time.Hour),
+			})
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		},
+		"/api/protected": func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie("session")
+			if err != nil || cookie.Value != "fresh" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"ok": true}`))
+		},
+	})
+	defer server.Close()
+
+	store, err := newCookieStore(server.URL)
+	if err != nil {
+		t.Fatalf("Failed to create cookie store: %v", err)
+	}
+	expiredJar := store.newJar()
+	if expiredJar == nil {
+		t.Fatal("Expected cookie jar to be created")
+	}
+	expiredJar.SetCookies(store.baseURL, []*http.Cookie{
+		{
+			Name:    "session",
+			Value:   "expired",
+			Path:    "/",
+			Expires: time.Now().Add(-1 * time.Hour),
+		},
+	})
+	if err := store.save(expiredJar); err != nil {
+		t.Fatalf("Failed to seed expired cookie cache: %v", err)
+	}
+
+	creds := &Creds{Username: "test", Password: "test"}
+	api, err := Init(server.URL, creds)
+	if err != nil {
+		t.Fatalf("Init() failed: %v", err)
+	}
+
+	var resp map[string]bool
+	if err := api.get("/api/protected", &resp); err != nil {
+		t.Fatalf("Protected request failed after re-login: %v", err)
+	}
+
+	if loginCount != 1 {
+		t.Fatalf("Expected login when cached cookie is expired, got %d logins", loginCount)
+	}
+}
 func TestGZAPI_Get_Success(t *testing.T) {
 	server := mockServer(t, map[string]http.HandlerFunc{
 		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {

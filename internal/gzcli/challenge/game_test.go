@@ -49,15 +49,15 @@ func TestFindCurrentGame(t *testing.T) {
 			}
 
 			if got == nil {
-				t.Fatal("FindCurrentGame() = nil, want non-nil")
-			}
+				t.Fatalf("FindCurrentGame() = nil, want non-nil")
+			} else {
+				if got.Id != tt.want.Id {
+					t.Errorf("FindCurrentGame() Id = %d, want %d", got.Id, tt.want.Id)
+				}
 
-			if got.Id != tt.want.Id {
-				t.Errorf("FindCurrentGame() Id = %d, want %d", got.Id, tt.want.Id)
-			}
-
-			if got.CS == nil {
-				t.Error("Expected CS to be set")
+				if got.CS == nil {
+					t.Error("Expected CS to be set")
+				}
 			}
 		})
 	}

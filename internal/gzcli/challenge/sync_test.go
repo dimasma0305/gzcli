@@ -1,6 +1,9 @@
 package challenge
 
 import (
+	"errors"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
@@ -76,6 +79,132 @@ func TestIsExistInArray(t *testing.T) {
 				t.Errorf("IsExistInArray() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRemoveDuplicateChallenges(t *testing.T) {
+	challenges := []gzapi.Challenge{
+		{Id: 2, Title: "web/xss"},
+		{Id: 1, Title: "web/xss"}, // lower ID should be kept
+		{Id: 3, Title: "pwn/rop"},
+	}
+
+	var deletedIDs []int
+	deduped, err := RemoveDuplicateChallenges(challenges, func(c *gzapi.Challenge) error {
+		deletedIDs = append(deletedIDs, c.Id)
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("RemoveDuplicateChallenges returned error: %v", err)
+	}
+
+	if len(deduped) != 2 {
+		t.Fatalf("expected 2 challenges after dedupe, got %d", len(deduped))
+	}
+
+	sort.Ints(deletedIDs)
+	if len(deletedIDs) != 1 || deletedIDs[0] != 2 {
+		t.Fatalf("expected duplicate id 2 to be deleted, got %v", deletedIDs)
+	}
+
+	kept := make(map[int]string)
+	for _, c := range deduped {
+		kept[c.Id] = c.Title
+	}
+	if kept[1] != "web/xss" || kept[3] != "pwn/rop" {
+		t.Fatalf("unexpected deduped challenges: %+v", kept)
+	}
+}
+
+func TestRemoveDuplicateChallenges_PropagatesDeleteError(t *testing.T) {
+	challenges := []gzapi.Challenge{
+		{Id: 2, Title: "crypto/block"},
+		{Id: 1, Title: "crypto/block"},
+	}
+
+	_, err := RemoveDuplicateChallenges(challenges, func(c *gzapi.Challenge) error {
+		if c.Id == 2 {
+			return errors.New("delete failed")
+		}
+		return nil
+	})
+
+	if err == nil || !strings.Contains(err.Error(), "delete failed") {
+		t.Fatalf("expected delete error to propagate, got %v", err)
+	}
+}
+
+func TestHandleExistingChallengeSetsGameId(t *testing.T) {
+	conf := &config.Config{
+		Event: gzapi.Game{Id: 42},
+	}
+	// cache returns challenge without GameId/CS
+	getCache := func(key string, v interface{}) error {
+		ptr, ok := v.(**gzapi.Challenge)
+		if !ok {
+			t.Fatalf("unexpected cache type")
+		}
+		*ptr = &gzapi.Challenge{Id: 7, Title: "web/xss"}
+		return nil
+	}
+
+	challengeConf := config.ChallengeYaml{Name: "web/xss", Category: "web"}
+	result, err := handleExistingChallenge(conf, challengeConf, &gzapi.GZAPI{}, getCache)
+	if err != nil {
+		t.Fatalf("handleExistingChallenge returned error: %v", err)
+	}
+
+	if result.GameId != 42 {
+		t.Fatalf("expected GameId to be set to 42, got %d", result.GameId)
+	}
+	if result.CS == nil {
+		t.Fatalf("expected CS to be set")
+	}
+}
+
+func TestDetermineSyncPathPrefersRemoteChallengeOverCache(t *testing.T) {
+	conf := &config.Config{
+		Event: gzapi.Game{Id: 10},
+	}
+	challengeConf := config.ChallengeYaml{
+		Name:     "web/xss",
+		Category: "web",
+	}
+	remoteChallenges := []gzapi.Challenge{
+		{Id: 2, Title: "web/xss", GameId: 10},
+	}
+
+	getCache := func(_ string, v interface{}) error {
+		ptr, ok := v.(**gzapi.Challenge)
+		if !ok {
+			t.Fatalf("unexpected cache type")
+		}
+		// Return stale challenge id that should be ignored in favor of remote data
+		*ptr = &gzapi.Challenge{Id: 99, Title: challengeConf.Name}
+		return nil
+	}
+
+	orch := &SyncOrchestrator{
+		conf:          conf,
+		challengeConf: challengeConf,
+		challenges:    remoteChallenges,
+		api:           &gzapi.GZAPI{},
+		getCache:      getCache,
+	}
+
+	if err := orch.determineSyncPath(); err != nil {
+		t.Fatalf("determineSyncPath returned error: %v", err)
+	}
+
+	if orch.challengeData.Id != 2 {
+		t.Fatalf("expected remote challenge id 2, got %d", orch.challengeData.Id)
+	}
+	if orch.challengeData.GameId != conf.Event.Id {
+		t.Fatalf("expected GameId %d, got %d", conf.Event.Id, orch.challengeData.GameId)
+	}
+	if orch.challengeData.CS == nil {
+		t.Fatalf("expected CS to be set from API")
 	}
 }
 

@@ -12,6 +12,73 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// DeleteFunc abstracts challenge deletion to allow testing without API calls.
+type DeleteFunc func(*gzapi.Challenge) error
+
+func deleteChallenge(c *gzapi.Challenge) error {
+	return c.Delete()
+}
+
+// RemoveDuplicateChallenges deletes duplicate challenges (same title) from the remote list.
+// It keeps the lowest-ID challenge for each title and deletes the rest using the provided deleteFunc.
+// Returns the deduplicated slice that should be used for subsequent sync operations.
+func RemoveDuplicateChallenges(challenges []gzapi.Challenge, deleteFunc DeleteFunc) ([]gzapi.Challenge, error) {
+	if deleteFunc == nil {
+		deleteFunc = deleteChallenge
+	}
+
+	if len(challenges) == 0 {
+		return challenges, nil
+	}
+
+	byTitle := make(map[string]gzapi.Challenge, len(challenges))
+	var duplicates []*gzapi.Challenge
+
+	for i := range challenges {
+		current := challenges[i] // create stable reference
+		if keep, ok := byTitle[current.Title]; ok {
+			if current.Id < keep.Id {
+				dup := keep
+				duplicates = append(duplicates, &dup)
+				byTitle[current.Title] = current
+			} else {
+				dup := current
+				duplicates = append(duplicates, &dup)
+			}
+		} else {
+			byTitle[current.Title] = current
+		}
+	}
+
+	if len(duplicates) > 0 {
+		log.Info("Found %d duplicate challenges; deleting extras", len(duplicates))
+	}
+
+	var deleteErrs []string
+	for _, dup := range duplicates {
+		if dup == nil {
+			continue
+		}
+		if err := deleteFunc(dup); err != nil {
+			log.Error("Failed to delete duplicate challenge %s (id %d): %v", dup.Title, dup.Id, err)
+			deleteErrs = append(deleteErrs, fmt.Sprintf("%s(%d): %v", dup.Title, dup.Id, err))
+		} else {
+			log.Info("Deleted duplicate challenge %s (id %d)", dup.Title, dup.Id)
+		}
+	}
+
+	if len(deleteErrs) > 0 {
+		return nil, fmt.Errorf("duplicate cleanup errors: %s", strings.Join(deleteErrs, "; "))
+	}
+
+	deduped := make([]gzapi.Challenge, 0, len(byTitle))
+	for _, c := range byTitle {
+		deduped = append(deduped, c)
+	}
+
+	return deduped, nil
+}
+
 func IsChallengeExist(challengeName string, challenges []gzapi.Challenge) bool {
 	challengeMap := make(map[string]struct{}, len(challenges))
 	for _, c := range challenges {
@@ -19,6 +86,18 @@ func IsChallengeExist(challengeName string, challenges []gzapi.Challenge) bool {
 	}
 	_, exists := challengeMap[challengeName]
 	return exists
+}
+
+// findChallengeByTitle returns a copy of the challenge with the given title, if present.
+func findChallengeByTitle(challenges []gzapi.Challenge, title string) *gzapi.Challenge {
+	for i := range challenges {
+		if challenges[i].Title == title {
+			// return a copy to avoid mutating the shared slice
+			c := challenges[i]
+			return &c
+		}
+	}
+	return nil
 }
 
 func IsExistInArray(value string, array []string) bool {
@@ -147,6 +226,7 @@ func handleNewChallenge(conf *config.Config, challengeConf config.ChallengeYaml,
 	}
 
 	challengeData.CS = api
+	challengeData.GameId = conf.Event.Id
 	return challengeData, nil
 }
 
@@ -166,6 +246,8 @@ func handleExistingChallenge(conf *config.Config, challengeConf config.Challenge
 
 	// fix bug nill pointer because cache didn't return gzapi
 	challengeData.CS = api
+	// ensure GameId is always set for downstream API calls (e.g., attachments)
+	challengeData.GameId = conf.Event.Id
 	// fix bug isEnable always be false after sync
 	challengeData.IsEnabled = nil
 
@@ -234,6 +316,13 @@ func (s *SyncOrchestrator) determineSyncPath() error {
 	case !IsChallengeExist(s.challengeConf.Name, s.challenges):
 		s.challengeData, err = handleNewChallenge(s.conf, s.challengeConf, s.challenges, s.api)
 	default:
+		if remote := findChallengeByTitle(s.challenges, s.challengeConf.Name); remote != nil {
+			remote.CS = s.api
+			remote.GameId = s.conf.Event.Id
+			remote.IsEnabled = nil
+			s.challengeData = remote
+			return nil
+		}
 		s.challengeData, err = handleExistingChallenge(s.conf, s.challengeConf, s.api, s.getCache)
 	}
 	return err

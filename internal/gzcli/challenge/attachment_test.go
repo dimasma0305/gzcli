@@ -289,15 +289,15 @@ func TestCreateAssetsIfNotExistOrDifferent_NewAsset(t *testing.T) {
 	}
 
 	if fileInfo == nil {
-		t.Fatal("Expected file info, got nil")
-	}
+		t.Fatalf("Expected file info, got nil")
+	} else {
+		if !assetCreated {
+			t.Error("Expected asset to be created, but it wasn't")
+		}
 
-	if !assetCreated {
-		t.Error("Expected asset to be created, but it wasn't")
-	}
-
-	if fileInfo.Hash != "testhash123" {
-		t.Errorf("Expected hash 'testhash123', got %s", fileInfo.Hash)
+		if fileInfo.Hash != "testhash123" {
+			t.Errorf("Expected hash 'testhash123', got %s", fileInfo.Hash)
+		}
 	}
 }
 
