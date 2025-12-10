@@ -1,3 +1,10 @@
+## [1.16.0](https://github.com/dimasma0305/gzcli/compare/v1.15.1...v1.16.0) (2025-12-10)
+
+### Features
+
+* add duplicate challenge removal and enhance challenge handling ([e512229](https://github.com/dimasma0305/gzcli/commit/e5122298e288fceef0a32f71bdab67ad93a8670c))
+* complete sync reliability improvements and enhance challenge handling ([8e9650e](https://github.com/dimasma0305/gzcli/commit/8e9650e625893b09809f07f69e3ebafda97974ef))
+
 ## [1.15.1](https://github.com/dimasma0305/gzcli/compare/v1.15.0...v1.15.1) (2025-11-25)
 
 ### Code Refactoring
