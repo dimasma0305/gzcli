@@ -2,6 +2,7 @@ package challenge
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
@@ -90,13 +91,17 @@ func TestRemoveDuplicateChallenges(t *testing.T) {
 	}
 
 	var deletedIDs []int
-	deduped, err := RemoveDuplicateChallenges(challenges, func(c *gzapi.Challenge) error {
+	deduped, deleted, err := RemoveDuplicateChallenges(challenges, func(c *gzapi.Challenge) error {
 		deletedIDs = append(deletedIDs, c.Id)
 		return nil
 	})
 
 	if err != nil {
 		t.Fatalf("RemoveDuplicateChallenges returned error: %v", err)
+	}
+
+	if !deleted {
+		t.Fatalf("expected duplicates to be reported as deleted")
 	}
 
 	if len(deduped) != 2 {
@@ -123,12 +128,16 @@ func TestRemoveDuplicateChallenges_PropagatesDeleteError(t *testing.T) {
 		{Id: 1, Title: "crypto/block"},
 	}
 
-	_, err := RemoveDuplicateChallenges(challenges, func(c *gzapi.Challenge) error {
+	_, deleted, err := RemoveDuplicateChallenges(challenges, func(c *gzapi.Challenge) error {
 		if c.Id == 2 {
 			return errors.New("delete failed")
 		}
 		return nil
 	})
+
+	if !deleted {
+		t.Fatalf("expected deleted flag to be true when duplicates exist")
+	}
 
 	if err == nil || !strings.Contains(err.Error(), "delete failed") {
 		t.Fatalf("expected delete error to propagate, got %v", err)
@@ -205,6 +214,123 @@ func TestDetermineSyncPathPrefersRemoteChallengeOverCache(t *testing.T) {
 	}
 	if orch.challengeData.CS == nil {
 		t.Fatalf("expected CS to be set from API")
+	}
+}
+
+func TestProcessAttachmentsAndFlags_RefreshesOn404AndUsesRefreshedData(t *testing.T) {
+	conf := &config.Config{
+		Event: gzapi.Game{Id: 10},
+	}
+	challengeConf := config.ChallengeYaml{
+		Name:     "web/xss",
+		Category: "web",
+	}
+
+	api := &gzapi.GZAPI{}
+	stale := &gzapi.Challenge{Id: 99, Title: "web/xss", GameId: conf.Event.Id, CS: api}
+
+	refresherCalls := 0
+	refresher := func() (*gzapi.Challenge, error) {
+		refresherCalls++
+		return &gzapi.Challenge{Id: 2, Title: "web/xss"}, nil
+	}
+
+	attachCalls := 0
+	attach := func(_ config.ChallengeYaml, c *gzapi.Challenge, _ *gzapi.GZAPI) error {
+		attachCalls++
+		if c.Id == 99 {
+			return fmt.Errorf("challenge not found: 404")
+		}
+		if c.Id != 2 {
+			t.Fatalf("attachment called with unexpected id %d", c.Id)
+		}
+		return nil
+	}
+
+	flagCalls := 0
+	flagHandler := func(_ *config.Config, _ config.ChallengeYaml, c *gzapi.Challenge) error {
+		flagCalls++
+		if c.Id != 2 {
+			t.Fatalf("flags called with stale id %d", c.Id)
+		}
+		if c.GameId != conf.Event.Id {
+			t.Fatalf("expected GameId %d, got %d", conf.Event.Id, c.GameId)
+		}
+		if c.CS != api {
+			t.Fatalf("expected CS to be set on refreshed challenge")
+		}
+		return nil
+	}
+
+	result, err := processAttachmentsAndFlagsWithHandlers(conf, challengeConf, stale, api, refresher, attach, flagHandler)
+	if err != nil {
+		t.Fatalf("processAttachmentsAndFlagsWithHandlers returned error: %v", err)
+	}
+
+	if attachCalls != 2 {
+		t.Fatalf("expected 2 attachment attempts (with refresh), got %d", attachCalls)
+	}
+	if flagCalls != 1 {
+		t.Fatalf("expected 1 flag update call, got %d", flagCalls)
+	}
+	if refresherCalls != 1 {
+		t.Fatalf("expected refresher to be called once, got %d", refresherCalls)
+	}
+	if result.Id != 2 {
+		t.Fatalf("expected refreshed challenge id 2, got %d", result.Id)
+	}
+	if result.CS != api {
+		t.Fatalf("expected result CS to be set")
+	}
+	if result.GameId != conf.Event.Id {
+		t.Fatalf("expected result GameId %d, got %d", conf.Event.Id, result.GameId)
+	}
+}
+
+func TestProcessAttachmentsAndFlags_SkipsRefreshWhenContextFresh(t *testing.T) {
+	conf := &config.Config{
+		Event: gzapi.Game{Id: 7},
+	}
+	challengeConf := config.ChallengeYaml{
+		Name:     "crypto/block",
+		Category: "crypto",
+	}
+	api := &gzapi.GZAPI{}
+	fresh := &gzapi.Challenge{Id: 5, Title: "crypto/block", GameId: conf.Event.Id, CS: api}
+
+	refresher := func() (*gzapi.Challenge, error) {
+		t.Fatalf("refresher should not be called for fresh context")
+		return nil, nil
+	}
+
+	attachCalled := false
+	attach := func(_ config.ChallengeYaml, c *gzapi.Challenge, _ *gzapi.GZAPI) error {
+		attachCalled = true
+		if c.Id != fresh.Id {
+			t.Fatalf("attachment called with unexpected id %d", c.Id)
+		}
+		return nil
+	}
+
+	flagsCalled := false
+	flagHandler := func(_ *config.Config, _ config.ChallengeYaml, c *gzapi.Challenge) error {
+		flagsCalled = true
+		if c.GameId != conf.Event.Id {
+			t.Fatalf("expected GameId %d, got %d", conf.Event.Id, c.GameId)
+		}
+		return nil
+	}
+
+	result, err := processAttachmentsAndFlagsWithHandlers(conf, challengeConf, fresh, api, refresher, attach, flagHandler)
+	if err != nil {
+		t.Fatalf("processAttachmentsAndFlagsWithHandlers returned error: %v", err)
+	}
+
+	if !attachCalled || !flagsCalled {
+		t.Fatalf("expected both attachments and flags handlers to be called")
+	}
+	if result.Id != fresh.Id {
+		t.Fatalf("expected challenge id %d, got %d", fresh.Id, result.Id)
 	}
 }
 

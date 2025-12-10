@@ -294,9 +294,15 @@ func (gz *GZ) syncWithRetry(retryCount int) error {
 		return fmt.Errorf("API challenges fetch error: %w", err)
 	}
 
-	remoteChallenges, err = challenge.RemoveDuplicateChallenges(remoteChallenges, nil)
+	remoteChallenges, deleted, err := challenge.RemoveDuplicateChallenges(remoteChallenges, nil)
 	if err != nil {
 		return fmt.Errorf("duplicate challenge cleanup error: %w", err)
+	}
+	if deleted {
+		remoteChallenges, err = conf.Event.GetChallenges()
+		if err != nil {
+			return fmt.Errorf("API challenges refetch error after cleanup: %w", err)
+		}
 	}
 
 	// Step 7: Process all challenges concurrently

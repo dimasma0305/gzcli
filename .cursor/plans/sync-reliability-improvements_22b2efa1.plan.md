@@ -4,19 +4,19 @@ overview: Quick, high-level fixes to improve challenge sync reliability (attachm
 todos:
   - id: fresh-context
     content: Use fresh remote challenge data before attachments/flags
-    status: pending
+    status: completed
   - id: attachment-retry
     content: Improve attachment 404 handling/log context
-    status: pending
+    status: completed
   - id: tests-stale-cache
     content: Add tests for stale cache vs live data path
-    status: pending
+    status: completed
   - id: refetch-after-dedupe
     content: Refetch challenges after duplicate deletion
-    status: pending
+    status: completed
   - id: flags-refresh
     content: Refresh challenge after flag mutations
-    status: pending
+    status: completed
 ---
 
 # Sync Reliability Improvements

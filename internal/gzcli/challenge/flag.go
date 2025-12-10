@@ -17,6 +17,8 @@ func IsFlagExist(flag string, flags []gzapi.Flag) bool {
 
 // UpdateChallengeFlags synchronizes challenge flags between configuration and API
 func UpdateChallengeFlags(conf *config.Config, challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge) error {
+	mutated := false
+
 	for _, flag := range challengeData.Flags {
 		if !IsExistInArray(flag.Flag, challengeConf.Flags) {
 			flag.GameId = conf.Event.Id
@@ -25,6 +27,7 @@ func UpdateChallengeFlags(conf *config.Config, challengeConf config.ChallengeYam
 			if err := flag.Delete(); err != nil {
 				return err
 			}
+			mutated = true
 		}
 	}
 
@@ -38,10 +41,11 @@ func UpdateChallengeFlags(conf *config.Config, challengeConf config.ChallengeYam
 				return err
 			}
 			isCreatingNewFlag = true
+			mutated = true
 		}
 	}
 
-	if isCreatingNewFlag {
+	if isCreatingNewFlag || mutated {
 		newChallData, err := challengeData.Refresh()
 		if err != nil {
 			return err

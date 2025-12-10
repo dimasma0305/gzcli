@@ -21,14 +21,14 @@ func deleteChallenge(c *gzapi.Challenge) error {
 
 // RemoveDuplicateChallenges deletes duplicate challenges (same title) from the remote list.
 // It keeps the lowest-ID challenge for each title and deletes the rest using the provided deleteFunc.
-// Returns the deduplicated slice that should be used for subsequent sync operations.
-func RemoveDuplicateChallenges(challenges []gzapi.Challenge, deleteFunc DeleteFunc) ([]gzapi.Challenge, error) {
+// Returns the deduplicated slice that should be used for subsequent sync operations, and a flag indicating if deletions occurred.
+func RemoveDuplicateChallenges(challenges []gzapi.Challenge, deleteFunc DeleteFunc) ([]gzapi.Challenge, bool, error) {
 	if deleteFunc == nil {
 		deleteFunc = deleteChallenge
 	}
 
 	if len(challenges) == 0 {
-		return challenges, nil
+		return challenges, false, nil
 	}
 
 	byTitle := make(map[string]gzapi.Challenge, len(challenges))
@@ -68,7 +68,7 @@ func RemoveDuplicateChallenges(challenges []gzapi.Challenge, deleteFunc DeleteFu
 	}
 
 	if len(deleteErrs) > 0 {
-		return nil, fmt.Errorf("duplicate cleanup errors: %s", strings.Join(deleteErrs, "; "))
+		return nil, true, fmt.Errorf("duplicate cleanup errors: %s", strings.Join(deleteErrs, "; "))
 	}
 
 	deduped := make([]gzapi.Challenge, 0, len(byTitle))
@@ -76,7 +76,7 @@ func RemoveDuplicateChallenges(challenges []gzapi.Challenge, deleteFunc DeleteFu
 		deduped = append(deduped, c)
 	}
 
-	return deduped, nil
+	return deduped, len(duplicates) > 0, nil
 }
 
 func IsChallengeExist(challengeName string, challenges []gzapi.Challenge) bool {
@@ -100,6 +100,10 @@ func findChallengeByTitle(challenges []gzapi.Challenge, title string) *gzapi.Cha
 	return nil
 }
 
+type attachmentHandler func(config.ChallengeYaml, *gzapi.Challenge, *gzapi.GZAPI) error
+type flagHandler func(*config.Config, config.ChallengeYaml, *gzapi.Challenge) error
+type challengeRefresher func() (*gzapi.Challenge, error)
+
 func IsExistInArray(value string, array []string) bool {
 	for _, v := range array {
 		if v == value {
@@ -107,6 +111,36 @@ func IsExistInArray(value string, array []string) bool {
 		}
 	}
 	return false
+}
+
+func ensureFreshChallengeData(conf *config.Config, challengeConf config.ChallengeYaml, api *gzapi.GZAPI, challengeData *gzapi.Challenge, refresher challengeRefresher) (*gzapi.Challenge, error) {
+	if challengeData != nil && challengeData.CS != nil && challengeData.GameId == conf.Event.Id && challengeData.Id != 0 {
+		return challengeData, nil
+	}
+
+	if refresher == nil {
+		return nil, fmt.Errorf("challenge refresher is nil")
+	}
+
+	refreshed, err := refresher()
+	if err != nil {
+		log.Error("Failed to refresh challenge %s: %v", challengeConf.Name, err)
+		return nil, fmt.Errorf("refresh challenge %s: %w", challengeConf.Name, err)
+	}
+
+	refreshed.CS = api
+	refreshed.GameId = conf.Event.Id
+	refreshed.IsEnabled = nil
+
+	return refreshed, nil
+}
+
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errLower := strings.ToLower(err.Error())
+	return strings.Contains(errLower, "404") || strings.Contains(errLower, "not found")
 }
 
 // buildChallengeCacheKey constructs the cache key for a challenge
@@ -330,7 +364,9 @@ func (s *SyncOrchestrator) determineSyncPath() error {
 
 // processAttachmentsAndFlags handles attachments and flags for the challenge.
 func (s *SyncOrchestrator) processAttachmentsAndFlags() error {
-	return processAttachmentsAndFlags(s.conf, s.challengeConf, s.challengeData, s.api)
+	var err error
+	s.challengeData, err = processAttachmentsAndFlags(s.conf, s.challengeConf, s.challengeData, s.api)
+	return err
 }
 
 // mergeAndupdate merges challenge data and updates the challenge if needed.
@@ -350,20 +386,46 @@ func SyncChallengeWithExisting(conf *config.Config, challengeConf config.Challen
 }
 
 // processAttachmentsAndFlags handles attachments and flags for a challenge
-func processAttachmentsAndFlags(conf *config.Config, challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
-	err := HandleChallengeAttachments(challengeConf, challengeData, api)
+func processAttachmentsAndFlags(conf *config.Config, challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) (*gzapi.Challenge, error) {
+	refresher := func() (*gzapi.Challenge, error) {
+		return conf.Event.GetChallenge(challengeConf.Name)
+	}
+	return processAttachmentsAndFlagsWithHandlers(conf, challengeConf, challengeData, api, refresher, HandleChallengeAttachments, UpdateChallengeFlags)
+}
+
+func processAttachmentsAndFlagsWithHandlers(conf *config.Config, challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI, refresher challengeRefresher, attach attachmentHandler, updateFlags flagHandler) (*gzapi.Challenge, error) {
+	current, err := ensureFreshChallengeData(conf, challengeConf, api, challengeData, refresher)
 	if err != nil {
-		log.Error("Failed to handle attachments for %s: %v", challengeConf.Name, err)
-		return fmt.Errorf("attachment handling failed for %s: %w", challengeConf.Name, err)
+		return nil, err
 	}
 
-	err = UpdateChallengeFlags(conf, challengeConf, challengeData)
-	if err != nil {
+	if err := attach(challengeConf, current, api); err != nil {
+		log.Error("Failed to handle attachments for %s (game %d challenge %d): %v", challengeConf.Name, current.GameId, current.Id, err)
+		if isNotFoundError(err) {
+			refreshed, refreshErr := refresher()
+			if refreshErr != nil {
+				return nil, fmt.Errorf("attachment handling failed for %s: %w", challengeConf.Name, err)
+			}
+			refreshed.CS = api
+			refreshed.GameId = conf.Event.Id
+			refreshed.IsEnabled = nil
+
+			if retryErr := attach(challengeConf, refreshed, api); retryErr != nil {
+				log.Error("Retry attachment failed for %s (game %d challenge %d): %v", challengeConf.Name, refreshed.GameId, refreshed.Id, retryErr)
+				return nil, fmt.Errorf("attachment handling failed for %s after refresh: %w", challengeConf.Name, retryErr)
+			}
+			current = refreshed
+		} else {
+			return nil, fmt.Errorf("attachment handling failed for %s: %w", challengeConf.Name, err)
+		}
+	}
+
+	if err := updateFlags(conf, challengeConf, current); err != nil {
 		log.Error("Failed to update flags for %s: %v", challengeConf.Name, err)
-		return fmt.Errorf("update flags for %s: %w", challengeConf.Name, err)
+		return nil, fmt.Errorf("update flags for %s: %w", challengeConf.Name, err)
 	}
 
-	return nil
+	return current, nil
 }
 
 // updateChallengeWithRetry attempts to update a challenge and retries on 404

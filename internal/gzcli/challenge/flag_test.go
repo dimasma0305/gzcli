@@ -113,6 +113,14 @@ func TestUpdateChallengeFlags_DeleteOld(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{"deleted": true}`))
 		},
+		"/api/edit/games/1/challenges/5": func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"id": 5,
+				"title": "Test",
+				"flags": [{"id": 11, "flag": "FLAG{keep}"}]
+			}`))
+		},
 	})
 	defer cleanup()
 
