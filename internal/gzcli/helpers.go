@@ -33,7 +33,7 @@ func genStructureWrapper(challenges []interface{ GetCwd() string }) error {
 
 // RunScripts executes scripts for all challenges using a worker pool
 // Returns any per-challenge failures for summary reporting.
-func RunScripts(scriptName string, eventName string) ([]script.ScriptFailure, error) {
+func RunScripts(scriptName string, eventName string) ([]script.Failure, error) {
 	// Get config for the specific event
 	configPkg, err := config.GetConfigWithEvent(&gzapi.GZAPI{}, eventName, GetCache, setCache, deleteCacheWrapper, createNewGameWrapper)
 	if err != nil {

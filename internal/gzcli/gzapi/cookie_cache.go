@@ -30,7 +30,7 @@ type storedCookie struct {
 	Domain   string        `yaml:"domain"`
 	Expires  time.Time     `yaml:"expires"`
 	Secure   bool          `yaml:"secure"`
-	HttpOnly bool          `yaml:"httpOnly"`
+	HTTPOnly bool          `yaml:"httpOnly"`
 	SameSite http.SameSite `yaml:"sameSite"`
 }
 
@@ -139,20 +139,6 @@ func (s *cookieStore) save(jar *cookiejar.Jar) error {
 	return nil
 }
 
-func (s *cookieStore) hasValidCookies(jar *cookiejar.Jar) bool {
-	if s == nil || jar == nil {
-		return false
-	}
-
-	now := time.Now()
-	for _, c := range jar.Cookies(s.baseURL) {
-		if c.Expires.IsZero() || c.Expires.After(now) {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *cookieStore) newJar() *cookiejar.Jar {
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
@@ -170,7 +156,7 @@ func storedCookieFromHTTPCookie(c *http.Cookie) storedCookie {
 		Domain:   c.Domain,
 		Expires:  c.Expires,
 		Secure:   c.Secure,
-		HttpOnly: c.HttpOnly,
+		HTTPOnly: c.HttpOnly,
 		SameSite: c.SameSite,
 	}
 }
@@ -183,7 +169,7 @@ func (c storedCookie) toHTTPCookie() *http.Cookie {
 		Domain:   c.Domain,
 		Expires:  c.Expires,
 		Secure:   c.Secure,
-		HttpOnly: c.HttpOnly,
+		HttpOnly: c.HTTPOnly,
 		SameSite: c.SameSite,
 	}
 }

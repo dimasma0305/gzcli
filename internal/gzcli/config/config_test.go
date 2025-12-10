@@ -304,6 +304,7 @@ func TestGetConfig_WithValidCache(t *testing.T) {
 
 	if config == nil {
 		t.Fatal("Expected non-nil config")
+		return
 	}
 
 	// Should use cached game ID

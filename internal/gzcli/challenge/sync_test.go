@@ -149,7 +149,7 @@ func TestHandleExistingChallengeSetsGameId(t *testing.T) {
 		Event: gzapi.Game{Id: 42},
 	}
 	// cache returns challenge without GameId/CS
-	getCache := func(key string, v interface{}) error {
+	getCache := func(_ string, v interface{}) error {
 		ptr, ok := v.(**gzapi.Challenge)
 		if !ok {
 			t.Fatalf("unexpected cache type")

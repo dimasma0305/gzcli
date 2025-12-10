@@ -33,6 +33,7 @@ func TestInit_Success(t *testing.T) {
 
 	if api == nil {
 		t.Fatal("Init() returned nil API")
+		return
 	}
 
 	if api.Url != server.URL {
@@ -589,6 +590,7 @@ func TestRegister_Success(t *testing.T) {
 
 	if api == nil {
 		t.Fatal("Register() returned nil API")
+		return
 	}
 
 	if api.Creds.Username != regForm.Username {

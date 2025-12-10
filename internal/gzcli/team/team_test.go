@@ -349,6 +349,7 @@ func TestCreateTeamAndUser_NewUser(t *testing.T) {
 
 	if result == nil {
 		t.Fatal("Expected non-nil result")
+		return
 	}
 
 	if result.Email != "john@example.com" {

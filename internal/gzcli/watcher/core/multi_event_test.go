@@ -1608,6 +1608,7 @@ func TestChallengeMapping_DatabasePersistence(t *testing.T) {
 
 	if mapping == nil {
 		t.Fatal("Mapping should persist across database restarts")
+		return
 	}
 
 	if mapping.ChallengeID != 12345 {

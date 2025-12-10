@@ -1,4 +1,4 @@
-//nolint:revive,unparam // Test file with intentionally unused parameters for interface compatibility
+//nolint:revive // Test file with intentionally unused parameters for interface compatibility
 package script
 
 import (
@@ -221,27 +221,19 @@ func TestRunScripts_Concurrency(t *testing.T) {
 	}
 
 	var executionCount int32
-	var wg sync.WaitGroup
-
 	runScript := func(conf ChallengeConf, scriptName string) error {
 		atomic.AddInt32(&executionCount, 1)
 		time.Sleep(10 * time.Millisecond) // Simulate work
 		return nil
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		failures, err := RunScripts("build", challenges, runScript)
-		if err != nil {
-			t.Errorf("RunScripts() failed: %v", err)
-		}
-		if len(failures) != 0 {
-			t.Fatalf("expected 0 failures, got %d", len(failures))
-		}
-	}()
-
-	wg.Wait()
+	failures, err := RunScripts("build", challenges, runScript)
+	if err != nil {
+		t.Errorf("RunScripts() failed: %v", err)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("expected 0 failures, got %d", len(failures))
+	}
 
 	//nolint:gosec // G115: Test code, conversion is safe for test data
 	if atomic.LoadInt32(&executionCount) != int32(len(challenges)) {

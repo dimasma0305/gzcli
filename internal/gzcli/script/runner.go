@@ -24,8 +24,8 @@ import (
 
 const maxParallelScripts = 10
 
-// ScriptFailure captures a failed script execution for a specific challenge.
-type ScriptFailure struct {
+// Failure captures a failed script execution for a specific challenge.
+type Failure struct {
 	Challenge string
 	Err       error
 }
@@ -44,9 +44,9 @@ type ScriptValue interface {
 }
 
 // RunScripts executes scripts with a worker pool and returns all failures (it does not stop at the first error).
-func RunScripts(script string, challengesConf []ChallengeConf, runScript func(ChallengeConf, string) error) ([]ScriptFailure, error) {
+func RunScripts(script string, challengesConf []ChallengeConf, runScript func(ChallengeConf, string) error) ([]Failure, error) {
 	workChan := make(chan ChallengeConf, len(challengesConf))
-	failChan := make(chan ScriptFailure, len(challengesConf))
+	failChan := make(chan Failure, len(challengesConf))
 	var wg sync.WaitGroup
 
 	for i := 0; i < maxParallelScripts; i++ {
@@ -55,7 +55,7 @@ func RunScripts(script string, challengesConf []ChallengeConf, runScript func(Ch
 			defer wg.Done()
 			for challengeConf := range workChan {
 				if err := runScript(challengeConf, script); err != nil {
-					failChan <- ScriptFailure{
+					failChan <- Failure{
 						Challenge: challengeConf.GetName(),
 						Err:       fmt.Errorf("script error in %s: %w", challengeConf.GetName(), err),
 					}
@@ -74,7 +74,7 @@ func RunScripts(script string, challengesConf []ChallengeConf, runScript func(Ch
 	wg.Wait()
 	close(failChan)
 
-	failures := make([]ScriptFailure, 0, len(failChan))
+	failures := make([]Failure, 0, len(failChan))
 	for f := range failChan {
 		failures = append(failures, f)
 	}
