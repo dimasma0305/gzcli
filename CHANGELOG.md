@@ -1,3 +1,9 @@
+## [1.20.0](https://github.com/dimasma0305/gzcli/compare/v1.19.0...v1.20.0) (2025-12-17)
+
+### Features
+
+* Dynamically set `RootFolder` in `docker-compose.yml` and add a test to verify its presence. ([c46821e](https://github.com/dimasma0305/gzcli/commit/c46821e0a6e10f9750a451d6ebb57c8e062f5e89))
+
 ## [1.19.0](https://github.com/dimasma0305/gzcli/compare/v1.18.0...v1.19.0) (2025-12-17)
 
 ### Features
