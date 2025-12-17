@@ -387,7 +387,7 @@ func (gz *GZ) MustScoreboard2CTFTimeFeed() *event.CTFTimeFeed {
 
 // MustCreateTeams creates teams or fatally logs error
 func (gz *GZ) MustCreateTeams(url string, sendEmail bool) {
-	if err := gz.CreateTeams(url, sendEmail); err != nil {
+	if err := gz.CreateTeams(url, sendEmail, 0, ""); err != nil {
 		log.Fatal("Team creation failed: ", err)
 	}
 }
@@ -467,7 +467,7 @@ func (gz *GZ) MustStopWatcher() {
 }
 
 // CreateTeams creates teams from a CSV file
-func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool) error {
+func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCode string) error {
 	// Step 1: Get configuration
 	conf, err := getConfigWrapper(gz.api)
 	if err != nil {
@@ -487,7 +487,11 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool) error {
 	}
 
 	// Step 4: Parse CSV and create teams
-	configAdapter := &teamConfigAdapter{conf: conf}
+	configAdapter := &teamConfigAdapter{
+		conf:       conf,
+		eventID:    eventID,
+		inviteCode: inviteCode,
+	}
 	if err := team.ParseCSV(csvData, configAdapter, teamsCredsCache, isSendEmail, team.CreateTeamAndUser, generateUsername, setCache); err != nil {
 		return fmt.Errorf("failed to parse CSV and create teams: %w", err)
 	}
@@ -505,7 +509,9 @@ func (c challengeDataImpl) GetCwd() string {
 }
 
 type teamConfigAdapter struct {
-	conf *config.Config
+	conf       *config.Config
+	eventID    int
+	inviteCode string
 }
 
 func (t *teamConfigAdapter) GetUrl() string { //nolint:revive // Method name required by team.ConfigInterface
@@ -513,6 +519,9 @@ func (t *teamConfigAdapter) GetUrl() string { //nolint:revive // Method name req
 }
 
 func (t *teamConfigAdapter) GetEventId() int { //nolint:revive // Method name required by team.ConfigInterface
+	if t.eventID != 0 {
+		return t.eventID
+	}
 	return t.conf.Event.Id
 }
 
@@ -521,6 +530,9 @@ func (t *teamConfigAdapter) GetEventTitle() string {
 }
 
 func (t *teamConfigAdapter) GetInviteCode() string {
+	if t.inviteCode != "" {
+		return t.inviteCode
+	}
 	return t.conf.Event.InviteCode
 }
 

@@ -37,6 +37,7 @@ type CTFInfo struct {
 	URL            string
 	Username       string
 	Password       string
+	Workspace      string
 }
 
 // EventInfo contains configuration information for event template generation
@@ -57,13 +58,14 @@ func randomize(n int) string {
 
 // CTFTemplate generates a complete CTF template structure at the destination
 func CTFTemplate(destination string, info any) []error {
-	var url, publicEntry, discordWebhook string
+	var url, publicEntry, discordWebhook, workspace string
 
 	// Extract values from info map
 	if infoMap, ok := info.(map[string]string); ok {
 		url = infoMap["url"]
 		publicEntry = infoMap["publicEntry"]
 		discordWebhook = infoMap["discordWebhook"]
+		workspace = infoMap["workspace"]
 	}
 
 	// Generate server configuration (.gzctf/)
@@ -74,6 +76,7 @@ func CTFTemplate(destination string, info any) []error {
 		URL:            url,
 		PublicEntry:    publicEntry,
 		DiscordWebhook: discordWebhook,
+		Workspace:      workspace,
 	}
 
 	// Generate .gzctf/ directory with server files

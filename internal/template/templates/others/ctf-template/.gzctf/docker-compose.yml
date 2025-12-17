@@ -1,14 +1,68 @@
-version: "3.0"
+name: '{{.Workspace}}'
+
 services:
+  gzcli:
+    build:
+      context: ./manager
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - "/root/homelab/ctf:/root/homelab/ctf"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    environment:
+      - "WORKDIR=/root/homelab/ctf"
+    depends_on:
+      gzctf:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+
+      # service ports
+      - "traefik.http.services.gzcli.loadbalancer.server.port=3000"
+
+      # http router
+      - "traefik.http.routers.gzcli-http.rule=Host(`gzcli.{{.PublicEntry}}`)"
+      - "traefik.http.routers.gzcli-http.entrypoints=web"
+      - "traefik.http.routers.gzcli-http.service=gzcli"
+      - "traefik.http.routers.gzcli-http.middlewares=https-redirect@docker"
+
+      # https router
+      - "traefik.http.routers.gzcli-https.rule=Host(`gzcli.{{.PublicEntry}}`)"
+      - "traefik.http.routers.gzcli-https.entrypoints=websecure"
+      - "traefik.http.routers.gzcli-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gzcli-https.service=gzcli"
+
+    networks:
+      app_net:
+      traefik:
+  gzcli-bot:
+    build:
+      context: ./manager
+      dockerfile: Dockerfile
+    command: |
+      gzcli bot \
+        --webhook "$WEBHOOK_URL" \
+        --db-host "$DB_HOST" \
+        --db-port "$DB_PORT" \
+        --db-user "$DB_USER" \
+        --db-password "$DB_PASSWORD" \
+        --db-name "$DB_NAME"
+    networks:
+      app_net:
   gzctf:
     image: gztime/gzctf:latest
     restart: always
     environment:
       - "LC_ALL=en_US.UTF-8"
-    ports:
-      - "8080:8080"
-    privileged: true
-    userns_mode: host
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     volumes:
       - "gzctf-files:/app/files"
       - "./appsettings.json:/app/appsettings.json:ro"
@@ -18,33 +72,45 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "sh", "-c", "wget -q --spider --timeout=5 http://localhost:8080/ || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     networks:
       traefik:
       app_net:
+      challenges:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.services.gzctf.loadbalancer.server.port=8080"
+      # docker network to use
+      - "traefik.docker.network=traefik"
+
+      # Service ports
+      - "traefik.http.services.gzctf-https.loadbalancer.server.port=8080"
+      - "traefik.http.services.gzctf-http.loadbalancer.server.port=8080"
+
       # HTTPS router
-      - "traefik.http.routers.https.rule=Host(`{{.PublicEntry}}`)"
-      - "traefik.http.routers.https.entrypoints=websecure"
-      - "traefik.http.routers.https.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.https.service=gzctf"
+      - "traefik.http.routers.gzctf-https.rule=Host(`{{.PublicEntry}}`)"
+      - "traefik.http.routers.gzctf-https.entrypoints=websecure"
+      - "traefik.http.routers.gzctf-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gzctf-https.service=gzctf-https"
+
       # HTTP router
-      - "traefik.http.routers.http.rule=Host(`{{.PublicEntry}}`)"
-      - "traefik.http.routers.http.entrypoints=web"
-      - "traefik.http.routers.http.service=gzctf"
+      - "traefik.http.routers.gzctf-http.rule=Host(`{{.PublicEntry}}`)"
+      - "traefik.http.routers.gzctf-http.entrypoints=web"
+      - "traefik.http.routers.gzctf-http.service=gzctf-http"
+      # use redirect middleware to force HTTPS
+      - "traefik.http.routers.gzctf-http.middlewares=https-redirect@docker"
 
-  gzctf-bot:
-    build: bot
-    restart: always
-    environment:
-      GZCTF_DISCORD_WEBHOOK: ""
-      POSTGRES_PASSWORD: postgres
-    networks:
-      app_net:
-
+      # Middleware definition
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=false"
+      - "traefik.enable=true"
+      - "traefik.http.services.gzctf.loadbalancer.server.port=8080"
   db:
-    image: postgres:alpine
+    image: postgres:17
     restart: always
     environment:
       - "POSTGRES_PASSWORD=postgres"
@@ -53,7 +119,7 @@ services:
     networks:
       app_net:
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -64,7 +130,7 @@ services:
     networks:
       app_net:
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -92,45 +158,17 @@ services:
       - "./letsencrypt:/letsencrypt"
     networks:
       traefik:
+        ipv4_address: 172.30.0.2
       app_net:
         ipv4_address: 172.28.0.2
     depends_on:
       - gzctf
 
-  portainer:
-    image: portainer/portainer-ce:alpine
-    command: -H unix:///var/run/docker.sock
-    restart: always
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
-    networks:
-      traefik:
-    labels:
-      # Frontend
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`portainer.{{.PublicEntry}}`)"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.services.frontend.loadbalancer.server.port=9000"
-      - "traefik.http.routers.frontend.service=frontend"
-      - "traefik.http.routers.frontend.tls.certresolver=leresolver"
-      
-      # Edge
-      - "traefik.http.routers.edge.rule=Host(`edge.{{.PublicEntry}}`)"
-      - "traefik.http.routers.edge.entrypoints=websecure"
-      - "traefik.http.services.edge.loadbalancer.server.port=8000"
-      - "traefik.http.routers.edge.service=edge"
-      - "traefik.http.routers.edge.tls.certresolver=leresolver"
-
-      # tls
-      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.edge.tls.certresolver=letsencrypt"
-
 volumes:
   gzctf-files:
   postgres-data:
-  portainer_data:
-  
+
+
 networks:
   traefik:
     name: traefik

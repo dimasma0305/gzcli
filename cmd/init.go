@@ -11,6 +11,7 @@ var (
 	initURL            string
 	initPublicEntry    string
 	initDiscordWebhook string
+	initWorkspace      string
 )
 
 var initCmd = &cobra.Command{
@@ -50,6 +51,7 @@ After initialization, create your first event with 'gzcli event create'.`,
 			"url":            initURL,
 			"publicEntry":    initPublicEntry,
 			"discordWebhook": initDiscordWebhook,
+			"workspace":      initWorkspace,
 		}
 
 		if errors := other.CTFTemplate(".", initInfo); errors != nil {
@@ -75,4 +77,5 @@ func init() {
 	initCmd.Flags().StringVar(&initURL, "url", "", "URL for the CTF instance (required)")
 	initCmd.Flags().StringVar(&initPublicEntry, "public-entry", "", "Public entry point for the CTF (required)")
 	initCmd.Flags().StringVar(&initDiscordWebhook, "discord-webhook", "", "Discord webhook URL for notifications (optional)")
+	initCmd.Flags().StringVar(&initWorkspace, "workspace", "", "Workspace name (optional)")
 }

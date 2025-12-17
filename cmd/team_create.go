@@ -8,7 +8,9 @@ import (
 )
 
 var (
-	createSendEmail bool
+	createSendEmail  bool
+	createEventID    int
+	createInviteCode string
 )
 
 var teamCreateCmd = &cobra.Command{
@@ -26,7 +28,10 @@ Example:
   gzcli team create teams.csv
 
   # Create teams and send registration emails
-  gzcli team create teams.csv --send-email`,
+  gzcli team create teams.csv --send-email
+
+  # Create teams into specific event
+  gzcli team create teams.csv --event-id 1 --invite-code "secret"`,
 	Args: cobra.ExactArgs(1),
 	Run: func(_ *cobra.Command, args []string) {
 		csvFile := args[0]
@@ -37,7 +42,7 @@ Example:
 			return
 		}
 
-		if err := gz.CreateTeams(csvFile, createSendEmail); err != nil {
+		if err := gz.CreateTeams(csvFile, createSendEmail, createEventID, createInviteCode); err != nil {
 			log.Fatal(err)
 		}
 
@@ -49,4 +54,6 @@ func init() {
 	teamCmd.AddCommand(teamCreateCmd)
 
 	teamCreateCmd.Flags().BoolVar(&createSendEmail, "send-email", false, "Send registration emails to teams")
+	teamCreateCmd.Flags().IntVar(&createEventID, "event-id", 0, "Specify the event ID to add teams to")
+	teamCreateCmd.Flags().StringVar(&createInviteCode, "invite-code", "", "Specify the invite code for the event")
 }
