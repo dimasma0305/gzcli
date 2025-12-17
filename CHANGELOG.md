@@ -1,3 +1,9 @@
+## [1.18.0](https://github.com/dimasma0305/gzcli/compare/v1.17.1...v1.18.0) (2025-12-17)
+
+### Features
+
+* Introduce `gzcli` manager service with Docker integration, update CTF template configurations, and enhance `team create` command with event and invite code options. ([e5e5b5f](https://github.com/dimasma0305/gzcli/commit/e5e5b5f9fdb7187834eed38e18f71e3764a72c59))
+
 ## [1.17.1](https://github.com/dimasma0305/gzcli/compare/v1.17.0...v1.17.1) (2025-12-10)
 
 ### Code Refactoring
