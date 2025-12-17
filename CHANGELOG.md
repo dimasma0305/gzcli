@@ -1,3 +1,9 @@
+## [1.19.0](https://github.com/dimasma0305/gzcli/compare/v1.18.0...v1.19.0) (2025-12-17)
+
+### Features
+
+* remove bot service and its related files from ctf-template ([8dda905](https://github.com/dimasma0305/gzcli/commit/8dda90574a6be6c86ace518a63a2c3382ac7696c))
+
 ## [1.18.0](https://github.com/dimasma0305/gzcli/compare/v1.17.1...v1.18.0) (2025-12-17)
 
 ### Features
