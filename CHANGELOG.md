@@ -1,3 +1,9 @@
+## [1.22.0](https://github.com/dimasma0305/gzcli/compare/v1.21.0...v1.22.0) (2025-12-17)
+
+### Features
+
+* Parameterize Traefik service, router, and middleware names with `{{.Workspace}}` for workspace-specific routing. ([60845a3](https://github.com/dimasma0305/gzcli/commit/60845a317512735bea8813780a993a7fdaf9f936))
+
 ## [1.21.0](https://github.com/dimasma0305/gzcli/compare/v1.20.0...v1.21.0) (2025-12-17)
 
 ### Features
