@@ -19,19 +19,19 @@ services:
       - "traefik.docker.network=traefik"
 
       # service ports
-      - "traefik.http.services.gzcli.loadbalancer.server.port=3000"
+      - "traefik.http.services.gzcli-{{.Workspace}}.loadbalancer.server.port=3000"
 
       # http router
-      - "traefik.http.routers.gzcli-http.rule=Host(`gzcli.{{.PublicEntry}}`)"
-      - "traefik.http.routers.gzcli-http.entrypoints=web"
-      - "traefik.http.routers.gzcli-http.service=gzcli"
-      - "traefik.http.routers.gzcli-http.middlewares=https-redirect@docker"
+      - "traefik.http.routers.gzcli-{{.Workspace}}-http.rule=Host(`gzcli.{{.PublicEntry}}`)"
+      - "traefik.http.routers.gzcli-{{.Workspace}}-http.entrypoints=web"
+      - "traefik.http.routers.gzcli-{{.Workspace}}-http.service=gzcli-{{.Workspace}}"
+      - "traefik.http.routers.gzcli-{{.Workspace}}-http.middlewares=https-redirect-{{.Workspace}}@docker"
 
       # https router
-      - "traefik.http.routers.gzcli-https.rule=Host(`gzcli.{{.PublicEntry}}`)"
-      - "traefik.http.routers.gzcli-https.entrypoints=websecure"
-      - "traefik.http.routers.gzcli-https.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.gzcli-https.service=gzcli"
+      - "traefik.http.routers.gzcli-{{.Workspace}}-https.rule=Host(`gzcli.{{.PublicEntry}}`)"
+      - "traefik.http.routers.gzcli-{{.Workspace}}-https.entrypoints=websecure"
+      - "traefik.http.routers.gzcli-{{.Workspace}}-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gzcli-{{.Workspace}}-https.service=gzcli-{{.Workspace}}"
 
     networks:
       app_net:
@@ -88,28 +88,28 @@ services:
       - "traefik.docker.network=traefik"
 
       # Service ports
-      - "traefik.http.services.gzctf-https.loadbalancer.server.port=8080"
-      - "traefik.http.services.gzctf-http.loadbalancer.server.port=8080"
+      - "traefik.http.services.gzctf-{{.Workspace}}-https.loadbalancer.server.port=8080"
+      - "traefik.http.services.gzctf-{{.Workspace}}-http.loadbalancer.server.port=8080"
 
       # HTTPS router
-      - "traefik.http.routers.gzctf-https.rule=Host(`{{.PublicEntry}}`)"
-      - "traefik.http.routers.gzctf-https.entrypoints=websecure"
-      - "traefik.http.routers.gzctf-https.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.gzctf-https.service=gzctf-https"
+      - "traefik.http.routers.gzctf-{{.Workspace}}-https.rule=Host(`{{.PublicEntry}}`)"
+      - "traefik.http.routers.gzctf-{{.Workspace}}-https.entrypoints=websecure"
+      - "traefik.http.routers.gzctf-{{.Workspace}}-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gzctf-{{.Workspace}}-https.service=gzctf-{{.Workspace}}-https"
 
       # HTTP router
-      - "traefik.http.routers.gzctf-http.rule=Host(`{{.PublicEntry}}`)"
-      - "traefik.http.routers.gzctf-http.entrypoints=web"
-      - "traefik.http.routers.gzctf-http.service=gzctf-http"
+      - "traefik.http.routers.gzctf-{{.Workspace}}-http.rule=Host(`{{.PublicEntry}}`)"
+      - "traefik.http.routers.gzctf-{{.Workspace}}-http.entrypoints=web"
+      - "traefik.http.routers.gzctf-{{.Workspace}}-http.service=gzctf-{{.Workspace}}-http"
 
       # use redirect middleware to force HTTPS
-      - "traefik.http.routers.gzctf-http.middlewares=https-redirect@docker"
+      - "traefik.http.routers.gzctf-{{.Workspace}}-http.middlewares=https-redirect-{{.Workspace}}@docker"
 
       # Middleware definition
-      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=false"
+      - "traefik.http.middlewares.https-redirect-{{.Workspace}}.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.https-redirect-{{.Workspace}}.redirectscheme.permanent=false"
       - "traefik.enable=true"
-      - "traefik.http.services.gzctf.loadbalancer.server.port=8080"
+      - "traefik.http.services.gzctf-{{.Workspace}}.loadbalancer.server.port=8080"
   db:
     image: postgres:17
     restart: always
