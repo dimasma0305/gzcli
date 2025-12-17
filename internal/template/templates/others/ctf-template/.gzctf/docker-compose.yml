@@ -10,7 +10,7 @@ services:
       - "{{.RootFolder}}:{{.RootFolder}}"
       - "/var/run/docker.sock:/var/run/docker.sock"
     environment:
-      - "WORKDIR=/root/homelab/ctf"
+      - "WORKDIR={{.RootFolder}}"
     depends_on:
       gzctf:
         condition: service_healthy
