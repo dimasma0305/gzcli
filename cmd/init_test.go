@@ -39,7 +39,6 @@ func TestCTFTemplateStructure(t *testing.T) {
 	// Define expected structure (no events directory should be created)
 	expectedDirs := []string{
 		".gzctf",
-		".gzctf/bot",
 	}
 
 	expectedFiles := []string{
@@ -54,10 +53,6 @@ func TestCTFTemplateStructure(t *testing.T) {
 		".gzctf/init_admin.sh",
 		".gzctf/expose_docker.sh",
 		".gzctf/favicon.ico",
-		".gzctf/bot/main.go",
-		".gzctf/bot/go.mod",
-		".gzctf/bot/go.sum",
-		".gzctf/bot/Dockerfile",
 	}
 
 	// Check directories
