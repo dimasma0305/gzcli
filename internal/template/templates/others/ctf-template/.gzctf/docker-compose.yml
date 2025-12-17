@@ -101,6 +101,7 @@ services:
       - "traefik.http.routers.gzctf-http.rule=Host(`{{.PublicEntry}}`)"
       - "traefik.http.routers.gzctf-http.entrypoints=web"
       - "traefik.http.routers.gzctf-http.service=gzctf-http"
+
       # use redirect middleware to force HTTPS
       - "traefik.http.routers.gzctf-http.middlewares=https-redirect@docker"
 
