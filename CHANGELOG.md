@@ -1,3 +1,9 @@
+## [1.21.0](https://github.com/dimasma0305/gzcli/compare/v1.20.0...v1.21.0) (2025-12-17)
+
+### Features
+
+* template WORKDIR in docker-compose.yml for dynamic root folder ([50ccd37](https://github.com/dimasma0305/gzcli/commit/50ccd3745b55a8911952bfa399040909e90b27ad))
+
 ## [1.20.0](https://github.com/dimasma0305/gzcli/compare/v1.19.0...v1.20.0) (2025-12-17)
 
 ### Features
