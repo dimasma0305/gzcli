@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
 
 	"github.com/dimasma0305/gzcli/internal/template"
 )
@@ -38,6 +39,7 @@ type CTFInfo struct {
 	Username       string
 	Password       string
 	Workspace      string
+	RootFolder     string
 }
 
 // EventInfo contains configuration information for event template generation
@@ -69,6 +71,11 @@ func CTFTemplate(destination string, info any) []error {
 	}
 
 	// Generate server configuration (.gzctf/)
+	absDest, err := filepath.Abs(destination)
+	if err != nil {
+		absDest = destination
+	}
+
 	ctfInfo := &CTFInfo{
 		XorKey:         randomize(16),
 		Username:       "admin",
@@ -77,6 +84,7 @@ func CTFTemplate(destination string, info any) []error {
 		PublicEntry:    publicEntry,
 		DiscordWebhook: discordWebhook,
 		Workspace:      workspace,
+		RootFolder:     absDest,
 	}
 
 	// Generate .gzctf/ directory with server files

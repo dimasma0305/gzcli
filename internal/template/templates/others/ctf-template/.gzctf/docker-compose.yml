@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     restart: always
     volumes:
-      - "/root/homelab/ctf:/root/homelab/ctf"
+      - "{{.RootFolder}}:{{.RootFolder}}"
       - "/var/run/docker.sock:/var/run/docker.sock"
     environment:
       - "WORKDIR=/root/homelab/ctf"
@@ -182,3 +182,4 @@ networks:
     ipam:
       config:
         - subnet: 172.28.0.0/16
+  challenges:

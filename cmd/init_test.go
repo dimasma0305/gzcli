@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dimasma0305/gzcli/internal/template/other"
@@ -103,6 +104,19 @@ func TestCTFTemplateStructure(t *testing.T) {
 		confStr := string(confContent)
 		if len(confStr) < 10 {
 			t.Error(".gzctf/conf.yaml appears to be empty or too short")
+		}
+	}
+
+	// Verify docker-compose.yml contains correct RootFolder
+	dockerComposeFile := filepath.Join(tmpDir, ".gzctf", "docker-compose.yml")
+	//nolint:gosec // G304: Reading test files in test environment
+	dockerComposeContent, err := os.ReadFile(dockerComposeFile)
+	if err != nil {
+		t.Errorf("Failed to read .gzctf/docker-compose.yml: %v", err)
+	} else {
+		contentStr := string(dockerComposeContent)
+		if !strings.Contains(contentStr, tmpDir) {
+			t.Errorf(".gzctf/docker-compose.yml should contain the root folder path %s", tmpDir)
 		}
 	}
 }
