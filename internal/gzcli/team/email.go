@@ -6,23 +6,9 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-// SendEmail sends the team credentials to the specified email address using gomail
-func SendEmail(realName string, website string, creds *TeamCreds, appsettings AppSettingsInterface) error {
-	emailConfig := appsettings.GetEmailConfig()
-	smtp := emailConfig.SMTP
-
-	// Extract the necessary fields from the emailConfig map
-	smtpHost := smtp.Host
-	smtpPort := smtp.Port
-	smtpUsername := emailConfig.UserName
-	smtpPassword := emailConfig.Password
-
-	m := gomail.NewMessage()
-	m.SetHeader("From", smtpUsername)
-	m.SetHeader("To", creds.Email)
-	m.SetHeader("Subject", "Your Team Credentials")
-
-	htmlBody := fmt.Sprintf(`
+// GenerateEmailBody generates the HTML body for the email
+func GenerateEmailBody(realName, website string, creds *TeamCreds) string {
+	return fmt.Sprintf(`
 	&nbsp;
 	<html>
 	<head>
@@ -64,12 +50,24 @@ func SendEmail(realName string, website string, creds *TeamCreds, appsettings Ap
 			.cta a:hover {
 				background-color: #0056b3;
 			}
+			.warning {
+				color: #721c24;
+				background-color: #f8d7da;
+				border-color: #f5c6cb;
+				padding: 10px;
+				border-radius: 5px;
+				margin-bottom: 20px;
+				font-weight: bold;
+			}
 		</style>
 	</head>
 	<body>
 		<div class="block">
 		<h1>Hello %s,</h1>
 		&nbsp;
+		<div class="warning">
+			IMPORTANT: Do not change the account username and password.
+		</div>
 		<div class="creds">
 			<p>Here are your team credentials:</p>
 			&nbsp;
@@ -95,6 +93,25 @@ func SendEmail(realName string, website string, creds *TeamCreds, appsettings Ap
 	`,
 		realName, creds.Username, creds.Password, creds.TeamName, website, website, website,
 	)
+}
+
+// SendEmail sends the team credentials to the specified email address using gomail
+func SendEmail(realName string, website string, creds *TeamCreds, appsettings AppSettingsInterface) error {
+	emailConfig := appsettings.GetEmailConfig()
+	smtp := emailConfig.SMTP
+
+	// Extract the necessary fields from the emailConfig map
+	smtpHost := smtp.Host
+	smtpPort := smtp.Port
+	smtpUsername := emailConfig.UserName
+	smtpPassword := emailConfig.Password
+
+	m := gomail.NewMessage()
+	m.SetHeader("From", smtpUsername)
+	m.SetHeader("To", creds.Email)
+	m.SetHeader("Subject", "Your Team Credentials")
+
+	htmlBody := GenerateEmailBody(realName, website, creds)
 
 	// Set the email body as HTML
 	m.SetBody("text/html", htmlBody)

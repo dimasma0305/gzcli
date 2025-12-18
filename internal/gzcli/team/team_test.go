@@ -203,7 +203,16 @@ Jane Smith,jane@example.com,Team2`)
 		return nil
 	}
 
-	err := ParseCSV(csvData, config, []*TeamCreds{}, false, createTeamFunc, generateUsername, setCache)
+	err := ParseCSV(
+		csvData,
+		config,
+		&TeamConfig{ColumnMapping: ColumnMapping{RealName: "RealName", Email: "Email", TeamName: "TeamName"}},
+		[]*TeamCreds{},
+		false,
+		createTeamFunc,
+		generateUsername,
+		setCache,
+	)
 	if err != nil {
 		t.Errorf("ParseCSV() failed: %v", err)
 	}
@@ -218,7 +227,7 @@ func TestParseCSV_Empty(t *testing.T) {
 
 	config := &mockConfig{}
 
-	err := ParseCSV(csvData, config, nil, false, nil, nil, nil)
+	err := ParseCSV(csvData, config, &TeamConfig{}, nil, false, nil, nil, nil)
 	if err == nil {
 		t.Error("Expected error for empty CSV")
 	}
@@ -234,7 +243,7 @@ John,john@test.com`)
 
 	config := &mockConfig{}
 
-	err := ParseCSV(csvData, config, nil, false, nil, nil, nil)
+	err := ParseCSV(csvData, config, &TeamConfig{ColumnMapping: ColumnMapping{RealName: "RealName", Email: "Email", TeamName: "TeamName"}}, nil, false, nil, nil, nil)
 	if err == nil {
 		t.Error("Expected error for missing required headers")
 	}
@@ -250,7 +259,7 @@ John,"unclosed quote`)
 
 	config := &mockConfig{}
 
-	err := ParseCSV(csvData, config, nil, false, nil, nil, nil)
+	err := ParseCSV(csvData, config, &TeamConfig{}, nil, false, nil, nil, nil)
 	if err == nil {
 		t.Error("Expected error for invalid CSV")
 	}

@@ -37,7 +37,6 @@ func TestScriptCommand_MultiEventFlags(t *testing.T) {
 
 func TestScriptCommand_HelpText(t *testing.T) {
 	// Test that help text mentions multi-event behavior
-
 	if !strings.Contains(scriptCmd.Long, "all events") {
 		t.Error("script command Long description should mention 'all events' behavior")
 	}

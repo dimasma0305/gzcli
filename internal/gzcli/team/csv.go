@@ -48,7 +48,7 @@ func GetData(source string) ([]byte, error) {
 }
 
 // ParseCSV parses CSV data and creates teams
-func ParseCSV(data []byte, config ConfigInterface, credsCache []*TeamCreds, isSendEmail bool, createTeamFunc func(*TeamCreds, ConfigInterface, map[string]struct{}, map[string]struct{}, []*TeamCreds, bool, func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error), generateUsername func(string, int, map[string]struct{}) (string, error), setCache func(string, interface{}) error) error {
+func ParseCSV(data []byte, config ConfigInterface, teamConfig *TeamConfig, credsCache []*TeamCreds, isSendEmail bool, createTeamFunc func(*TeamCreds, ConfigInterface, map[string]struct{}, map[string]struct{}, []*TeamCreds, bool, func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error), generateUsername func(string, int, map[string]struct{}) (string, error), setCache func(string, interface{}) error) error {
 	reader := csv.NewReader(strings.NewReader(string(data)))
 
 	// Read all records
@@ -67,14 +67,19 @@ func ParseCSV(data []byte, config ConfigInterface, credsCache []*TeamCreds, isSe
 	// Assume the first row contains headers
 	headers := records[0]
 	for i, header := range headers {
-		colIndices[header] = i
+		colIndices[strings.TrimSpace(header)] = i
 	}
 
-	// Ensure that the required headers are present
-	requiredHeaders := []string{"RealName", "Email", "TeamName"}
-	for _, header := range requiredHeaders {
+	// Validate required columns based on mapping
+	requiredMappings := map[string]string{
+		"RealName": teamConfig.ColumnMapping.RealName,
+		"Email":    teamConfig.ColumnMapping.Email,
+		"TeamName": teamConfig.ColumnMapping.TeamName,
+	}
+
+	for field, header := range requiredMappings {
 		if _, ok := colIndices[header]; !ok {
-			return errors.New("missing required header: " + header)
+			return fmt.Errorf("missing required header for %s: %s", field, header)
 		}
 	}
 
@@ -92,9 +97,9 @@ func ParseCSV(data []byte, config ConfigInterface, credsCache []*TeamCreds, isSe
 	teamsCreds := make([]*TeamCreds, 0, len(records)-1)
 
 	for _, row := range records[1:] {
-		realName := row[colIndices["RealName"]]
-		email := row[colIndices["Email"]]
-		teamName := row[colIndices["TeamName"]]
+		realName := row[colIndices[teamConfig.ColumnMapping.RealName]]
+		email := row[colIndices[teamConfig.ColumnMapping.Email]]
+		teamName := row[colIndices[teamConfig.ColumnMapping.TeamName]]
 
 		// Create or update team and user based on the generated username
 		creds, err := createTeamFunc(&TeamCreds{

@@ -8,9 +8,10 @@ import (
 )
 
 var (
-	createSendEmail  bool
-	createEventID    int
-	createInviteCode string
+	createSendEmail        bool
+	createEventID          int
+	createInviteCode       string
+	createForceInitMapping bool
 )
 
 var teamCreateCmd = &cobra.Command{
@@ -42,11 +43,12 @@ Example:
 			return
 		}
 
-		if err := gz.CreateTeams(csvFile, createSendEmail, createEventID, createInviteCode); err != nil {
+		if err := gz.CreateTeams(csvFile, createSendEmail, createEventID, createInviteCode, createForceInitMapping); err != nil {
 			log.Fatal(err)
 		}
 
 		log.Info("Teams created successfully!")
+		log.InfoH2("IMPORTANT: Do not change the account username and password.")
 	},
 }
 
@@ -56,4 +58,5 @@ func init() {
 	teamCreateCmd.Flags().BoolVar(&createSendEmail, "send-email", false, "Send registration emails to teams")
 	teamCreateCmd.Flags().IntVar(&createEventID, "event-id", 0, "Specify the event ID to add teams to")
 	teamCreateCmd.Flags().StringVar(&createInviteCode, "invite-code", "", "Specify the invite code for the event")
+	teamCreateCmd.Flags().BoolVar(&createForceInitMapping, "force-init-mapping", false, "Force initialization of column mapping")
 }
