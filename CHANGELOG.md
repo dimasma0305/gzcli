@@ -1,3 +1,13 @@
+## [1.24.0](https://github.com/dimasma0305/gzcli/compare/v1.23.1...v1.24.0) (2025-12-26)
+
+### Features
+
+* rename docker-compose.yml to compose.yml and add project root folder to the compose template. ([258b25c](https://github.com/dimasma0305/gzcli/commit/258b25c102e813c4e06e896619130df665960202))
+
+### Code Refactoring
+
+* split docker-compose into modular files, add new environment variables, and update README max flag length. ([c17186b](https://github.com/dimasma0305/gzcli/commit/c17186bbacda15c82e2aeda6a0f1c16ebc430bb7))
+
 ## [1.23.1](https://github.com/dimasma0305/gzcli/compare/v1.23.0...v1.23.1) (2025-12-26)
 
 ### Code Refactoring
