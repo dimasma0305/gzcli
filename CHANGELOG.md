@@ -1,3 +1,13 @@
+## [1.25.0](https://github.com/dimasma0305/gzcli/compare/v1.24.0...v1.25.0) (2025-12-26)
+
+### Features
+
+* Split Traefik and gzcli compose files and updated gzcli version in manager Dockerfile. ([5452b37](https://github.com/dimasma0305/gzcli/commit/5452b37114a0003e92a2a267b0e21a47e3976a02))
+
+### Code Refactoring
+
+* Rename `team.TeamConfig` to `team.Config` and enhance default option selection in survey prompts. ([feb02f2](https://github.com/dimasma0305/gzcli/commit/feb02f2189893e257d09537efb42178511ecba18))
+
 ## [1.24.0](https://github.com/dimasma0305/gzcli/compare/v1.23.1...v1.24.0) (2025-12-26)
 
 ### Features
