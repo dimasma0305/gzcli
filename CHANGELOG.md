@@ -1,3 +1,9 @@
+## [1.28.0](https://github.com/dimasma0305/gzcli/compare/v1.27.0...v1.28.0) (2025-12-26)
+
+### Features
+
+* Introduce and utilize an Admin API client for privileged operations during team creation. ([016c941](https://github.com/dimasma0305/gzcli/commit/016c94149178bf5d231655df3bf73924d365e437))
+
 ## [1.27.0](https://github.com/dimasma0305/gzcli/compare/v1.26.0...v1.27.0) (2025-12-26)
 
 ### Features
