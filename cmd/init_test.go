@@ -50,7 +50,7 @@ func TestCTFTemplateStructure(t *testing.T) {
 		".gzctf/challenge.schema.yaml",
 		".gzctf/gzevent.schema.yaml",
 		".gzctf/appsettings.json",
-		".gzctf/docker-compose.yml",
+		".gzctf/compose.yml",
 		".gzctf/init_admin.sh",
 		".gzctf/expose_docker.sh",
 		".gzctf/favicon.ico",
@@ -107,16 +107,16 @@ func TestCTFTemplateStructure(t *testing.T) {
 		}
 	}
 
-	// Verify docker-compose.yml contains correct RootFolder
-	dockerComposeFile := filepath.Join(tmpDir, ".gzctf", "docker-compose.yml")
+	// Verify compose.yml contains correct RootFolder
+	composeFile := filepath.Join(tmpDir, ".gzctf", "compose.yml")
 	//nolint:gosec // G304: Reading test files in test environment
-	dockerComposeContent, err := os.ReadFile(dockerComposeFile)
+	composeContent, err := os.ReadFile(composeFile)
 	if err != nil {
-		t.Errorf("Failed to read .gzctf/docker-compose.yml: %v", err)
+		t.Errorf("Failed to read .gzctf/compose.yml: %v", err)
 	} else {
-		contentStr := string(dockerComposeContent)
+		contentStr := string(composeContent)
 		if !strings.Contains(contentStr, tmpDir) {
-			t.Errorf(".gzctf/docker-compose.yml should contain the root folder path %s", tmpDir)
+			t.Errorf(".gzctf/compose.yml should contain the root folder path %s", tmpDir)
 		}
 	}
 }

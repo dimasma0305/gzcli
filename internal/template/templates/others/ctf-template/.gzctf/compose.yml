@@ -1,4 +1,5 @@
 name: '{{.Workspace}}'
+# Project Root: {{.RootFolder}}
 
 services:
   bot:
