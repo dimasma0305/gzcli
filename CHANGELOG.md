@@ -1,3 +1,9 @@
+## [1.25.2](https://github.com/dimasma0305/gzcli/compare/v1.25.1...v1.25.2) (2025-12-26)
+
+### Code Refactoring
+
+* reduce API specification, make flag attachment optional, and remove compose service health dependency. ([5f29768](https://github.com/dimasma0305/gzcli/commit/5f297685078a90a2f799c6c61532f02c58e3ba29))
+
 ## [1.25.1](https://github.com/dimasma0305/gzcli/compare/v1.25.0...v1.25.1) (2025-12-26)
 
 ### Bug Fixes
