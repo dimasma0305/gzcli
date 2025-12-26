@@ -96,7 +96,7 @@ func TestGenerateSlug(t *testing.T) {
 				Category: "Web",
 				Name:     "Challenge1",
 			},
-			want: "ctf2024_web_challenge1",
+			want: "ctf2024-web-challenge1",
 		},
 		{
 			name:      "with spaces",
@@ -105,7 +105,7 @@ func TestGenerateSlug(t *testing.T) {
 				Category: "Web Security",
 				Name:     "SQL Injection",
 			},
-			want: "ctf2024_web_security_sql_injection",
+			want: "ctf2024-web-security-sql-injection",
 		},
 		{
 			name:      "with special characters",
@@ -114,7 +114,7 @@ func TestGenerateSlug(t *testing.T) {
 				Category: "Crypto",
 				Name:     "RSA-2048",
 			},
-			want: "ctf2024_crypto_rsa2048",
+			want: "ctf2024-crypto-rsa-2048",
 		},
 		{
 			name:      "uppercase to lowercase",
@@ -123,7 +123,7 @@ func TestGenerateSlug(t *testing.T) {
 				Category: "PWN",
 				Name:     "Buffer Overflow",
 			},
-			want: "ctf2024_pwn_buffer_overflow",
+			want: "ctf-2024-pwn-buffer-overflow",
 		},
 	}
 

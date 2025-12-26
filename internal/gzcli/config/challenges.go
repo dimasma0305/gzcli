@@ -24,7 +24,7 @@ var (
 		"OSINT", "Game Hacking", "AI", "Pentest",
 	}
 	challengeFileRegex = regexp.MustCompile(`challenge\.(yaml|yml)$`)
-	slugRegex          = regexp.MustCompile(`[^a-z0-9_]+`)
+	slugRegex          = regexp.MustCompile(`[^a-z0-9]+`)
 )
 
 // Cache for parsed URL host
@@ -138,17 +138,10 @@ type Dashboard struct {
 }
 
 func generateSlug(eventName string, challengeConf ChallengeYaml) string {
-	var b strings.Builder
-	b.Grow(len(eventName) + len(challengeConf.Category) + len(challengeConf.Name) + 2)
-
-	b.WriteString(strings.ToLower(eventName))
-	b.WriteByte('_')
-	b.WriteString(strings.ToLower(challengeConf.Category))
-	b.WriteByte('_')
-	b.WriteString(strings.ToLower(challengeConf.Name))
-
-	slug := strings.ReplaceAll(b.String(), " ", "_")
-	return slugRegex.ReplaceAllString(slug, "")
+	parts := []string{eventName, challengeConf.Category, challengeConf.Name}
+	raw := strings.ToLower(strings.Join(parts, "-"))
+	slug := slugRegex.ReplaceAllString(raw, "-")
+	return strings.Trim(slug, "-")
 }
 
 // GenerateSlug exports slug generation for use in other packages

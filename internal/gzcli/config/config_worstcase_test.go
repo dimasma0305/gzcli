@@ -420,25 +420,25 @@ func TestGenerateSlug_EdgeCases(t *testing.T) {
 			"empty category and name",
 			"ctf2024",
 			ChallengeYaml{Category: "", Name: ""},
-			"ctf2024__",
+			"ctf2024",
 		},
 		{
 			"only special characters",
 			"ctf2024",
 			ChallengeYaml{Category: "!@#$", Name: "%^&*"},
-			"ctf2024__",
+			"ctf2024",
 		},
 		{
 			"unicode characters",
 			"ctf2024",
 			ChallengeYaml{Category: "日本語", Name: "チャレンジ"},
-			"ctf2024__",
+			"ctf2024",
 		},
 		{
 			"very long names",
 			"ctf2024",
 			ChallengeYaml{Category: strings.Repeat("a", 500), Name: strings.Repeat("b", 500)},
-			"ctf2024_" + strings.Repeat("a", 500) + "_" + strings.Repeat("b", 500),
+			"ctf2024-" + strings.Repeat("a", 500) + "-" + strings.Repeat("b", 500),
 		},
 	}
 
@@ -446,7 +446,7 @@ func TestGenerateSlug_EdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := generateSlug(tt.eventName, tt.challenge)
 			if got != tt.want {
-				t.Logf("generateSlug() = %s (length: %d)", got, len(got))
+				t.Errorf("generateSlug() = %s, want %s", got, tt.want)
 			}
 		})
 	}
