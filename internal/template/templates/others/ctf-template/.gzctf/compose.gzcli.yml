@@ -18,12 +18,6 @@ services:
       # service ports
       - "traefik.http.services.gzcli-${WORKSPACE}.loadbalancer.server.port=3000"
 
-      # http router
-      - "traefik.http.routers.gzcli-${WORKSPACE}-http.rule=Host(`gzcli.${PUBLIC_ENTRY}`)"
-      - "traefik.http.routers.gzcli-${WORKSPACE}-http.entrypoints=web"
-      - "traefik.http.routers.gzcli-${WORKSPACE}-http.service=gzcli-${WORKSPACE}"
-      - "traefik.http.routers.gzcli-${WORKSPACE}-http.middlewares=https-redirect-${WORKSPACE}@docker"
-
       # https router
       - "traefik.http.routers.gzcli-${WORKSPACE}-https.rule=Host(`gzcli.${PUBLIC_ENTRY}`)"
       - "traefik.http.routers.gzcli-${WORKSPACE}-https.entrypoints=websecure"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 )
@@ -207,4 +208,143 @@ func containsString(s, substr string) bool {
 			}
 			return false
 		}()
+}
+
+func TestResolveRepoPaths(t *testing.T) {
+	tests := []struct {
+		name          string
+		eventName     string
+		setup         func(t *testing.T, root string)
+		expectedPaths []string // relative paths to root
+		expectError   bool
+	}{
+		{
+			name:      "CWD is git repo",
+			eventName: "ctf-event",
+			setup: func(t *testing.T, root string) {
+				createGitRepo(t, root)
+			},
+			expectedPaths: []string{"."},
+		},
+		{
+			name:      "Events dir is git repo",
+			eventName: "ctf-event",
+			setup: func(t *testing.T, root string) {
+				createGitRepo(t, filepath.Join(root, "events"))
+			},
+			expectedPaths: []string{"events"},
+		},
+		{
+			name:      "Specific event dir is git repo",
+			eventName: "ctf-event",
+			setup: func(t *testing.T, root string) {
+				createGitRepo(t, filepath.Join(root, "events", "ctf-event"))
+			},
+			expectedPaths: []string{"events/ctf-event"},
+		},
+		{
+			name:      "Multiple sub-repos in event dir",
+			eventName: "ctf-event",
+			setup: func(t *testing.T, root string) {
+				createGitRepo(t, filepath.Join(root, "events", "ctf-event", "repo1"))
+				createGitRepo(t, filepath.Join(root, "events", "ctf-event", "repo2"))
+				// This one is not a git repo, should be ignored
+				//nolint:gosec // 0755 is fine for test
+				err := os.MkdirAll(filepath.Join(root, "events", "ctf-event", "not-a-repo"), 0755)
+				if err != nil {
+					t.Fatalf("Failed to create dir: %v", err)
+				}
+			},
+			expectedPaths: []string{
+				"events/ctf-event/repo1",
+				"events/ctf-event/repo2",
+			},
+		},
+		{
+			name:      "No repos found",
+			eventName: "ctf-event",
+			setup: func(t *testing.T, root string) {
+				//nolint:gosec // 0755 is fine for test
+				err := os.MkdirAll(filepath.Join(root, "events", "ctf-event"), 0755)
+				if err != nil {
+					t.Fatalf("Failed to create dir: %v", err)
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:      "Mixed specific event repo and sub-repos (specific takes precedence)",
+			eventName: "ctf-event",
+			setup: func(t *testing.T, root string) {
+				createGitRepo(t, filepath.Join(root, "events", "ctf-event"))
+				createGitRepo(t, filepath.Join(root, "events", "ctf-event", "subrepo"))
+			},
+			expectedPaths: []string{"events/ctf-event"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create temp directory for this test case
+			tmpDir, err := os.MkdirTemp("", "git-test-*")
+			if err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
+			if err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			if tt.setup != nil {
+				tt.setup(t, tmpDir)
+			}
+
+			repoPaths, err := ResolveRepoPaths(tmpDir, tt.eventName)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected error but got nil")
+				}
+				if repoPaths != nil {
+					t.Errorf("Expected nil paths but got %v", repoPaths)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				if repoPaths == nil {
+					t.Error("Expected paths but got nil")
+				}
+
+				// Normalize expected paths to absolute paths
+				var expectedAbs []string
+				for _, p := range tt.expectedPaths {
+					expectedAbs = append(expectedAbs, filepath.Join(tmpDir, p))
+				}
+
+				// Sort both slices for comparison since order doesn't matter for sub-repos
+				sort.Strings(expectedAbs)
+				sort.Strings(repoPaths)
+
+				// Compare slices manually since we don't have assert package
+				if len(expectedAbs) != len(repoPaths) {
+					t.Errorf("Expected %d paths, got %d", len(expectedAbs), len(repoPaths))
+				} else {
+					for i := range expectedAbs {
+						if expectedAbs[i] != repoPaths[i] {
+							t.Errorf("Path mismatch at index %d: expected %s, got %s", i, expectedAbs[i], repoPaths[i])
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+func createGitRepo(t *testing.T, path string) {
+	//nolint:gosec // 0755 is fine for test
+	err := os.MkdirAll(filepath.Join(path, ".git"), 0755)
+	if err != nil {
+		t.Fatalf("Failed to create git repo: %v", err)
+	}
 }

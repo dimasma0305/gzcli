@@ -49,7 +49,7 @@ type EventWatcher struct {
 	challengeMgr *challenge.Manager
 	scriptMgr    *scripts.Manager
 	db           *database.DB // Shared reference
-	gitMgr       *git.Manager
+	gitMgrs      []*git.Manager
 
 	// Challenge mapping cache (folder path -> GZCTF challenge ID)
 	challengeMappings   map[string]int // folderPath -> challengeID
@@ -116,13 +116,28 @@ func (ew *EventWatcher) Start() error {
 
 	// Initialize git manager if enabled
 	if ew.config.GitPullEnabled {
-		ew.gitMgr = git.NewManager(ew.eventPath, ew.config.GitPullInterval, func() {
-			log.Info("[%s] Git pull completed, checking for new challenges...", ew.eventName)
-			// Re-discover challenges after git pull
-			if err := ew.discoverChallenges(); err != nil {
-				log.Error("[%s] Failed to rediscover challenges after git pull: %v", ew.eventName, err)
+		cwd, err := os.Getwd()
+		if err != nil {
+			log.Info("[%s] WARNING: Failed to get working directory for git resolution: %v", ew.eventName, err)
+		} else {
+			repoPaths, err := git.ResolveRepoPaths(cwd, ew.eventName)
+			if err != nil {
+				log.Info("[%s] WARNING: Git monitoring enabled but no git repositories found: %v", ew.eventName, err)
+			} else {
+				log.Info("[%s] Initializing git monitoring for %d repositories", ew.eventName, len(repoPaths))
+				for _, repoPath := range repoPaths {
+					log.Info("[%s] Git monitoring initialized at: %s", ew.eventName, repoPath)
+					mgr := git.NewManager(repoPath, ew.config.GitPullInterval, func() {
+						log.Info("[%s] Git pull completed, checking for new challenges...", ew.eventName)
+						// Re-discover challenges after git pull
+						if err := ew.discoverChallenges(); err != nil {
+							log.Error("[%s] Failed to rediscover challenges after git pull: %v", ew.eventName, err)
+						}
+					})
+					ew.gitMgrs = append(ew.gitMgrs, mgr)
+				}
 			}
-		})
+		}
 	}
 
 	// Discover and watch challenges
@@ -142,13 +157,15 @@ func (ew *EventWatcher) Start() error {
 		filesystem.WatchLoop(ew.watcher, ew.config, ew, done)
 	}()
 
-	// Start git pull loop if enabled
-	if ew.config.GitPullEnabled && ew.gitMgr != nil {
-		ew.wg.Add(1)
-		go func() {
-			defer ew.wg.Done()
-			ew.gitMgr.StartPullLoop(ew.ctx)
-		}()
+	// Start git pull loops if enabled
+	if ew.config.GitPullEnabled && len(ew.gitMgrs) > 0 {
+		for _, mgr := range ew.gitMgrs {
+			ew.wg.Add(1)
+			go func(m *git.Manager) {
+				defer ew.wg.Done()
+				m.StartPullLoop(ew.ctx)
+			}(mgr)
+		}
 	}
 
 	ew.LogToDatabase("INFO", "event_watcher", "", "", fmt.Sprintf("Event watcher started for %s", ew.eventName), "", 0)

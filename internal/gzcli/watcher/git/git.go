@@ -106,3 +106,62 @@ func (m *Manager) PerformPull() error {
 
 	return nil
 }
+
+// ResolveRepoPaths attempts to find git repositories in the following order:
+// 1. Current working directory (returns single path)
+// 2. ./events directory (returns single path)
+// 3. ./events/[eventName] directory (returns single path)
+// 4. Subdirectories of ./events/[eventName] (can return multiple paths)
+// Returns a list of paths to directories containing .git.
+func ResolveRepoPaths(cwd, eventName string) ([]string, error) {
+	// 1. Check current directory
+	if isGitRepo(cwd) {
+		log.Debug("Found git repo at current directory: %s", cwd)
+		return []string{cwd}, nil
+	}
+
+	// 2. Check ./events
+	eventsPath := filepath.Join(cwd, "events")
+	if isGitRepo(eventsPath) {
+		log.Debug("Found git repo at events directory: %s", eventsPath)
+		return []string{eventsPath}, nil
+	}
+
+	// 3. Check ./events/[eventName]
+	if eventName != "" {
+		eventPath := filepath.Join(eventsPath, eventName)
+
+		// If the event directory itself is a git repo
+		if isGitRepo(eventPath) {
+			log.Debug("Found git repo at specific event directory: %s", eventPath)
+			return []string{eventPath}, nil
+		}
+
+		// 4. Scan subdirectories of ./events/[eventName]
+		entries, err := os.ReadDir(eventPath)
+		if err == nil {
+			var repos []string
+			for _, entry := range entries {
+				if entry.IsDir() {
+					subPath := filepath.Join(eventPath, entry.Name())
+					if isGitRepo(subPath) {
+						log.Debug("Found git repo at event subdirectory: %s", subPath)
+						repos = append(repos, subPath)
+					}
+				}
+			}
+			if len(repos) > 0 {
+				return repos, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no git repositories found in search paths")
+}
+
+// isGitRepo checks if a specific directory contains a .git subdirectory
+func isGitRepo(path string) bool {
+	gitDir := filepath.Join(path, ".git")
+	info, err := os.Stat(gitDir)
+	return err == nil && info.IsDir()
+}
