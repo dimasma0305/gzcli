@@ -2,7 +2,7 @@ name: '{{.Workspace}}'
 
 services:
   traefik:
-    image: traefik:v3.5
+    image: traefik:latest
     restart: always
     command:
       - "--api.dashboard=true"
