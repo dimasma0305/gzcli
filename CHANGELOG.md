@@ -1,3 +1,9 @@
+## [1.26.0](https://github.com/dimasma0305/gzcli/compare/v1.25.2...v1.26.0) (2025-12-26)
+
+### Features
+
+* Introduce new challenge configuration options for blood bonus, deadline, submission limit, and container network mode, update container expose port field, and add example template gitignore files. ([b175714](https://github.com/dimasma0305/gzcli/commit/b1757144d03d72901ab370805cc6ffc2717a8254))
+
 ## [1.25.2](https://github.com/dimasma0305/gzcli/compare/v1.25.1...v1.25.2) (2025-12-26)
 
 ### Code Refactoring
