@@ -5,12 +5,12 @@ import "fmt"
 
 // Flag represents a challenge flag in the GZCTF platform
 type Flag struct {
-	Id          int        `json:"id"`
-	Flag        string     `json:"flag"`
-	Attachment  Attachment `json:"attachment"`
-	GameId      int        `json:"-"`
-	ChallengeId int        `json:"-"`
-	CS          *GZAPI     `json:"-"`
+	Id          int         `json:"id"`
+	Flag        string      `json:"flag"`
+	Attachment  *Attachment `json:"attachment"`
+	GameId      int         `json:"-"`
+	ChallengeId int         `json:"-"`
+	CS          *GZAPI      `json:"-"`
 }
 
 // Delete removes the flag from the platform

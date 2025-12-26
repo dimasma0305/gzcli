@@ -65,7 +65,7 @@ type Container struct {
 	MemoryLimit          int    `yaml:"memoryLimit"`
 	CpuCount             int    `yaml:"cpuCount"`
 	StorageLimit         int    `yaml:"storageLimit"`
-	ContainerExposePort  int    `yaml:"containerExposePort"`
+	ContainerExposePort  int    `yaml:"exposePort"`
 	EnableTrafficCapture bool   `yaml:"enableTrafficCapture"`
 }
 

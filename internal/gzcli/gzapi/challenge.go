@@ -24,8 +24,12 @@ type Challenge struct {
 	MemoryLimit          int         `json:"memoryLimit" yaml:"memoryLimit"`
 	CpuCount             int         `json:"cpuCount" yaml:"cpuCount"`
 	StorageLimit         int         `json:"storageLimit" yaml:"storageLimit"`
-	ContainerExposePort  int         `json:"containerExposePort" yaml:"containerExposePort"`
+	ContainerExposePort  int         `json:"exposePort" yaml:"exposePort"`
+	NetworkMode          string      `json:"networkMode" yaml:"networkMode"`
 	EnableTrafficCapture bool        `json:"enableTrafficCapture" yaml:"enableTrafficCapture"`
+	DisableBloodBonus    bool        `json:"disableBloodBonus" yaml:"disableBloodBonus"`
+	DeadlineUtc          int64       `json:"deadlineUtc" yaml:"deadlineUtc"`
+	SubmissionLimit      int         `json:"submissionLimit" yaml:"submissionLimit"`
 	OriginalScore        int         `json:"originalScore" yaml:"originalScore"`
 	MinScoreRate         float64     `json:"minScoreRate" yaml:"minScoreRate"`
 	Difficulty           float64     `json:"difficulty" yaml:"difficulty"`
