@@ -1,3 +1,11 @@
+## [1.23.0](https://github.com/dimasma0305/gzcli/compare/v1.22.0...v1.23.0) (2025-12-26)
+
+### Features
+
+* Add interactive CSV column mapping for team creation, refactor CSV parsing with a `TeamConfig` struct, and update team creation email warnings. ([644fc1a](https://github.com/dimasma0305/gzcli/commit/644fc1a1324700383737ce6c31b6533b1c2ecb63))
+* Isolate API cookies per user, improve team creation error handling, update challenge slug regex, and track example template `dist` directories. ([ba82171](https://github.com/dimasma0305/gzcli/commit/ba821711795bb8eef9e95ed24fdda804c7cb09af))
+* permit underscores in challenge slugs and update gzcli to v1.22.1 in manager Dockerfile ([7d94d6b](https://github.com/dimasma0305/gzcli/commit/7d94d6bf57a86204121ae9ff2fb1a84ccb549414))
+
 ## [1.22.0](https://github.com/dimasma0305/gzcli/compare/v1.21.0...v1.22.0) (2025-12-17)
 
 ### Features
