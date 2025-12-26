@@ -42,20 +42,23 @@ func InitHostCache(publicEntry string) {
 
 // ChallengeYaml represents a challenge configuration from YAML
 type ChallengeYaml struct {
-	Name        string                 `yaml:"name"`
-	Author      string                 `yaml:"author"`
-	Description string                 `yaml:"description"`
-	Flags       []string               `yaml:"flags"`
-	Value       int                    `yaml:"value"`
-	Provide     *string                `yaml:"provide,omitempty"`
-	Visible     *bool                  `yaml:"visible"`
-	Type        string                 `yaml:"type"`
-	Hints       []string               `yaml:"hints"`
-	Container   Container              `yaml:"container"`
-	Scripts     map[string]ScriptValue `yaml:"scripts"`
-	Dashboard   *Dashboard             `yaml:"dashboard,omitempty"`
-	Category    string                 `yaml:"-"`
-	Cwd         string                 `yaml:"-"`
+	Name              string                 `yaml:"name"`
+	Author            string                 `yaml:"author"`
+	Description       string                 `yaml:"description"`
+	Flags             []string               `yaml:"flags"`
+	Value             int                    `yaml:"value"`
+	Provide           *string                `yaml:"provide,omitempty"`
+	Visible           *bool                  `yaml:"visible"`
+	Type              string                 `yaml:"type"`
+	Hints             []string               `yaml:"hints"`
+	Container         Container              `yaml:"container"`
+	Scripts           map[string]ScriptValue `yaml:"scripts"`
+	Dashboard         *Dashboard             `yaml:"dashboard,omitempty"`
+	DisableBloodBonus bool                   `yaml:"disableBloodBonus"`
+	DeadlineUtc       int64                  `yaml:"deadlineUtc"`
+	SubmissionLimit   int                    `yaml:"submissionLimit"`
+	Category          string                 `yaml:"-"`
+	Cwd               string                 `yaml:"-"`
 }
 
 // Container represents container configuration
@@ -66,6 +69,7 @@ type Container struct {
 	CpuCount             int    `yaml:"cpuCount"`
 	StorageLimit         int    `yaml:"storageLimit"`
 	ContainerExposePort  int    `yaml:"exposePort"`
+	NetworkMode          string `yaml:"networkMode"`
 	EnableTrafficCapture bool   `yaml:"enableTrafficCapture"`
 }
 

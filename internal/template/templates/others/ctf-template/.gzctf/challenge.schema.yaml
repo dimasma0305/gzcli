@@ -45,9 +45,19 @@ properties:
       start:
         type: string
         description: The script to start the CTF challenge. This script is executed when the challenge is launched.
-      stop:
-        type: string
-        description: The script to stop the CTF challenge. This script is executed when the challenge is terminated.
+  disableBloodBonus:
+    type: boolean
+    description: Indicates if blood bonus is disabled for this challenge.
+    default: false
+  deadlineUtc:
+    type: integer
+    description: The deadline for the challenge in UTC timestamp (seconds).
+    default: 0
+  submissionLimit:
+    type: integer
+    description: The maximum number of submissions allowed for this challenge (0 for unlimited).
+    minimum: 0
+    default: 0
   container:
     type: object
     description: Configuration details for container-based challenges. This includes information about the container environment and resources.
@@ -71,10 +81,18 @@ properties:
         type: integer
         description: The storage limit for the container in megabytes. This specifies the maximum amount of storage the container can use.
         minimum: 0
-      containerExposePort:
+      exposePort:
         type: integer
         description: The port exposed by the container. This is the port that will be accessible to participants.
         minimum: 0
+      networkMode:
+        type: string
+        description: The network mode for the container. Defaults to "Open".
+        enum:
+          - Open
+          - Internal
+          - Isolated
+        default: "Open"
       enableTrafficCapture:
         type: boolean
         description: Indicates if network traffic capture is enabled for the container. This can be useful for analyzing network activity during the challenge.
@@ -83,7 +101,7 @@ properties:
       - memoryLimit
       - cpuCount
       - storageLimit
-      - containerExposePort
+      - exposePort
       - enableTrafficCapture
 required:
   - name

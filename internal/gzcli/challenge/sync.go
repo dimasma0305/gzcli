@@ -193,8 +193,17 @@ func MergeChallengeData(challengeConf *config.ChallengeYaml, challengeData *gzap
 	challengeData.FlagTemplate = challengeConf.Container.FlagTemplate
 	challengeData.ContainerImage = challengeConf.Container.ContainerImage
 	challengeData.ContainerExposePort = challengeConf.Container.ContainerExposePort
-	challengeData.NetworkMode = "Open" // Default network mode
+
+	if challengeConf.Container.NetworkMode != "" {
+		challengeData.NetworkMode = challengeConf.Container.NetworkMode
+	} else {
+		challengeData.NetworkMode = "Open" // Default network mode
+	}
+
 	challengeData.EnableTrafficCapture = challengeConf.Container.EnableTrafficCapture
+	challengeData.DisableBloodBonus = challengeConf.DisableBloodBonus
+	challengeData.DeadlineUtc = challengeConf.DeadlineUtc
+	challengeData.SubmissionLimit = challengeConf.SubmissionLimit
 	challengeData.OriginalScore = challengeConf.Value
 
 	if challengeData.OriginalScore >= 100 {
