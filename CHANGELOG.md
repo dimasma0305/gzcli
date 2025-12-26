@@ -1,3 +1,10 @@
+## [1.30.0](https://github.com/dimasma0305/gzcli/compare/v1.29.0...v1.30.0) (2025-12-26)
+
+### Features
+
+* Add multi-repository git watching for events and remove HTTP router configuration from ctf-template. ([7a3a64a](https://github.com/dimasma0305/gzcli/commit/7a3a64ace3e1928e47cf82c54d1322807232c02d))
+* remove HTTP router and service configuration from Traefik ([23c93b9](https://github.com/dimasma0305/gzcli/commit/23c93b99d0838aea7494f8109aea0be0d187d81d))
+
 ## [1.29.0](https://github.com/dimasma0305/gzcli/compare/v1.28.0...v1.29.0) (2025-12-26)
 
 ### Features
