@@ -63,11 +63,13 @@ func TestJoinTeamToGame_MultiEvents(t *testing.T) {
 	defer server.Close()
 
 	// 2. Setup config
+	dummyApi, _ := gzapi.Init(server.URL, &gzapi.Creds{Username: "admin", Password: "password"})
 	config := &mockConfig{
 		url:        server.URL,
 		eventId:    99, // Should be ignored if events are present
 		eventTitle: "Default Event",
 		inviteCode: "global-secret",
+		adminApi:   dummyApi,
 	}
 
 	// 3. Setup input data with events

@@ -595,6 +595,7 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCo
 	// Step 5: Parse CSV and create teams
 	configAdapter := &teamConfigAdapter{
 		conf:       conf,
+		adminAPI:   gz.api, // Pass the admin API client
 		eventID:    eventID,
 		inviteCode: inviteCode,
 	}
@@ -631,8 +632,13 @@ func (c challengeDataImpl) GetCwd() string {
 
 type teamConfigAdapter struct {
 	conf       *config.Config
+	adminAPI   *gzapi.GZAPI // Admin API client for privileged operations
 	eventID    int
 	inviteCode string
+}
+
+func (t *teamConfigAdapter) GetAdminAPI() *gzapi.GZAPI {
+	return t.adminAPI
 }
 
 func (t *teamConfigAdapter) GetUrl() string { //nolint:revive // Method name required by team.ConfigInterface

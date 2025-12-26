@@ -276,6 +276,14 @@ type mockConfig struct {
 	eventTitle  string
 	inviteCode  string
 	appSettings *mockAppSettings
+	adminApi    *gzapi.GZAPI
+}
+
+func (m *mockConfig) GetAdminAPI() *gzapi.GZAPI {
+	if m.adminApi != nil {
+		return m.adminApi
+	}
+	return &gzapi.GZAPI{} // Return empty/mock API if not set
 }
 
 func (m *mockConfig) GetUrl() string        { return m.url }

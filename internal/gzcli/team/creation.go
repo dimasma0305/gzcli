@@ -139,8 +139,8 @@ func (tc *Creator) joinTeamToGame() error {
 
 	// If specific events are listed in CSV, try to join those
 	if len(tc.teamCreds.Events) > 0 {
-		// Fetch all games to resolve names to IDs
-		games, err := tc.api.GetGames()
+		// Fetch all games to resolve names to IDs using Admin API
+		games, err := tc.config.GetAdminAPI().GetGames()
 		if err != nil {
 			log.Error("Failed to fetch games list: %v", err)
 			return err
@@ -260,7 +260,6 @@ func (tc *Creator) sendCredentialsEmail() error {
 	return nil
 }
 
-
 // CreateTeamAndUser creates a team and user, ensuring the team name is unique and within the specified length.
 func CreateTeamAndUser(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error) {
 	return NewCreator(teamCreds, config, existingTeamNames, existingUserNames, credsCache, isSendEmail, generateUsername).Execute()
@@ -307,6 +306,7 @@ type ConfigInterface interface {
 	GetEventTitle() string
 	GetInviteCode() string
 	GetAppSettings() AppSettingsInterface
+	GetAdminAPI() *gzapi.GZAPI
 }
 
 // AppSettingsInterface provides access to app settings
