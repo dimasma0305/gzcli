@@ -54,7 +54,6 @@ services:
 
       # Service ports
       - "traefik.http.services.gzctf-${WORKSPACE}-https.loadbalancer.server.port=8080"
-      - "traefik.http.services.gzctf-${WORKSPACE}-http.loadbalancer.server.port=8080"
 
       # HTTPS router
       - "traefik.http.routers.gzctf-${WORKSPACE}-https.rule=Host(`${PUBLIC_ENTRY}`)"
@@ -62,10 +61,6 @@ services:
       - "traefik.http.routers.gzctf-${WORKSPACE}-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.gzctf-${WORKSPACE}-https.service=gzctf-${WORKSPACE}-https"
 
-      # HTTP router
-      - "traefik.http.routers.gzctf-${WORKSPACE}-http.rule=Host(`${PUBLIC_ENTRY}`)"
-      - "traefik.http.routers.gzctf-${WORKSPACE}-http.entrypoints=web"
-      - "traefik.http.routers.gzctf-${WORKSPACE}-http.service=gzctf-${WORKSPACE}-http"
   db:
     image: postgres:17
     restart: always
