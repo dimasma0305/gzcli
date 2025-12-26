@@ -1,0 +1,40 @@
+name: '{{.Workspace}}'
+
+services:
+  gzcli:
+    build:
+      context: ./manager
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - "{{.RootFolder}}:{{.RootFolder}}"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    environment:
+      - "WORKDIR={{.RootFolder}}"
+    depends_on:
+      gzctf:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+
+      # service ports
+      - "traefik.http.services.gzcli-${WORKSPACE}.loadbalancer.server.port=3000"
+
+      # http router
+      - "traefik.http.routers.gzcli-${WORKSPACE}-http.rule=Host(`gzcli.${PUBLIC_ENTRY}`)"
+      - "traefik.http.routers.gzcli-${WORKSPACE}-http.entrypoints=web"
+      - "traefik.http.routers.gzcli-${WORKSPACE}-http.service=gzcli-${WORKSPACE}"
+      - "traefik.http.routers.gzcli-${WORKSPACE}-http.middlewares=https-redirect-${WORKSPACE}@docker"
+
+      # https router
+      - "traefik.http.routers.gzcli-${WORKSPACE}-https.rule=Host(`gzcli.${PUBLIC_ENTRY}`)"
+      - "traefik.http.routers.gzcli-${WORKSPACE}-https.entrypoints=websecure"
+      - "traefik.http.routers.gzcli-${WORKSPACE}-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gzcli-${WORKSPACE}-https.service=gzcli-${WORKSPACE}"
+    networks:
+      traefik:
+
+networks:
+  traefik:
+    external: true

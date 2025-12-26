@@ -1,0 +1,115 @@
+name: '{{.Workspace}}'
+
+services:
+  bot:
+    build:
+      context: ./manager
+      dockerfile: Dockerfile
+    command: |
+      gzcli bot \
+        --webhook "$WEBHOOK_URL" \
+        --db-host "$DB_HOST" \
+        --db-port "$DB_PORT" \
+        --db-user "$DB_USER" \
+        --db-password "$DB_PASSWORD" \
+        --db-name "$DB_NAME"
+    networks:
+      app_net:
+  gzctf:
+    image: gztime/gzctf:latest
+    restart: always
+    environment:
+      - "LC_ALL=en_US.UTF-8"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - "gzctf-files:/app/files"
+      - "./appsettings.json:/app/appsettings.json:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "sh", "-c", "wget -q --spider --timeout=5 http://localhost:8080/ || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    networks:
+      traefik:
+      app_net:
+    labels:
+      - "traefik.enable=true"
+      # docker network to use
+      - "traefik.docker.network=traefik"
+
+      # Service ports
+      - "traefik.http.services.gzctf-${WORKSPACE}-https.loadbalancer.server.port=8080"
+      - "traefik.http.services.gzctf-${WORKSPACE}-http.loadbalancer.server.port=8080"
+
+      # HTTPS router
+      - "traefik.http.routers.gzctf-${WORKSPACE}-https.rule=Host(`${PUBLIC_ENTRY}`)"
+      - "traefik.http.routers.gzctf-${WORKSPACE}-https.entrypoints=websecure"
+      - "traefik.http.routers.gzctf-${WORKSPACE}-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gzctf-${WORKSPACE}-https.service=gzctf-${PUBLIC_ENTRY}-https"
+
+      # HTTP router
+      - "traefik.http.routers.gzctf-${WORKSPACE}-http.rule=Host(`${PUBLIC_ENTRY}`)"
+      - "traefik.http.routers.gzctf-${WORKSPACE}-http.entrypoints=web"
+      - "traefik.http.routers.gzctf-${WORKSPACE}-http.service=gzctf-${WORKSPACE}-http"
+
+      # use redirect middleware to force HTTPS
+      - "traefik.http.routers.gzctf-${WORKSPACE}-http.middlewares=https-redirect-${WORKSPACE}@docker"
+
+      # Middleware definition
+      - "traefik.http.middlewares.https-redirect-${WORKSPACE}.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.https-redirect-${WORKSPACE}.redirectscheme.permanent=false"
+      - "traefik.enable=true"
+      - "traefik.http.services.gzctf-${WORKSPACE}.loadbalancer.server.port=8080"
+  db:
+    image: postgres:17
+    restart: always
+    environment:
+      - "POSTGRES_PASSWORD=postgres"
+    volumes:
+      - "postgres-data:/var/lib/postgresql/data"
+    networks:
+      app_net:
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:alpine
+    restart: always
+    networks:
+      app_net:
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  gzctf-files:
+  postgres-data:
+
+
+networks:
+  traefik:
+    external: true
+  app_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

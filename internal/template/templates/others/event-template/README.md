@@ -1,7 +1,7 @@
 # CTF Challenge Maker & Writeup Submission Guide
 
 **Flag Format:** `.*{.*}`
-**Maximum Flag Length:** `64`
+**Maximum Flag Length:** `127`
 
 ## Important Dates
 
