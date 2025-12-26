@@ -125,11 +125,6 @@ func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCach
 			TeamName: teamName,
 			Events:   events,
 		}, config, existingTeamNames, uniqueUsernames, credsCache, isSendEmail, generateUsername)
-		if err != nil {
-			log.Error("%s", err.Error())
-			continue
-		}
-
 		if creds != nil {
 			// Merge credentials if already exist in cache
 			if existingCreds, exists := credsCacheMap[creds.Email]; exists {
@@ -141,6 +136,11 @@ func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCach
 				// Add new credentials to the list
 				teamsCreds = append(teamsCreds, creds)
 			}
+		}
+
+		if err != nil {
+			log.Error("%s", err.Error())
+			continue
 		}
 	}
 
