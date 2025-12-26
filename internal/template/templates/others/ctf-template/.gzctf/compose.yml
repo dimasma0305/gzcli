@@ -60,7 +60,7 @@ services:
       - "traefik.http.routers.gzctf-${WORKSPACE}-https.rule=Host(`${PUBLIC_ENTRY}`)"
       - "traefik.http.routers.gzctf-${WORKSPACE}-https.entrypoints=websecure"
       - "traefik.http.routers.gzctf-${WORKSPACE}-https.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.gzctf-${WORKSPACE}-https.service=gzctf-${PUBLIC_ENTRY}-https"
+      - "traefik.http.routers.gzctf-${WORKSPACE}-https.service=gzctf-${WORKSPACE}-https"
 
       # HTTP router
       - "traefik.http.routers.gzctf-${WORKSPACE}-http.rule=Host(`${PUBLIC_ENTRY}`)"
