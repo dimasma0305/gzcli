@@ -7,7 +7,7 @@ type ColumnMapping struct {
 	TeamName string `yaml:"team_name"`
 }
 
-// TeamConfig holds the configuration for team operations
-type TeamConfig struct {
+// Config holds the configuration for team operations
+type Config struct {
 	ColumnMapping ColumnMapping `yaml:"column_mapping"`
 }

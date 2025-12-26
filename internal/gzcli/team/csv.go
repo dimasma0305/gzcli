@@ -48,7 +48,7 @@ func GetData(source string) ([]byte, error) {
 }
 
 // ParseCSV parses CSV data and creates teams
-func ParseCSV(data []byte, config ConfigInterface, teamConfig *TeamConfig, credsCache []*TeamCreds, isSendEmail bool, createTeamFunc func(*TeamCreds, ConfigInterface, map[string]struct{}, map[string]struct{}, []*TeamCreds, bool, func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error), generateUsername func(string, int, map[string]struct{}) (string, error), setCache func(string, interface{}) error) error {
+func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCache []*TeamCreds, isSendEmail bool, createTeamFunc func(*TeamCreds, ConfigInterface, map[string]struct{}, map[string]struct{}, []*TeamCreds, bool, func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error), generateUsername func(string, int, map[string]struct{}) (string, error), setCache func(string, interface{}) error) error {
 	reader := csv.NewReader(strings.NewReader(string(data)))
 
 	// Read all records

@@ -35,7 +35,7 @@ func TestParseCSV_MalformedCSV(t *testing.T) {
 			err := ParseCSV(
 				[]byte(tc.csvData),
 				config,
-				&TeamConfig{ColumnMapping: ColumnMapping{RealName: "RealName", Email: "Email", TeamName: "TeamName"}},
+				&Config{ColumnMapping: ColumnMapping{RealName: "RealName", Email: "Email", TeamName: "TeamName"}},
 				nil, // Changed from []*TeamCreds{} to nil
 				false,
 				mockCreateTeam,
@@ -161,7 +161,7 @@ func TestParseCSV_LargeDataset(t *testing.T) {
 		return creds, nil
 	}
 
-	err := ParseCSV([]byte(csvBuilder.String()), config, &TeamConfig{ColumnMapping: ColumnMapping{RealName: "RealName", Email: "Email", TeamName: "TeamName"}}, []*TeamCreds{}, false, createTeam, mockGenerateUsername, mockSetCache)
+	err := ParseCSV([]byte(csvBuilder.String()), config, &Config{ColumnMapping: ColumnMapping{RealName: "RealName", Email: "Email", TeamName: "TeamName"}}, []*TeamCreds{}, false, createTeam, mockGenerateUsername, mockSetCache)
 	if err != nil {
 		t.Errorf("Large dataset failed: %v", err)
 	}
@@ -184,7 +184,7 @@ User3,user3@test.com,Team3`)
 
 	// Parse same CSV concurrently
 	testutil.ConcurrentTest(t, 5, 3, func(id, iter int) error {
-		return ParseCSV(csvData, config, &TeamConfig{ColumnMapping: ColumnMapping{RealName: "RealName", Email: "Email", TeamName: "TeamName"}}, []*TeamCreds{}, false, mockCreateTeam, mockGenerateUsername, mockSetCache)
+		return ParseCSV(csvData, config, &Config{ColumnMapping: ColumnMapping{RealName: "RealName", Email: "Email", TeamName: "TeamName"}}, []*TeamCreds{}, false, mockCreateTeam, mockGenerateUsername, mockSetCache)
 	})
 }
 

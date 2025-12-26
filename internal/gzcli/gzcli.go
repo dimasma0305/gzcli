@@ -485,7 +485,7 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCo
 	}
 
 	// Step 3: Handle Column Mapping
-	var teamConfig team.TeamConfig
+	var teamConfig team.Config
 	err = GetCache("teams_config", &teamConfig)
 	if err != nil || forceInitMapping || teamConfig.ColumnMapping.RealName == "" {
 		// Parse CSV headers for selection
@@ -532,7 +532,7 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCo
 				Prompt: &survey.Select{
 					Message: "Select column for Real Name:",
 					Options: options,
-					Default: findDefault(headers, []string{"name", "realname", "full name"}),
+					Default: findDefault(headers, options, []string{"name", "realname", "full name"}),
 				},
 			},
 			{
@@ -540,7 +540,7 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCo
 				Prompt: &survey.Select{
 					Message: "Select column for Email:",
 					Options: options,
-					Default: findDefault(headers, []string{"email", "mail", "address"}),
+					Default: findDefault(headers, options, []string{"email", "mail", "address"}),
 				},
 			},
 			{
@@ -548,7 +548,7 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCo
 				Prompt: &survey.Select{
 					Message: "Select column for Team Name:",
 					Options: options,
-					Default: findDefault(headers, []string{"team", "group", "organization"}),
+					Default: findDefault(headers, options, []string{"team", "group", "organization"}),
 				},
 			},
 		}
@@ -595,18 +595,14 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCo
 }
 
 // findDefault helps find a default option based on keywords
-func findDefault(headers []string, keywords []string) interface{} {
-	for _, h := range headers {
+func findDefault(headers []string, options []string, keywords []string) interface{} {
+	for i, h := range headers {
 		lowerH := strings.ToLower(h)
 		for _, k := range keywords {
 			if strings.Contains(lowerH, k) {
-				// We need to return the formatted option string if we want it to pre-select correctly in the UI
-				// logic would need to match the option construction above.
-				// Since we constructed options based on index, we can just return nil to let Survey pick first or none,
-				// or more complexly reconstruct. For simplicity, let's leave default selection explicitly empty for now
-				// or implement full matching logic if strict requirement.
-				// Given complexity of "preview" string matching, skipping precise default for now to avoid errors.
-				return nil
+				if i < len(options) {
+					return options[i]
+				}
 			}
 		}
 	}
