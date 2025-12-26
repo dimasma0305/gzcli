@@ -66,15 +66,6 @@ services:
       - "traefik.http.routers.gzctf-${WORKSPACE}-http.rule=Host(`${PUBLIC_ENTRY}`)"
       - "traefik.http.routers.gzctf-${WORKSPACE}-http.entrypoints=web"
       - "traefik.http.routers.gzctf-${WORKSPACE}-http.service=gzctf-${WORKSPACE}-http"
-
-      # use redirect middleware to force HTTPS
-      - "traefik.http.routers.gzctf-${WORKSPACE}-http.middlewares=https-redirect-${WORKSPACE}@docker"
-
-      # Middleware definition
-      - "traefik.http.middlewares.https-redirect-${WORKSPACE}.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.https-redirect-${WORKSPACE}.redirectscheme.permanent=false"
-      - "traefik.enable=true"
-      - "traefik.http.services.gzctf-${WORKSPACE}.loadbalancer.server.port=8080"
   db:
     image: postgres:17
     restart: always
