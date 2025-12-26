@@ -1,3 +1,9 @@
+## [1.25.1](https://github.com/dimasma0305/gzcli/compare/v1.25.0...v1.25.1) (2025-12-26)
+
+### Bug Fixes
+
+* Correct Traefik HTTPS service name to use WORKSPACE instead of PUBLIC_ENTRY. ([23a1370](https://github.com/dimasma0305/gzcli/commit/23a13708789cac23798c134269406643cf0494ab))
+
 ## [1.25.0](https://github.com/dimasma0305/gzcli/compare/v1.24.0...v1.25.0) (2025-12-26)
 
 ### Features
