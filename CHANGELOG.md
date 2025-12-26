@@ -1,3 +1,9 @@
+## [1.27.0](https://github.com/dimasma0305/gzcli/compare/v1.26.0...v1.27.0) (2025-12-26)
+
+### Features
+
+* Add support for joining multiple events per team via CSV column mapping and refactor game joining logic. ([c27a42e](https://github.com/dimasma0305/gzcli/commit/c27a42ec53eed85aa23356850945d035672c82c4))
+
 ## [1.26.0](https://github.com/dimasma0305/gzcli/compare/v1.25.2...v1.26.0) (2025-12-26)
 
 ### Features
