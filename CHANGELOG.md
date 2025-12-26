@@ -1,3 +1,9 @@
+## [1.29.0](https://github.com/dimasma0305/gzcli/compare/v1.28.0...v1.29.0) (2025-12-26)
+
+### Features
+
+* Allow ParseCSV to save team credentials to cache even when `createTeamFunc` returns an error. ([ef11743](https://github.com/dimasma0305/gzcli/commit/ef1174362853983131fa185e7fb2fedf0b855108))
+
 ## [1.28.0](https://github.com/dimasma0305/gzcli/compare/v1.27.0...v1.28.0) (2025-12-26)
 
 ### Features
