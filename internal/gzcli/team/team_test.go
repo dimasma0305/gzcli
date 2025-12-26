@@ -386,3 +386,59 @@ func TestNormalizeTeamName_CounterWithinLimit(t *testing.T) {
 		t.Errorf("Result %s exceeds max length 6", result)
 	}
 }
+
+func TestJoinTeamToGame_EmptyTeamList(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/account/register":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		case "/api/account/login":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		case "/api/team":
+			// Simulate successful team creation request
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"success": true}`))
+		case "/api/team/":
+			// Simulate empty team list response
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode([]gzapi.Team{}) // Return empty list
+		case "/api/game/1":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"success": true}`))
+		default:
+			t.Logf("Unhandled path: %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	config := &mockConfig{
+		url:        server.URL,
+		eventId:    1,
+		eventTitle: "Test CTF",
+	}
+
+	teamCreds := &TeamCreds{
+		Username: "FailedJoiner",
+		Email:    "failed@example.com",
+		TeamName: "Failed Team",
+	}
+
+	existingTeamNames := make(map[string]struct{})
+	existingUserNames := make(map[string]struct{})
+
+	generateUsername := func(name string, maxLen int, existing map[string]struct{}) (string, error) {
+		username := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+		return username, nil
+	}
+
+	// This should fail gracefully, not panic
+	_, err := CreateTeamAndUser(teamCreds, config, existingTeamNames, existingUserNames, []*TeamCreds{}, false, generateUsername)
+
+	// Since joinTeamToGame error is suppressed in Creator.Execute (it just logs the error),
+	// we expect nil error here. The main goal of this test is to ensure no panic occurs.
+	if err != nil {
+		t.Errorf("Expected nil error (suppressed failure), got: %v", err)
+	}
+}

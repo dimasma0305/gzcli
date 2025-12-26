@@ -41,7 +41,7 @@ func Init(url string, creds *Creds) (*GZAPI, error) {
 
 	url = strings.TrimRight(url, "/")
 
-	cookies, err := newCookieStore(url)
+	cookies, err := newCookieStore(url, creds.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func Register(url string, creds *RegisterForm) (*GZAPI, error) {
 
 	url = strings.TrimRight(url, "/")
 
-	cookies, err := newCookieStore(url)
+	cookies, err := newCookieStore(url, creds.Username)
 	if err != nil {
 		return nil, err
 	}

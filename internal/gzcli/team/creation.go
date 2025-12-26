@@ -119,6 +119,10 @@ func joinTeamToGame(api *gzapi.GZAPI, config ConfigInterface) error {
 		return err
 	}
 
+	if len(team) == 0 {
+		return fmt.Errorf("no team found for user")
+	}
+
 	if err := api.JoinGame(config.GetEventId(), &gzapi.GameJoinModel{
 		TeamId:     team[0].Id,
 		InviteCode: config.GetInviteCode(),

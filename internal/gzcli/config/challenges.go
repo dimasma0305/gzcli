@@ -24,7 +24,7 @@ var (
 		"OSINT", "Game Hacking", "AI", "Pentest",
 	}
 	challengeFileRegex = regexp.MustCompile(`challenge\.(yaml|yml)$`)
-	slugRegex          = regexp.MustCompile(`[^a-z0-9_]+`)
+	slugRegex          = regexp.MustCompile(`[^a-z0-9-]+`)
 )
 
 // Cache for parsed URL host

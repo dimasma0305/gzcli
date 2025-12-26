@@ -31,7 +31,6 @@ go.work
 Thumbs.db
 
 # Build and release artifacts
-dist/
 *.tar.gz
 *.zip
 

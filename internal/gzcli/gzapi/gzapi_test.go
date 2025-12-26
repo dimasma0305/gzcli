@@ -191,7 +191,9 @@ func TestInit_ReloginWhenCachedCookiesExpired(t *testing.T) {
 	})
 	defer server.Close()
 
-	store, err := newCookieStore(server.URL)
+	defer server.Close()
+
+	store, err := newCookieStore(server.URL, "testuser")
 	if err != nil {
 		t.Fatalf("Failed to create cookie store: %v", err)
 	}
@@ -1266,3 +1268,83 @@ func TestGZAPI_Post_NilData(t *testing.T) {
 }
 
 // Helper functions are in common_test.go
+
+func TestCookieIsolation(t *testing.T) {
+	originalWD, _ := os.Getwd()
+	tempDir := t.TempDir()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to switch working directory: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(originalWD) })
+
+	server := mockServer(t, map[string]http.HandlerFunc{
+		"/api/account/login": func(w http.ResponseWriter, r *http.Request) {
+			var creds Creds
+			_ = json.NewDecoder(r.Body).Decode(&creds)
+
+			http.SetCookie(w, &http.Cookie{
+				Name:  "session",
+				Value: "token_" + creds.Username, // Unique token per user
+				Path:  "/",
+			})
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"succeeded": true}`))
+		},
+		"/api/whoami": func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie("session")
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{
+				"token": cookie.Value,
+			})
+		},
+	})
+	defer server.Close()
+
+	// User A logs in
+	credsA := &Creds{Username: "userA", Password: "passwordA"}
+	apiA, err := Init(server.URL, credsA)
+	if err != nil {
+		t.Fatalf("Init userA failed: %v", err)
+	}
+
+	// User B logs in
+	credsB := &Creds{Username: "userB", Password: "passwordB"}
+	apiB, err := Init(server.URL, credsB)
+	if err != nil {
+		t.Fatalf("Init userB failed: %v", err)
+	}
+
+	// Verify User A has User A's token
+	var respA map[string]string
+	if err := apiA.get("/api/whoami", &respA); err != nil {
+		t.Fatalf("User A whoami failed: %v", err)
+	}
+	if respA["token"] != "token_userA" {
+		t.Errorf("Expected userA token, got %s", respA["token"])
+	}
+
+	// Verify User B has User B's token
+	var respB map[string]string
+	if err := apiB.get("/api/whoami", &respB); err != nil {
+		t.Fatalf("User B whoami failed: %v", err)
+	}
+	if respB["token"] != "token_userB" {
+		t.Errorf("Expected userB token, got %s", respB["token"])
+	}
+
+	// Explicitly check the cookie stores to ensure they are using different files/paths (implicitly tested by separate persistence)
+	// We can't easily check private fields, but behavioral test above is strong evidence.
+	// We can check if persistent files exist.
+
+	parsedURL, _ := normalizeBaseURL(server.URL)
+	pathA, _ := cookieStorePath(parsedURL, "userA")
+	pathB, _ := cookieStorePath(parsedURL, "userB")
+
+	if pathA == pathB {
+		t.Fatal("Expected different cookie store paths for different users")
+	}
+}

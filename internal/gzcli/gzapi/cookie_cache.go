@@ -40,13 +40,13 @@ type storedCookiesFile struct {
 	Cookies []storedCookie `yaml:"cookies"`
 }
 
-func newCookieStore(rawURL string) (*cookieStore, error) {
+func newCookieStore(rawURL string, username string) (*cookieStore, error) {
 	parsed, err := normalizeBaseURL(rawURL)
 	if err != nil {
 		return nil, err
 	}
 
-	path, err := cookieStorePath(parsed)
+	path, err := cookieStorePath(parsed, username)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func normalizeBaseURL(rawURL string) (*url.URL, error) {
 	return parsed, nil
 }
 
-func cookieStorePath(baseURL *url.URL) (string, error) {
+func cookieStorePath(baseURL *url.URL, username string) (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("determine working directory: %w", err)
@@ -199,6 +199,13 @@ func cookieStorePath(baseURL *url.URL) (string, error) {
 	}
 	if scheme := baseURL.Scheme; scheme != "" {
 		name = scheme + "-" + name
+	}
+
+	// Sanitize username and append if present
+	if username != "" {
+		safeUsername := strings.ReplaceAll(username, string(filepath.Separator), "_")
+		safeUsername = strings.ReplaceAll(safeUsername, ":", "-")
+		name = name + "-" + safeUsername
 	}
 
 	name = strings.ReplaceAll(name, ":", "-")
