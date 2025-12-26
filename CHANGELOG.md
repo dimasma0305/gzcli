@@ -1,3 +1,9 @@
+## [1.23.1](https://github.com/dimasma0305/gzcli/compare/v1.23.0...v1.23.1) (2025-12-26)
+
+### Code Refactoring
+
+* Update slug generation to use hyphens as separators and remove underscores from allowed characters. ([5f25695](https://github.com/dimasma0305/gzcli/commit/5f2569510f30e5b0cd66e51bb275b44b0c2aa9d6))
+
 ## [1.23.0](https://github.com/dimasma0305/gzcli/compare/v1.22.0...v1.23.0) (2025-12-26)
 
 ### Features
