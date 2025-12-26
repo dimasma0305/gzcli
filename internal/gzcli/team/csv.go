@@ -101,11 +101,29 @@ func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCach
 		email := row[colIndices[teamConfig.ColumnMapping.Email]]
 		teamName := row[colIndices[teamConfig.ColumnMapping.TeamName]]
 
+		// Parse events if column mapping exists
+		var events []string
+		if teamConfig.ColumnMapping.Events != "" {
+			if idx, ok := colIndices[teamConfig.ColumnMapping.Events]; ok {
+				rawEvents := row[idx]
+				if rawEvents != "" {
+					// Split by comma and trim whitespace
+					parts := strings.Split(rawEvents, ",")
+					for _, part := range parts {
+						if trimmed := strings.TrimSpace(part); trimmed != "" {
+							events = append(events, trimmed)
+						}
+					}
+				}
+			}
+		}
+
 		// Create or update team and user based on the generated username
 		creds, err := createTeamFunc(&TeamCreds{
 			Username: realName,
 			Email:    email,
 			TeamName: teamName,
+			Events:   events,
 		}, config, existingTeamNames, uniqueUsernames, credsCache, isSendEmail, generateUsername)
 		if err != nil {
 			log.Error("%s", err.Error())

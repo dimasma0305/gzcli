@@ -551,12 +551,21 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCo
 					Default: findDefault(headers, options, []string{"team", "group", "organization"}),
 				},
 			},
+			{
+				Name: "events",
+				Prompt: &survey.Select{
+					Message: "Select column for Events (Optional):",
+					Options: append([]string{"(Skip)"}, options...),
+					Default: "(Skip)",
+				},
+			},
 		}
 
 		answers := struct {
 			RealName string `survey:"realname"`
 			Email    string `survey:"email"`
 			TeamName string `survey:"teamname"`
+			Events   string `survey:"events"`
 		}{}
 
 		if err := survey.Ask(prompts, &answers); err != nil {
@@ -566,7 +575,9 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCo
 		mapping.RealName = getOriginalHeader(answers.RealName)
 		mapping.Email = getOriginalHeader(answers.Email)
 		mapping.TeamName = getOriginalHeader(answers.TeamName)
-
+		if answers.Events != "(Skip)" {
+			mapping.Events = getOriginalHeader(answers.Events)
+		}
 		teamConfig.ColumnMapping = mapping
 
 		// Persist to cache

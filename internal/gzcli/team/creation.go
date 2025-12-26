@@ -112,26 +112,68 @@ func sendCredentialsEmail(teamCreds *TeamCreds, currentCreds *TeamCreds, config 
 }
 
 // joinTeamToGame joins a team to the game
-func joinTeamToGame(api *gzapi.GZAPI, config ConfigInterface) error {
-	team, err := api.GetTeams()
+func (tc *Creator) joinTeamToGame() error {
+	team, err := tc.api.GetTeams()
 	if err != nil {
 		log.Error("%s", err.Error())
-		return err
+		return nil
 	}
 
 	if len(team) == 0 {
-		return fmt.Errorf("no team found for user")
+		log.Error("no team found for user")
+		return nil
 	}
 
-	if err := api.JoinGame(config.GetEventId(), &gzapi.GameJoinModel{
-		TeamId:     team[0].Id,
-		InviteCode: config.GetInviteCode(),
-	}); err != nil {
-		log.Error("%s", err.Error())
-		return err
+	// Helper to join a specific event ID
+	joinGame := func(eventID int, eventName string) error {
+		if err := tc.api.JoinGame(eventID, &gzapi.GameJoinModel{
+			TeamId:     team[0].Id,
+			InviteCode: tc.config.GetInviteCode(),
+		}); err != nil {
+			log.Error("Failed to join event '%s' (ID: %d): %s", eventName, eventID, err.Error())
+			return err
+		}
+		log.InfoH2("Successfully joining team %s to game %s", team[0].Name, eventName)
+		return nil
 	}
 
-	log.InfoH2("Successfully joining team %s to game %s", team[0].Name, config.GetEventTitle())
+	// If specific events are listed in CSV, try to join those
+	if len(tc.teamCreds.Events) > 0 {
+		// Fetch all games to resolve names to IDs
+		games, err := tc.api.GetGames()
+		if err != nil {
+			log.Error("Failed to fetch games list: %v", err)
+			return err
+		}
+
+		// Create a map for case-insensitive name lookup
+		gameMap := make(map[string]int)
+		for _, g := range games {
+			gameMap[strings.ToLower(g.Title)] = g.Id
+		}
+
+		var joinErrors []string
+		for _, eventName := range tc.teamCreds.Events {
+			if id, ok := gameMap[strings.ToLower(eventName)]; ok {
+				if err := joinGame(id, eventName); err != nil {
+					joinErrors = append(joinErrors, fmt.Sprintf("%s: %v", eventName, err))
+				}
+			} else {
+				log.Error("Event '%s' not found, skipping...", eventName)
+				joinErrors = append(joinErrors, fmt.Sprintf("%s: not found", eventName))
+			}
+		}
+
+		if len(joinErrors) > 0 {
+			log.Error("Failed to join some events: %s", strings.Join(joinErrors, "; "))
+		}
+		return nil
+	}
+
+	// Fallback to single event from config/flag
+	if err := joinGame(tc.config.GetEventId(), tc.config.GetEventTitle()); err != nil {
+		log.Error("Failed to join game: %v", err)
+	}
 	return nil
 }
 
@@ -218,14 +260,6 @@ func (tc *Creator) sendCredentialsEmail() error {
 	return nil
 }
 
-// joinTeamToGame joins the team to the game.
-func (tc *Creator) joinTeamToGame() error {
-	if err := joinTeamToGame(tc.api, tc.config); err != nil {
-		// Log error but don't fail the entire operation
-		log.Error("Failed to join game: %v", err)
-	}
-	return nil
-}
 
 // CreateTeamAndUser creates a team and user, ensuring the team name is unique and within the specified length.
 func CreateTeamAndUser(teamCreds *TeamCreds, config ConfigInterface, existingTeamNames, existingUserNames map[string]struct{}, credsCache []*TeamCreds, isSendEmail bool, generateUsername func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error) {

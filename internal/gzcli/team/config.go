@@ -5,6 +5,7 @@ type ColumnMapping struct {
 	RealName string `yaml:"real_name"`
 	Email    string `yaml:"email"`
 	TeamName string `yaml:"team_name"`
+	Events   string `yaml:"events"`
 }
 
 // Config holds the configuration for team operations
