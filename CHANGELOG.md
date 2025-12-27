@@ -1,3 +1,9 @@
+## [1.31.0](https://github.com/dimasma0305/gzcli/compare/v1.30.0...v1.31.0) (2025-12-27)
+
+### Features
+
+* Refactor voting to be time-limited with an audible alarm and improve git repository path resolution. ([7742182](https://github.com/dimasma0305/gzcli/commit/7742182af091416d4a3ecddbc98da9b49e518e02))
+
 ## [1.30.0](https://github.com/dimasma0305/gzcli/compare/v1.29.0...v1.30.0) (2025-12-26)
 
 ### Features
