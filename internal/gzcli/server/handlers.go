@@ -299,6 +299,9 @@ const challengeTemplate = `{{define "challenge"}}
                 <button class="btn-start" onclick="vote('yes')">✅ Vote Yes</button>
                 <button class="btn-stop" onclick="vote('no')">❌ Vote No</button>
             </div>
+            <div style="margin-top: 8px; text-align: center;">
+                 <button onclick="stopAlarm()" style="font-size: 0.75em; padding: 4px 8px;">🔕 Stop Sound</button>
+            </div>
         </div>
 
         <div class="controls">
@@ -381,6 +384,7 @@ const challengeTemplate = `{{define "challenge"}}
                     break;
                 case 'vote_started':
                     showVotingPanel();
+                    playAlarm();
                     showMessage('info', 'Restart vote initiated by user');
                     break;
                 case 'vote_update':
@@ -388,6 +392,7 @@ const challengeTemplate = `{{define "challenge"}}
                     break;
                 case 'vote_ended':
                     hideVotingPanel();
+                    stopAlarm();
                     showMessage('info', 'Vote ended: ' + msg.data.result);
                     break;
                 case 'error':
@@ -466,7 +471,7 @@ const challengeTemplate = `{{define "challenge"}}
             document.getElementById('no-bar').style.width = data.no_percent + '%';
             document.getElementById('no-percent').textContent = Math.round(data.no_percent) + '%';
             document.getElementById('vote-info').textContent =
-                'Total voters: ' + data.total_users + ' (need 50% to approve/reject)';
+                'Total voters: ' + data.total_users + ' (waiting 15s handling...)';
         }
 
         function showMessage(type, text) {
@@ -497,6 +502,74 @@ const challengeTemplate = `{{define "challenge"}}
         function requestNotificationPermission() {
             if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
+            }
+        }
+
+        let audioCtx;
+        let oscillator;
+        let gainNode;
+
+        function playAlarm() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            // Create oscillator
+            oscillator = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // Start at 440Hz
+
+            // Siren effect: pitch modulation
+            const now = audioCtx.currentTime;
+            oscillator.frequency.linearRampToValueAtTime(880, now + 0.5);
+            oscillator.frequency.linearRampToValueAtTime(440, now + 1.0);
+
+            // Loop the frequency sweep
+            // Using setInterval for simplicity in this context, or precise scheduling
+            // For a simple alarm, we can just let it run or restart it.
+            // A better way for siren is LFO, but let's stick to a simple repeating ramp manually or just a simple beep-beep if easier.
+            // Let's do a simple LFO-like effect using oscillator parameters
+
+            // Re-creating oscillator for a proper LFO modulation is better:
+            // Carrier
+            const carrier = audioCtx.createOscillator();
+            carrier.type = 'sawtooth';
+            carrier.frequency.value = 600;
+
+            // LFO
+            const lfo = audioCtx.createOscillator();
+            lfo.type = 'sine';
+            lfo.frequency.value = 2; // 2Hz siren speed
+
+            const lfoGain = audioCtx.createGain();
+            lfoGain.gain.value = 200; // Modulation depth
+
+            lfo.connect(lfoGain);
+            lfoGain.connect(carrier.frequency);
+
+            carrier.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            carrier.start();
+            lfo.start();
+
+            oscillator = { stop: () => { carrier.stop(); lfo.stop(); } }; // Mock object for stop
+
+            // Auto stop after 15 seconds
+            setTimeout(stopAlarm, 15000);
+        }
+
+        function stopAlarm() {
+            if (oscillator) {
+                try {
+                    oscillator.stop();
+                } catch (e) {}
+                oscillator = null;
             }
         }
 

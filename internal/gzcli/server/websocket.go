@@ -333,7 +333,10 @@ func (wm *WSManager) handleRestartRequest(client *Client) {
 	}
 
 	// Start vote
-	if err := wm.voting.StartVote(client.Challenge); err != nil {
+	if err := wm.voting.StartVote(client.Challenge, func() {
+		// Vote ended (timeout)
+		wm.handleVoteTimeout(client.Challenge)
+	}); err != nil {
 		log.Error("Failed to start vote for %s: %v", challenge.Name, err)
 		wm.sendError(client, "Failed to start vote")
 		return
@@ -348,6 +351,31 @@ func (wm *WSManager) handleRestartRequest(client *Client) {
 	// Automatically vote yes for the initiator
 	_ = wm.voting.CastVote(client.Challenge, client.IP, true)
 	wm.checkAndBroadcastVoteUpdate(client.Challenge)
+}
+
+// handleVoteTimeout handles vote completion
+func (wm *WSManager) handleVoteTimeout(slug string) {
+	challenge, exists := wm.challenges.GetChallenge(slug)
+	if !exists {
+		return
+	}
+
+	// Get final votes
+	yesPercent, noPercent, _, _ := wm.voting.GetVoteStatus(slug, challenge.ConnectedIPs)
+
+	// Determine result
+	approved := yesPercent > noPercent
+
+	if approved {
+		// Execute restart
+		wm.voting.EndVote(slug, "approved")
+		wm.broadcastVoteEnded(slug, VoteMessage{Result: "approved"})
+		wm.executeRestart(challenge)
+	} else {
+		// Reject
+		wm.voting.EndVote(slug, "rejected")
+		wm.broadcastVoteEnded(slug, VoteMessage{Result: "rejected"})
+	}
 }
 
 // handleVote handles vote submissions
@@ -395,24 +423,6 @@ func (wm *WSManager) checkAndBroadcastVoteUpdate(slug string) {
 		TotalUsers: totalVoters,
 	}
 	wm.broadcastVoteUpdate(slug, voteMsg)
-
-	// Check threshold
-	approved, rejected, inProgress := wm.voting.CheckThreshold(slug, challenge.ConnectedIPs)
-
-	switch {
-	case approved:
-		// Execute restart
-		wm.voting.EndVote(slug, "approved")
-		wm.broadcastVoteEnded(slug, VoteMessage{Result: "approved"})
-		wm.executeRestart(challenge)
-	case rejected:
-		// Cancel vote
-		wm.voting.EndVote(slug, "rejected")
-		wm.broadcastVoteEnded(slug, VoteMessage{Result: "rejected"})
-	case !inProgress:
-		// Shouldn't happen, but just in case
-		wm.voting.EndVote(slug, "unknown")
-	}
 }
 
 // executeRestart executes a challenge restart

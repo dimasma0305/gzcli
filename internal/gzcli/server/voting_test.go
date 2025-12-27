@@ -10,13 +10,13 @@ func TestVotingManager_StartVote(t *testing.T) {
 	slug := "test_challenge"
 
 	// Test starting a vote
-	err := vm.StartVote(slug)
+	err := vm.StartVote(slug, nil)
 	if err != nil {
 		t.Errorf("Failed to start vote: %v", err)
 	}
 
 	// Test starting duplicate vote
-	err = vm.StartVote(slug)
+	err = vm.StartVote(slug, nil)
 	if err == nil {
 		t.Error("Expected error when starting duplicate vote, got nil")
 	}
@@ -32,7 +32,7 @@ func TestVotingManager_CastVote(t *testing.T) {
 	slug := "test_challenge"
 
 	// Start a vote
-	_ = vm.StartVote(slug)
+	_ = vm.StartVote(slug, nil)
 
 	// Cast yes vote
 	err := vm.CastVote(slug, "192.168.1.1", true)
@@ -64,7 +64,7 @@ func TestVotingManager_GetVoteStatus(t *testing.T) {
 	slug := "test_challenge"
 
 	// Start a vote
-	_ = vm.StartVote(slug)
+	_ = vm.StartVote(slug, nil)
 
 	// Cast votes
 	_ = vm.CastVote(slug, "192.168.1.1", true)
@@ -104,7 +104,7 @@ func TestVotingManager_CheckThreshold(t *testing.T) {
 	slug := "test_challenge"
 
 	// Start a vote
-	_ = vm.StartVote(slug)
+	_ = vm.StartVote(slug, nil)
 
 	connectedIPs := map[string]bool{
 		"192.168.1.1": true,
@@ -131,7 +131,7 @@ func TestVotingManager_CheckThreshold(t *testing.T) {
 
 	// Start new vote
 	vm.EndVote(slug, "test")
-	_ = vm.StartVote(slug)
+	_ = vm.StartVote(slug, nil)
 
 	// Cast 2 no votes (50% threshold)
 	_ = vm.CastVote(slug, "192.168.1.1", false)
@@ -149,7 +149,7 @@ func TestVotingManager_EndVote(t *testing.T) {
 	slug := "test_challenge"
 
 	// Start a vote
-	_ = vm.StartVote(slug)
+	_ = vm.StartVote(slug, nil)
 
 	if !vm.HasActiveVote(slug) {
 		t.Error("Vote should exist")
@@ -174,7 +174,7 @@ func TestVotingManager_GetVoteAge(t *testing.T) {
 	}
 
 	// Start a vote
-	_ = vm.StartVote(slug)
+	_ = vm.StartVote(slug, nil)
 
 	// Wait a bit
 	time.Sleep(100 * time.Millisecond)
@@ -194,7 +194,7 @@ func TestVotingManager_OnlyCountConnectedUsers(t *testing.T) {
 	slug := "test_challenge"
 
 	// Start a vote
-	_ = vm.StartVote(slug)
+	_ = vm.StartVote(slug, nil)
 
 	// Cast votes from 4 IPs
 	_ = vm.CastVote(slug, "192.168.1.1", true)

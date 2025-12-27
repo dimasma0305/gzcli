@@ -116,11 +116,17 @@ func (ew *EventWatcher) Start() error {
 
 	// Initialize git manager if enabled
 	if ew.config.GitPullEnabled {
-		cwd, err := os.Getwd()
+		// Use configured git repository path or default to current directory
+		gitRepoPath := ew.config.GitRepository
+		if gitRepoPath == "" {
+			gitRepoPath = "."
+		}
+
+		absRepoPath, err := filepath.Abs(gitRepoPath)
 		if err != nil {
-			log.Info("[%s] WARNING: Failed to get working directory for git resolution: %v", ew.eventName, err)
+			log.Info("[%s] WARNING: Failed to resolve git repository path: %v", ew.eventName, err)
 		} else {
-			repoPaths, err := git.ResolveRepoPaths(cwd, ew.eventName)
+			repoPaths, err := git.ResolveRepoPaths(absRepoPath, ew.eventName)
 			if err != nil {
 				log.Info("[%s] WARNING: Git monitoring enabled but no git repositories found: %v", ew.eventName, err)
 			} else {

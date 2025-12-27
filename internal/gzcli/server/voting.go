@@ -11,7 +11,7 @@ import (
 // Voting configuration constants
 const (
 	// VoteTimeout is the duration after which a vote expires
-	VoteTimeout = 5 * time.Minute
+	VoteTimeout = 15 * time.Second
 	// VoteThreshold is the minimum percentage of votes needed to approve an action
 	VoteThreshold = 0.5 // 50%
 )
@@ -30,7 +30,8 @@ func NewVotingManager() *VotingManager {
 }
 
 // StartVote starts a new restart vote for a challenge
-func (vm *VotingManager) StartVote(slug string) error {
+// onTimeout is called when the vote expires
+func (vm *VotingManager) StartVote(slug string, onTimeout func()) error {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
@@ -52,7 +53,9 @@ func (vm *VotingManager) StartVote(slug string) error {
 	// Start timeout timer
 	go func() {
 		time.Sleep(VoteTimeout)
-		vm.EndVote(slug, "timeout")
+		if onTimeout != nil {
+			onTimeout()
+		}
 	}()
 
 	return nil
