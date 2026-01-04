@@ -1,3 +1,9 @@
+## [1.32.0](https://github.com/dimasma0305/gzcli/compare/v1.31.0...v1.32.0) (2026-01-04)
+
+### Features
+
+* Reuse allocated ports during challenge restarts and add a notification sound endpoint. ([ac634e8](https://github.com/dimasma0305/gzcli/commit/ac634e862c0f59fd18665f1f9b1318bfe1251d07))
+
 ## [1.31.0](https://github.com/dimasma0305/gzcli/compare/v1.30.0...v1.31.0) (2025-12-27)
 
 ### Features
