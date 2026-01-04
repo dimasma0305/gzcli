@@ -103,10 +103,16 @@ func (e *Executor) Stop(challenge *ChallengeInfo) error {
 func (e *Executor) Restart(challenge *ChallengeInfo) error {
 	log.InfoH2("Restarting challenge: %s", challenge.Name)
 
+	// Save allocated ports before stopping
+	allocatedPorts := challenge.GetAllocatedPorts()
+
 	if err := e.Stop(challenge); err != nil {
 		log.Error("Stop failed during restart: %v", err)
 		// Continue anyway - the service might not be running
 	}
+
+	// Restore allocated ports so Start can try to reuse them
+	challenge.SetAllocatedPorts(allocatedPorts)
 
 	// Small delay between stop and start
 	time.Sleep(2 * time.Second)
@@ -120,11 +126,22 @@ func (e *Executor) Restart(challenge *ChallengeInfo) error {
 
 // randomizeComposePorts randomizes host ports in a compose file structure
 // Returns the modified compose structure and allocated port mappings
-func randomizeComposePorts(compose map[string]interface{}, usedDockerPorts map[int]bool) (map[string]interface{}, []string, error) {
+func randomizeComposePorts(compose map[string]interface{}, usedDockerPorts map[int]bool, existingPorts []string) (map[string]interface{}, []string, error) {
 	// Deep copy the compose structure to avoid modifying the original
 	composeBytes, err := yaml.Marshal(compose)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to marshal compose: %w", err)
+	}
+
+	// Parse existing ports for reuse
+	reusablePorts := make(map[string]int)
+	for _, p := range existingPorts {
+		parts := strings.Split(p, ":")
+		if len(parts) == 2 {
+			if port, err := strconv.Atoi(parts[0]); err == nil {
+				reusablePorts[parts[1]] = port
+			}
+		}
 	}
 
 	var modifiedCompose map[string]interface{}
@@ -191,9 +208,25 @@ func randomizeComposePorts(compose map[string]interface{}, usedDockerPorts map[i
 			}
 
 			// Get a random free port on host
-			randomHostPort, err := GetRandomPort(30000, 65535, excludedPorts)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to allocate random port: %w", err)
+			var randomHostPort int
+			var errAlloc error
+			reused := false
+
+			// Try to reuse port
+			if p, ok := reusablePorts[containerPort]; ok {
+				// Check if port is still free (not in usedDockerPorts and not in allocatedHostPorts)
+				if !excludedPorts[p] {
+					randomHostPort = p
+					reused = true
+					log.Info("Reusing port %d for container port %s", randomHostPort, containerPort)
+				}
+			}
+
+			if !reused {
+				randomHostPort, errAlloc = GetRandomPort(30000, 65535, excludedPorts)
+				if errAlloc != nil {
+					return nil, nil, fmt.Errorf("failed to allocate random port: %w", errAlloc)
+				}
 			}
 
 			allocatedHostPorts[randomHostPort] = true
@@ -239,8 +272,11 @@ func (e *Executor) startCompose(challenge *ChallengeInfo, dashboard *Dashboard) 
 		usedDockerPorts = make(map[int]bool)
 	}
 
+	// Get existing ports to attempt reuse
+	existingPorts := challenge.GetAllocatedPorts()
+
 	// Randomize ports in the compose structure
-	modifiedCompose, allocatedPorts, err := randomizeComposePorts(compose, usedDockerPorts)
+	modifiedCompose, allocatedPorts, err := randomizeComposePorts(compose, usedDockerPorts, existingPorts)
 	if err != nil {
 		return fmt.Errorf("failed to randomize ports: %w", err)
 	}
@@ -394,6 +430,17 @@ func (e *Executor) startDockerfile(challenge *ChallengeInfo, dashboard *Dashboar
 	// Track allocated ports for this container to avoid duplicates
 	allocatedHostPorts := make(map[int]bool)
 
+	// Parse existing ports for reuse
+	reusablePorts := make(map[string]int)
+	for _, p := range challenge.GetAllocatedPorts() {
+		parts := strings.Split(p, ":")
+		if len(parts) == 2 {
+			if port, err := strconv.Atoi(parts[0]); err == nil {
+				reusablePorts[parts[1]] = port
+			}
+		}
+	}
+
 	for _, portMap := range dashboard.Ports {
 		// portMap could be "host:container" or "container" or "*:container"
 		parts := strings.Split(portMap, ":")
@@ -409,9 +456,25 @@ func (e *Executor) startDockerfile(challenge *ChallengeInfo, dashboard *Dashboar
 		}
 
 		// Get a random free port on host, excluding already allocated ones
-		hostPort, err := GetRandomPort(30000, 65535, excludedPorts)
-		if err != nil {
-			return fmt.Errorf("failed to allocate port: %w", err)
+		var hostPort int
+		var errAlloc error
+		reused := false
+
+		// Try to reuse port
+		if p, ok := reusablePorts[containerPort]; ok {
+			// Check if port is still free (not in usedDockerPorts and not in allocatedHostPorts)
+			if !excludedPorts[p] {
+				hostPort = p
+				reused = true
+				log.Info("Reusing port %d for container port %s", hostPort, containerPort)
+			}
+		}
+
+		if !reused {
+			hostPort, errAlloc = GetRandomPort(30000, 65535, excludedPorts)
+			if errAlloc != nil {
+				return fmt.Errorf("failed to allocate port: %w", errAlloc)
+			}
 		}
 
 		allocatedHostPorts[hostPort] = true

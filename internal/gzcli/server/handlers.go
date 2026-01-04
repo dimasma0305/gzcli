@@ -1,12 +1,17 @@
 package server
 
 import (
+	_ "embed"
+	"fmt"
 	"html/template"
 	"net/http"
 	"strings"
 
 	"github.com/dimasma0305/gzcli/internal/log"
 )
+
+//go:embed notification.mp3
+var notificationSound []byte
 
 // HTML Templates
 const homeTemplate = `{{define "home"}}
@@ -55,267 +60,255 @@ const challengeTemplate = `{{define "challenge"}}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} - GZCLI Launcher</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Space Grotesk (Headings) & Inter (Body) & JetBrains Mono (Code) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        glass: 'rgba(255, 255, 255, 0.03)',
+                        'glass-hover': 'rgba(255, 255, 255, 0.08)',
+                        'glass-border': 'rgba(255, 255, 255, 0.1)',
+                        brand: '#6366f1', // Indigo
+                        accent: '#a855f7', // Purple
+                        success: '#22c55e',
+                        danger: '#ef4444',
+                        warning: '#eab308',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'gradient-x': 'gradient-x 15s ease infinite',
+                        'fadeIn': 'fadeIn 0.2s ease-out forwards',
+                    },
+                    keyframes: {
+                        'gradient-x': {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(-5px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #0d1117;
-            min-height: 100vh;
-            padding: 12px;
-            color: #c9d1d9;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: #161b22;
-            border-radius: 6px;
-            padding: 20px;
-            border: 1px solid #30363d;
-        }
-        h1 {
-            color: #58a6ff;
-            margin-bottom: 6px;
-            font-size: 1.5em;
-            font-weight: 600;
-        }
-        .meta {
-            color: #8b949e;
-            margin-bottom: 16px;
-            font-size: 0.8em;
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .meta span {
-            padding: 3px 6px;
-            background: #21262d;
-            border-radius: 3px;
-            border: 1px solid #30363d;
-            white-space: nowrap;
-        }
-        .ports {
-            margin-bottom: 12px;
-            padding: 10px;
-            background: #0d1117;
-            border-radius: 4px;
-            border: 1px solid #30363d;
-            font-size: 0.8em;
-        }
-        .ports strong {
-            color: #58a6ff;
-            margin-right: 6px;
-            display: block;
-            margin-bottom: 6px;
-        }
-        .ports .port {
-            display: inline-block;
-            margin: 3px 3px 3px 0;
-            padding: 3px 8px;
-            background: #21262d;
-            border: 1px solid #3fb950;
-            border-radius: 3px;
-            color: #3fb950;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85em;
-        }
-        .status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px;
-            background: #0d1117;
-            border-radius: 4px;
-            margin-bottom: 12px;
-            font-size: 0.8em;
-            border: 1px solid #30363d;
-        }
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .status-dot.connected { background: #3fb950; }
-        .status-dot.disconnected { background: #f85149; }
-        .status-dot.connecting { background: #d29922; }
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-        button {
-            padding: 10px;
-            font-size: 0.85em;
-            border: 1px solid #30363d;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.15s;
-            font-weight: 500;
-            background: #21262d;
-            color: #c9d1d9;
-            white-space: nowrap;
-            touch-action: manipulation;
-        }
-        button:hover:not(:disabled) {
-            background: #30363d;
-            border-color: #58a6ff;
-        }
-        button:active:not(:disabled) {
-            transform: scale(0.98);
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .btn-start:hover:not(:disabled) { border-color: #3fb950; }
-        .btn-restart:hover:not(:disabled) { border-color: #d29922; }
-        .voting-panel {
-            display: none;
-            padding: 12px;
-            background: #21262d;
-            border-radius: 4px;
-            margin-bottom: 12px;
-            border: 1px solid #d29922;
-        }
-        .voting-panel h3 {
-            margin-bottom: 10px;
-            color: #d29922;
-            font-size: 0.9em;
-            font-weight: 600;
-        }
-        .vote-progress {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 10px;
-        }
-        .vote-bar {
-            flex: 1;
-            height: 20px;
-            background: #0d1117;
-            border-radius: 3px;
-            overflow: hidden;
-            border: 1px solid #30363d;
-        }
-        .vote-bar-fill {
-            height: 100%;
-            transition: width 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75em;
-            font-weight: 600;
-        }
-        .vote-yes { background: #2ea043; }
-        .vote-no { background: #da3633; }
-        .vote-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-        }
-        .vote-info {
-            font-size: 0.75em;
-            color: #8b949e;
-            margin-bottom: 8px;
-        }
-        .info-panel {
-            padding: 8px 10px;
-            border-radius: 4px;
-            margin-bottom: 6px;
-            font-size: 0.8em;
-            border: 1px solid;
-        }
-        .info-panel.success { background: #0d1117; color: #3fb950; border-color: #2ea043; }
-        .info-panel.error { background: #0d1117; color: #f85149; border-color: #da3633; }
-        .info-panel.info { background: #0d1117; color: #58a6ff; border-color: #1f6feb; }
-        .messages {
-            max-height: 150px;
-            overflow-y: auto;
-        }
-        .messages::-webkit-scrollbar { width: 4px; }
-        .messages::-webkit-scrollbar-track { background: #0d1117; }
-        .messages::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
-
-        /* Mobile optimizations */
-        @media (max-width: 480px) {
-            body { padding: 8px; }
-            .container { padding: 16px; }
-            h1 { font-size: 1.3em; }
-            .meta { font-size: 0.75em; gap: 6px; }
-            button { padding: 8px; font-size: 0.8em; }
-            .controls { gap: 6px; }
+            background-color: #050505;
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15) 0%, transparent 25%);
         }
 
-        /* Tablet */
-        @media (min-width: 481px) and (max-width: 768px) {
-            .container { margin: 20px auto; }
+        .bento-card {
+            background: var(--tw-colors-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--tw-colors-glass-border);
+            border-radius: 1.5rem;
+            transition: all 0.3s ease;
         }
+
+        .bento-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: var(--tw-colors-glass-hover);
+        }
+
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>{{.Name}}</h1>
-        <div class="meta">
-            <span>📁 {{.Category}}</span>
-            <span>🎯 {{.Event}}</span>
-            <span id="user-count">👥 0 users</span>
-        </div>
+<body class="text-white min-h-screen p-4 md:p-8 flex flex-col items-center justify-center selection:bg-brand selection:text-white">
 
-        {{if .Ports}}
-        <div class="ports">
-            <strong>Ports:</strong>
-            {{range .Ports}}
-            <span class="port">{{.}}</span>
-            {{end}}
-        </div>
-        {{end}}
+    <div class="max-w-6xl w-full mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
 
-        <div class="status">
-            <div class="status-dot connecting" id="connection-status"></div>
-            <div>
-                <strong>Connection:</strong> <span id="connection-text">Connecting...</span><br>
-                <strong>Status:</strong> <span id="challenge-status">Unknown</span>
-            </div>
-        </div>
-
-        <div id="messages" class="messages"></div>
-
-        <div id="voting-panel" class="voting-panel">
-            <h3>🗳️ Restart Vote in Progress</h3>
-            <div class="vote-progress">
-                <div class="vote-bar">
-                    <div class="vote-bar-fill vote-yes" id="yes-bar" style="width: 0%">
-                        <span id="yes-percent">0%</span>
-                    </div>
+        <!-- Header / Nav -->
+        <div class="col-span-1 md:col-span-12 flex justify-between items-center mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 flex items-center justify-center p-1.5">
+                    <svg viewBox="0 0 4800 4800" class="w-full h-full">
+                        <path fill="white" fill-rule="evenodd" class="icon-EMC348" d="M2994.48,4244.61L505.28,2807.47V1992.53l256.572-148.14L1287,2285l258-307,160.39,135.56L1209.27,2400l1786.1,1031.21V2427.79L3517,1806,2420.98,886.5l573.5-331.11,705.76,407.474V3837.14Z"></path>
+                        <g id="Flag">
+                            <path id="Flag_0" fill="#00bfa5" fill-rule="evenodd" d="M1280.55,582.029L2046.6,1224.82l-771.35,919.25L509.21,1501.28Z"></path>
+                            <path id="Flag_1" fill="#007f6e" fill-rule="evenodd" d="M1225.95,1580.54l306.42,257.11-257.12,306.42Z"></path>
+                            <path id="Flag_2" fill="#1de9b6" fill-rule="evenodd" d="M2636.97,2699.25l-32.14,38.31-264.98,315.78L1812.4,2748.51l332.8-396.63-919.25-771.34L1997.3,661.284,3376.18,1818.3ZM1880,3601.24l0.15-.04L1351.4,4231.34,891.769,3845.67l460.361-548.64Z"></path>
+                        </g>
+                    </svg>
                 </div>
-                <div class="vote-bar">
-                    <div class="vote-bar-fill vote-no" id="no-bar" style="width: 0%">
-                        <span id="no-percent">0%</span>
-                    </div>
+                <h1 class="font-display font-bold text-2xl tracking-tight">GZCLI Launcher</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-gray-400">
+                    <span id="connection-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    <span id="connection-text">Disconnected</span>
                 </div>
             </div>
-            <p class="vote-info" id="vote-info">Waiting for votes...</p>
-            <div class="vote-buttons">
-                <button class="btn-start" onclick="vote('yes')">✅ Vote Yes</button>
-                <button class="btn-stop" onclick="vote('no')">❌ Vote No</button>
+        </div>
+
+        <!-- 1. Hero Card (Challenge Info) -->
+        <div class="col-span-1 md:col-span-8 bento-card p-8 relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
+                 <!-- Abstract Graphic -->
+                 <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="text-white transform rotate-12">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
             </div>
-            <div style="margin-top: 8px; text-align: center;">
-                 <button onclick="stopAlarm()" style="font-size: 0.75em; padding: 4px 8px;">🔕 Stop Sound</button>
+
+            <div class="relative z-10 flex flex-col h-full justify-between">
+                <div>
+                    <div class="flex gap-2 mb-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-brand/20 text-brand border border-brand/20">{{.Category}}</span>
+                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/10">{{.Event}}</span>
+                    </div>
+                    <h2 class="font-display text-5xl md:text-6xl font-bold mb-2 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-gray-400">
+                        {{.Name}}
+                    </h2>
+                    <p class="text-gray-400 max-w-lg mt-2 text-lg">
+                        {{.Description}}
+                    </p>
+                </div>
+
+                <div class="mt-8 flex items-center gap-4 text-sm text-gray-500">
+                    <span id="user-count" class="flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        0 users online
+                    </span>
+                </div>
             </div>
         </div>
 
-        <div class="controls">
-            <button class="btn-start" id="btn-start" onclick="startChallenge()">▶️ Start</button>
-            <button class="btn-restart" id="btn-restart" onclick="requestRestart()">🔄 Restart</button>
+        <!-- 2. Control Center Card -->
+        <div class="col-span-1 md:col-span-4 bento-card p-6 flex flex-col justify-center items-center text-center relative overflow-hidden">
+            <!-- Background Glow -->
+            <div id="status-glow" class="absolute inset-0 bg-brand/10 blur-3xl opacity-0 transition-opacity duration-700"></div>
+
+            <div class="relative z-10 w-full">
+                <div class="mb-2 text-xs font-mono text-gray-500 uppercase tracking-widest">Instance Status</div>
+                <div id="status-text" class="text-2xl font-display font-bold text-white mb-8">Unknown</div>
+
+                <div class="flex gap-4 justify-center w-full">
+                    <button id="btn-start" onclick="startChallenge()" disabled class="group relative flex items-center justify-center w-20 h-20 rounded-2xl bg-white text-black hover:scale-105 transition-all duration-300 shadow-xl shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                        <svg class="w-8 h-8 fill-current translate-x-0.5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+
+                    <button id="btn-restart" onclick="requestRestart()" disabled class="group flex items-center justify-center w-20 h-20 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed">
+                        <svg class="w-8 h-8 stroke-current group-hover:rotate-180 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    </button>
+                </div>
+            </div>
         </div>
+
+        <!-- 3. Voting Card -->
+        <div id="voting-panel" class="hidden col-span-1 md:col-span-12 bento-card p-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+            <div class="bg-black/90 h-full w-full rounded-[1.3rem] p-6 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 bg-white/10 rounded-xl animate-bounce">
+                        <span class="text-2xl">🗳️</span>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg">Restart Requested</h3>
+                        <p id="vote-info" class="text-gray-400 text-sm">Consensus required to reboot instance.</p>
+                    </div>
+                </div>
+
+                <div class="flex-1 w-full md:max-w-md">
+                    <div class="flex justify-between text-xs font-mono mb-2 text-gray-400">
+                        <span>YES</span>
+                        <span>NO</span>
+                    </div>
+                    <div class="h-4 bg-white/10 rounded-full overflow-hidden flex relative">
+                        <div id="yes-bar" class="h-full bg-success transition-all duration-500 flex items-center justify-center text-[10px] font-bold text-black" style="width: 0%"></div>
+                        <div id="no-bar" class="h-full bg-danger transition-all duration-500 flex items-center justify-center text-[10px] font-bold text-white" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="vote('yes')" class="px-6 py-2.5 rounded-xl bg-success/20 text-success border border-success/20 hover:bg-success hover:text-black font-semibold transition-all">Vote Yes</button>
+                    <button onclick="vote('no')" class="px-6 py-2.5 rounded-xl bg-danger/20 text-danger border border-danger/20 hover:bg-danger hover:text-white font-semibold transition-all">Vote No</button>
+                    <button onclick="stopAlarm()" class="w-10 h-10 flex items-center justify-center rounded-xl border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition-all" title="Mute Sound">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" stroke-linejoin="round"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Ports Card -->
+        <div class="col-span-1 md:col-span-4 bento-card p-6 flex flex-col">
+            <h3 class="font-display font-bold text-lg mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                Active Ports
+            </h3>
+
+            <div id="ports-list" class="space-y-3 flex-1 overflow-y-auto custom-scroll min-h-[140px]">
+                {{if .Ports}}
+                    {{range .Ports}}
+                    <div class="group flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all">
+                        <div class="flex flex-col">
+                            <span class="text-xs text-gray-500 font-mono">TCP / Port {{.}}</span>
+                            <span class="text-sm font-mono text-brand group-hover:text-white transition-colors">Port {{.}}</span>
+                        </div>
+                    </div>
+                    {{end}}
+                {{else}}
+                <!-- Placeholder State -->
+                <div class="h-full flex flex-col items-center justify-center text-gray-600 text-sm border border-dashed border-gray-800 rounded-xl">
+                    <span>No active ports</span>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- 5. Terminal / Logs Card -->
+        <div class="col-span-1 md:col-span-8 bento-card p-0 overflow-hidden flex flex-col h-80 md:h-auto">
+            <div class="px-6 py-4 border-b border-white/5 bg-black/20 flex items-center justify-between">
+                <h3 class="font-mono text-sm text-gray-400">system_logs.log</h3>
+                <div class="flex gap-1.5">
+                    <div class="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50"></div>
+                </div>
+            </div>
+            <div id="messages" class="flex-1 p-6 font-mono text-xs md:text-sm overflow-y-auto custom-scroll space-y-2 bg-black/40 text-gray-300">
+                <div class="text-gray-600 italic">// Waiting for connection...</div>
+            </div>
+        </div>
+
     </div>
 
     <script>
+        // Configuration
         const slug = '{{.Slug}}';
+
         let ws = null;
         let reconnectAttempts = 0;
         const maxReconnectDelay = 30000;
 
+        // --- Connection Logic ---
         function connect() {
             updateConnectionStatus('connecting');
 
@@ -349,7 +342,6 @@ const challengeTemplate = `{{define "challenge"}}
             };
 
             ws.onerror = (error) => {
-                // Don't log error during reconnection attempts
                 if (reconnectAttempts === 0) {
                     console.error('WebSocket error:', error);
                 }
@@ -377,27 +369,20 @@ const challengeTemplate = `{{define "challenge"}}
             console.log('Received:', msg);
 
             switch (msg.type) {
-                case 'pong':
-                    break;
-                case 'status':
-                    updateStatus(msg.data);
-                    break;
+                case 'pong': break;
+                case 'status': updateStatus(msg.data); break;
                 case 'vote_started':
                     showVotingPanel();
                     playAlarm();
                     showMessage('info', 'Restart vote initiated by user');
                     break;
-                case 'vote_update':
-                    updateVoteProgress(msg.data);
-                    break;
+                case 'vote_update': updateVoteProgress(msg.data); break;
                 case 'vote_ended':
                     hideVotingPanel();
                     stopAlarm();
                     showMessage('info', 'Vote ended: ' + msg.data.result);
                     break;
-                case 'error':
-                    showMessage('error', msg.message);
-                    break;
+                case 'error': showMessage('error', msg.message); break;
                 case 'info':
                     showMessage('info', msg.message);
                     if (msg.message.includes('started successfully') || msg.message.includes('ready')) {
@@ -408,9 +393,10 @@ const challengeTemplate = `{{define "challenge"}}
         }
 
         function updateConnectionStatus(status) {
-            const dot = document.getElementById('connection-status');
+            const dot = document.getElementById('connection-dot');
             const text = document.getElementById('connection-text');
-            dot.className = 'status-dot ' + status;
+            dot.className = 'w-2 h-2 rounded-full ' + (status === 'connected' ? 'bg-green-500' :
+                status === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500');
 
             const statusText = {
                 'connecting': 'Connecting...',
@@ -420,64 +406,129 @@ const challengeTemplate = `{{define "challenge"}}
             text.textContent = statusText[status] || status;
         }
 
+        function copyToClipboard(text, element) {
+            navigator.clipboard.writeText(text).then(function() {
+                let btn = element;
+                if (element.tagName !== 'BUTTON') {
+                    const parent = element.closest('.group');
+                    btn = parent.querySelector('button');
+                }
+
+                if (btn) {
+                    const copyIcon = btn.querySelector('.copy-icon');
+                    const checkIcon = btn.querySelector('.check-icon');
+
+                    if (copyIcon && checkIcon) {
+                        copyIcon.classList.add('hidden');
+                        checkIcon.classList.remove('hidden');
+
+                        setTimeout(function() {
+                            copyIcon.classList.remove('hidden');
+                            checkIcon.classList.add('hidden');
+                        }, 2000);
+                    }
+                }
+                showMessage('success', 'Port copied to clipboard: ' + text);
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+                showMessage('error', 'Failed to copy port');
+            });
+        }
+
         function updateStatus(data) {
-            document.getElementById('challenge-status').textContent = data.status;
-            document.getElementById('user-count').textContent = '👥 ' + data.connected_users + ' user' + (data.connected_users !== 1 ? 's' : '');
+            const statusEl = document.getElementById('status-text');
+            if (statusEl) statusEl.textContent = data.status || 'Unknown';
+
+            const countEl = document.getElementById('user-count');
+            if (countEl) {
+                countEl.innerHTML =
+                    '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>' +
+                    ' ' + data.connected_users + ' user' + (data.connected_users !== 1 ? 's' : '') + ' online';
+            }
 
             // Update ports section
-            const portsContainer = document.querySelector('.ports');
-            if (data.status === 'running' && data.allocated_ports && data.allocated_ports.length > 0) {
-                let html = '<strong>Ports:</strong> ';
-                data.allocated_ports.forEach(port => {
-                    html += '<span class="port">' + port + '</span>';
-                });
+            const portsList = document.getElementById('ports-list');
+            if (portsList) {
+                if (data.status === 'running' && data.allocated_ports && data.allocated_ports.length > 0) {
+                    let html = '';
+                    data.allocated_ports.forEach(function(portMapping) {
+                        const parts = portMapping.split(':');
+                        const extPort = parts[0];
+                        const intPort = parts[1];
+                        const hostname = window.location.hostname;
+                        const httpUrl = 'http://' + hostname + ':' + extPort;
+                        const ncCmd = 'nc ' + hostname + ' ' + extPort;
 
-                if (portsContainer) {
-                    portsContainer.innerHTML = html;
-                    portsContainer.style.display = 'block';
+                        html += '<div class="group flex flex-col p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all gap-2">' +
+                            '<div class="flex items-center justify-between">' +
+                                '<div class="flex flex-col">' +
+                                    '<span class="text-xs text-gray-500 font-mono text-gray-400">TCP Port Mapping</span>' +
+                                    '<div class="flex items-center gap-2">' +
+                                        '<span class="text-lg font-mono font-bold text-white transition-colors">' + extPort + '</span>' +
+                                        '<span class="text-sm text-gray-500 font-mono">→</span>' +
+                                        '<span class="text-sm text-gray-400 font-mono">' + intPort + '</span>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="flex gap-2">' +
+                                '<button onclick="copyToClipboard(\'' + httpUrl + '\', this)" class="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-brand/10 border border-brand/20 hover:bg-brand/20 text-xs font-mono text-brand transition-all" title="Copy HTTP URL">' +
+                                    '<span class="copy-icon flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> HTTP</span>' +
+                                    '<span class="check-icon hidden text-green-500 font-bold">Copied!</span>' +
+                                '</button>' +
+                                '<button onclick="copyToClipboard(\'' + ncCmd + '\', this)" class="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-mono text-gray-300 transition-all" title="Copy NC Command">' +
+                                    '<span class="copy-icon flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg> NC</span>' +
+                                    '<span class="check-icon hidden text-green-500 font-bold">Copied!</span>' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>';
+                    });
+                    portsList.innerHTML = html;
                 } else {
-                    // Create if not exists
-                    const newContainer = document.createElement('div');
-                    newContainer.className = 'ports';
-                    newContainer.innerHTML = html;
-                    // Insert after meta
-                    const meta = document.querySelector('.meta');
-                    meta.parentNode.insertBefore(newContainer, meta.nextSibling);
-                }
-            } else {
-                if (portsContainer) {
-                    portsContainer.style.display = 'none';
+                     portsList.innerHTML =
+                    '<div class="h-full flex flex-col items-center justify-center text-gray-600 text-sm border border-dashed border-gray-800 rounded-xl">' +
+                        '<span>No active ports</span>' +
+                    '</div>';
                 }
             }
 
             const startBtn = document.getElementById('btn-start');
             const restartBtn = document.getElementById('btn-restart');
 
-            startBtn.disabled = ['starting', 'running', 'stopping'].includes(data.status);
-            restartBtn.disabled = ['starting', 'stopping', 'restarting'].includes(data.status);
+            if (startBtn) startBtn.disabled = ['starting', 'running', 'stopping'].includes(data.status);
+            if (restartBtn) restartBtn.disabled = ['starting', 'stopping', 'restarting'].includes(data.status);
         }
 
         function showVotingPanel() {
-            document.getElementById('voting-panel').style.display = 'block';
+            const panel = document.getElementById('voting-panel');
+            if (panel) panel.style.display = 'block';
         }
 
         function hideVotingPanel() {
-            document.getElementById('voting-panel').style.display = 'none';
+            const panel = document.getElementById('voting-panel');
+            if (panel) panel.style.display = 'none';
         }
 
         function updateVoteProgress(data) {
-            document.getElementById('yes-bar').style.width = data.yes_percent + '%';
-            document.getElementById('yes-percent').textContent = Math.round(data.yes_percent) + '%';
-            document.getElementById('no-bar').style.width = data.no_percent + '%';
-            document.getElementById('no-percent').textContent = Math.round(data.no_percent) + '%';
-            document.getElementById('vote-info').textContent =
-                'Total voters: ' + data.total_users + ' (waiting 15s handling...)';
+            const yesBar = document.getElementById('yes-bar');
+            const noBar = document.getElementById('no-bar');
+            const info = document.getElementById('vote-info');
+
+            if (yesBar) yesBar.style.width = data.yes_percent + '%';
+            if (noBar) noBar.style.width = data.no_percent + '%';
+            if (info) info.textContent = 'Total voters: ' + data.total_users + ' (waiting 15s handling...)';
         }
 
         function showMessage(type, text) {
             const messagesDiv = document.getElementById('messages');
+            if (!messagesDiv) return;
+
             const msgDiv = document.createElement('div');
-            msgDiv.className = 'info-panel ' + type;
+            // Mapping msg types to Tailwind classes
+            let colorClass = 'text-brand';
+            if (type === 'error') colorClass = 'text-red-500';
+            else if (type === 'success') colorClass = 'text-green-500';
+
+            msgDiv.className = 'p-2 rounded border border-white/5 bg-white/5 ' + colorClass;
             msgDiv.textContent = text;
             messagesDiv.insertBefore(msgDiv, messagesDiv.firstChild);
 
@@ -487,17 +538,9 @@ const challengeTemplate = `{{define "challenge"}}
             }
         }
 
-        function startChallenge() {
-            send('start');
-        }
-
-        function requestRestart() {
-            send('restart');
-        }
-
-        function vote(value) {
-            send('vote', { value });
-        }
+        function startChallenge() { send('start'); }
+        function requestRestart() { send('restart'); }
+        function vote(value) { send('vote', { value }); }
 
         function requestNotificationPermission() {
             if ('Notification' in window && Notification.permission === 'default') {
@@ -505,72 +548,18 @@ const challengeTemplate = `{{define "challenge"}}
             }
         }
 
-        let audioCtx;
-        let oscillator;
-        let gainNode;
+        let alarmAudio = new Audio('/notification.mp3');
+        alarmAudio.loop = true;
 
         function playAlarm() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-
-            // Create oscillator
-            oscillator = audioCtx.createOscillator();
-            gainNode = audioCtx.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            oscillator.type = 'sawtooth';
-            oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // Start at 440Hz
-
-            // Siren effect: pitch modulation
-            const now = audioCtx.currentTime;
-            oscillator.frequency.linearRampToValueAtTime(880, now + 0.5);
-            oscillator.frequency.linearRampToValueAtTime(440, now + 1.0);
-
-            // Loop the frequency sweep
-            // Using setInterval for simplicity in this context, or precise scheduling
-            // For a simple alarm, we can just let it run or restart it.
-            // A better way for siren is LFO, but let's stick to a simple repeating ramp manually or just a simple beep-beep if easier.
-            // Let's do a simple LFO-like effect using oscillator parameters
-
-            // Re-creating oscillator for a proper LFO modulation is better:
-            // Carrier
-            const carrier = audioCtx.createOscillator();
-            carrier.type = 'sawtooth';
-            carrier.frequency.value = 600;
-
-            // LFO
-            const lfo = audioCtx.createOscillator();
-            lfo.type = 'sine';
-            lfo.frequency.value = 2; // 2Hz siren speed
-
-            const lfoGain = audioCtx.createGain();
-            lfoGain.gain.value = 200; // Modulation depth
-
-            lfo.connect(lfoGain);
-            lfoGain.connect(carrier.frequency);
-
-            carrier.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            carrier.start();
-            lfo.start();
-
-            oscillator = { stop: () => { carrier.stop(); lfo.stop(); } }; // Mock object for stop
-
-            // Auto stop after 15 seconds
+            alarmAudio.currentTime = 0;
+            alarmAudio.play().catch(e => console.error("Error playing audio:", e));
             setTimeout(stopAlarm, 15000);
         }
 
         function stopAlarm() {
-            if (oscillator) {
-                try {
-                    oscillator.stop();
-                } catch (e) {}
-                oscillator = null;
-            }
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
         }
 
         function showNotification(title, body) {
@@ -670,12 +659,13 @@ func (s *Server) HandleChallenge(w http.ResponseWriter, r *http.Request) {
 
 	// Render challenge page
 	data := map[string]interface{}{
-		"Title":    challenge.Name,
-		"Slug":     challenge.Slug,
-		"Name":     challenge.Name,
-		"Event":    challenge.EventName,
-		"Category": challenge.Category,
-		"Ports":    displayPorts,
+		"Title":       challenge.Name,
+		"Slug":        challenge.Slug,
+		"Name":        challenge.Name,
+		"Description": challenge.Description,
+		"Event":       challenge.EventName,
+		"Category":    challenge.Category,
+		"Ports":       displayPorts,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "challenge", data); err != nil {
@@ -689,6 +679,14 @@ func (s *Server) SetupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Homepage
+	mux.HandleFunc("/notification.mp3", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "audio/mpeg")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(notificationSound)))
+		if _, err := w.Write(notificationSound); err != nil {
+			log.Error("Failed to write notification sound: %v", err)
+		}
+	})
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			s.HandleHome(w, r)
