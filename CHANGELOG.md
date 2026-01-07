@@ -1,3 +1,9 @@
+## [1.33.0](https://github.com/dimasma0305/gzcli/compare/v1.32.0...v1.33.0) (2026-01-07)
+
+### Features
+
+* Update challenge schema reference to main, rename container expose port, and add FLAG environment variable export. ([effd312](https://github.com/dimasma0305/gzcli/commit/effd3125ea21f535afe603d6035da53257d53b9a))
+
 ## [1.32.0](https://github.com/dimasma0305/gzcli/compare/v1.31.0...v1.32.0) (2026-01-04)
 
 ### Features
