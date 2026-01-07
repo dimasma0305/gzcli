@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/dimasma0305/gzcli/refs/heads/master/internal/template/templates/others/ctf-template/.gzctf/challenge.schema.yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dimasma0305/gzcli/refs/heads/main/internal/template/templates/others/ctf-template/.gzctf/challenge.schema.yaml
 
 name: "dynamic-container"
 author: "test"
@@ -18,7 +18,7 @@ container:
   memoryLimit: 512
   cpuCount: 3
   storageLimit: 512
-  containerExposePort: 8011
+  exposePort: 8011
   enableTrafficCapture: false
 
 scripts:
