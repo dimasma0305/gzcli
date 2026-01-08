@@ -1,0 +1,27 @@
+services:
+  manager:
+    build:
+      context: ./manager/
+      dockerfile: Dockerfile
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.services.upload-server.loadbalancer.server.port=3000"
+      - "traefik.http.routers.upload-server.rule=Host(`upload.1pc.tf`)"
+      - "traefik.http.routers.upload-server.entrypoints=websecure"
+      - "traefik.http.routers.upload-server.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.upload-server.service=upload-server"
+    volumes:
+      - ../:/app/
+    command: |
+      sh -c '
+      cd /app/ &&
+      gzcli upload-server \
+        --port 3000 \
+        --host 0.0.0.0'
+    restart: always
+networks:
+  traefik:
+    external: true
