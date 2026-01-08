@@ -1,3 +1,9 @@
+## [1.36.0](https://github.com/dimasma0305/gzcli/compare/v1.35.0...v1.36.0) (2026-01-08)
+
+### Features
+
+* adding solver validation ([d46a250](https://github.com/dimasma0305/gzcli/commit/d46a2507ff2a55e318eb185702e062a9e1f5ba5f))
+
 ## [1.35.0](https://github.com/dimasma0305/gzcli/compare/v1.34.0...v1.35.0) (2026-01-08)
 
 ### Features
