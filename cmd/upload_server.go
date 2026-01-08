@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	uploadServerHost string
-	uploadServerPort int
+	uploadServerHost  string
+	uploadServerPort  int
+	uploadServerEvent string
 )
 
 var uploadServerCmd = &cobra.Command{
@@ -26,8 +27,9 @@ submit completed challenge archives that comply with the gzcli structure.`,
   gzcli upload-server --host 0.0.0.0 --port 4000`,
 	Run: func(_ *cobra.Command, _ []string) {
 		opts := uploadserver.Options{
-			Host: uploadServerHost,
-			Port: uploadServerPort,
+			Host:  uploadServerHost,
+			Port:  uploadServerPort,
+			Event: uploadServerEvent,
 		}
 
 		log.Info("Starting GZCLI Challenge Upload Server...")
@@ -42,4 +44,5 @@ func init() {
 
 	uploadServerCmd.Flags().StringVarP(&uploadServerHost, "host", "H", "localhost", "Host to bind the upload server")
 	uploadServerCmd.Flags().IntVarP(&uploadServerPort, "port", "p", 8090, "Port to bind the upload server")
+	uploadServerCmd.Flags().StringVarP(&uploadServerEvent, "event", "e", "", "Restrict uploads to a specific event")
 }

@@ -90,6 +90,11 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	event := strings.TrimSpace(r.FormValue("event"))
+	if s.opts.Event != "" && event != s.opts.Event {
+		data.ErrorMsg = fmt.Sprintf("upload restricted to event: %s", s.opts.Event)
+		s.renderWithStatus(w, data, http.StatusBadRequest)
+		return
+	}
 	category := strings.TrimSpace(r.FormValue("category"))
 
 	file, header, err := r.FormFile("challenge")
@@ -148,6 +153,10 @@ func (s *server) baseViewData() viewData {
 	if err != nil {
 		log.Error("Failed to list events: %v", err)
 		events = []string{}
+	}
+
+	if s.opts.Event != "" {
+		events = []string{s.opts.Event}
 	}
 
 	return viewData{

@@ -15,8 +15,9 @@ const (
 
 // Options configures the upload server runtime.
 type Options struct {
-	Host string
-	Port int
+	Host  string
+	Port  int
+	Event string
 }
 
 type server struct {
