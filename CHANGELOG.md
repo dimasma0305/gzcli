@@ -1,3 +1,9 @@
+## [1.34.0](https://github.com/dimasma0305/gzcli/compare/v1.33.0...v1.34.0) (2026-01-08)
+
+### Features
+
+* update the uploader server validation ([93116db](https://github.com/dimasma0305/gzcli/commit/93116db4536450dc04617a15d2423efea17320a0))
+
 ## [1.33.0](https://github.com/dimasma0305/gzcli/compare/v1.32.0...v1.33.0) (2026-01-07)
 
 ### Features
