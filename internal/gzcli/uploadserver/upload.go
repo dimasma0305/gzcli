@@ -89,13 +89,13 @@ func (s *server) processUpload(ctx context.Context, event, category string, file
 	}
 
 	challengeRoot := filepath.Dir(challengeYMLPath)
-	if err := validateChallengeRoot(challengeRoot, challengeYMLPath); err != nil {
-		return err
-	}
-
 	var chall config.ChallengeYaml
 	if err := fileutil.ParseYamlFromFile(challengeYMLPath, &chall); err != nil {
 		return fmt.Errorf("failed to parse challenge.yml: %w", err)
+	}
+
+	if err := validateChallengeRoot(challengeRoot, challengeYMLPath, chall); err != nil {
+		return err
 	}
 
 	if err := ensureChallengeCustomized(chall); err != nil {
@@ -107,6 +107,10 @@ func (s *server) processUpload(ctx context.Context, event, category string, file
 	}
 
 	if err := ensureProvideDistConsistency(challengeRoot, chall); err != nil {
+		return err
+	}
+
+	if err := validateUploadChallenge(challengeRoot, chall); err != nil {
 		return err
 	}
 
@@ -371,7 +375,7 @@ func ensureDirWritable(mode fs.FileMode) fs.FileMode {
 	return (mode | 0700) & fs.ModePerm
 }
 
-func validateChallengeRoot(root, challengeYMLPath string) error {
+func validateChallengeRoot(root, challengeYMLPath string, chall config.ChallengeYaml) error {
 	if filepath.Base(challengeYMLPath) != "challenge.yml" {
 		return fmt.Errorf("challenge definition file must be named challenge.yml")
 	}
@@ -411,7 +415,12 @@ func validateChallengeRoot(root, challengeYMLPath string) error {
 				return fmt.Errorf("src exists but is not a directory")
 			}
 			hasSrc = true
+		case "docker-compose.yml", "Dockerfile", ".dockerignore", ".gitignore":
+			// Allowed optional files
 		default:
+			if chall.Dashboard != nil && chall.Dashboard.Config == name {
+				continue
+			}
 			return fmt.Errorf("%w: %s", errInvalidRootContents, name)
 		}
 	}
