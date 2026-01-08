@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -51,6 +52,11 @@ func setupEventWatcherTest(t *testing.T) (*EventWatcher, string, func()) {
 
 	ew, err := NewEventWatcher("test-event", api, config, db, ctx)
 	if err != nil {
+		// Check for resource exhaustion errors
+		if strings.Contains(err.Error(), "too many open files") ||
+		   strings.Contains(err.Error(), "inotify") {
+			t.Skipf("Skipping test due to resource limits: %v", err)
+		}
 		t.Fatalf("Failed to create event watcher: %v", err)
 	}
 

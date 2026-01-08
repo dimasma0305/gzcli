@@ -292,4 +292,30 @@ container:
 `,
 		},
 	}, "")
+
+	// 13. Solver Too Small
+	runCase("SolverTooSmall", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "D13"
+author: "a"
+type: "StaticAttachment"
+value: 1
+flags: ["f"]
+`,
+		IncludeSolver: true,
+		SolverReadme:  "too small",
+		DistFiles:     map[string]string{".gitkeep": ""},
+	}, "Solver content too small")
+
+	// 14. Solver Valid Size
+	runCase("SolverValidSize", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "D14"
+author: "a"
+type: "StaticAttachment"
+value: 1
+flags: ["f"]
+`,
+		IncludeSolver: true,
+		SolverReadme:  strings.Repeat("a", 60),
+		DistFiles:     map[string]string{".gitkeep": ""},
+	}, "")
 }

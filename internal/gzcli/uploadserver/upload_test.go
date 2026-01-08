@@ -38,7 +38,7 @@ func TestProcessUpload_Success(t *testing.T) {
 	archive := buildChallengeArchive(t, buildChallengeArchiveConfig{
 		ChallengeYAML: sampleChallengeYAML,
 		IncludeSolver: true,
-		SolverReadme:  "initial solver",
+		SolverReadme:  "initial solver with enough content to pass the fifty bytes limit check................",
 		SrcFiles: map[string]string{
 			"README.md": "source file",
 		},
@@ -128,7 +128,7 @@ func TestProcessUpload_ReplacesExistingChallenge(t *testing.T) {
 
 	archiveV1 := buildChallengeArchive(t, buildChallengeArchiveConfig{
 		IncludeSolver: true,
-		SolverReadme:  "v1",
+		SolverReadme:  "v1 solver content with enough length................................................",
 	})
 
 	file1, err := os.Open(filepath.Clean(archiveV1)) // #nosec G304 -- archive resides in a controlled temp directory
@@ -146,7 +146,7 @@ func TestProcessUpload_ReplacesExistingChallenge(t *testing.T) {
 
 	archiveV2 := buildChallengeArchive(t, buildChallengeArchiveConfig{
 		IncludeSolver: true,
-		SolverReadme:  "v2",
+		SolverReadme:  "v2 solver content with enough length................................................",
 	})
 
 	file2, err := os.Open(filepath.Clean(archiveV2)) // #nosec G304 -- archive resides in a controlled temp directory
@@ -166,8 +166,8 @@ func TestProcessUpload_ReplacesExistingChallenge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed reading updated solver: %v", err)
 	}
-	if got := strings.TrimSpace(string(content)); got != "v2" {
-		t.Fatalf("expected updated solver content 'v2', got %q", got)
+	if !strings.Contains(string(content), "v2 solver content") {
+		t.Fatalf("expected updated solver content to contain 'v2 solver content', got %q", string(content))
 	}
 
 	if _, err := os.Stat(filepath.Join(dest, "src", "old.txt")); !errors.Is(err, fs.ErrNotExist) {
@@ -394,7 +394,7 @@ func buildChallengeArchive(t *testing.T, cfg buildChallengeArchiveConfig) string
 		if len(cfg.SolverFiles) == 0 {
 			readme := cfg.SolverReadme
 			if readme == "" {
-				readme = "default solver"
+				readme = "default solver which is now long enough to pass the fifty bytes limit check implemented in validation."
 			}
 			cfg.SolverFiles = map[string]string{"README.md": readme}
 		}

@@ -52,6 +52,38 @@ func validateUploadChallenge(root string, chall config.ChallengeYaml) error {
 		return err
 	}
 
+	if err := validateSolverContent(root); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateSolverContent(root string) error {
+	solverDir := filepath.Join(root, "solver")
+	var totalSize int64
+
+	err := filepath.Walk(solverDir, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			totalSize += info.Size()
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to measure solver content: %w", err)
+	}
+
+	if totalSize < 50 {
+		return &ValidationError{
+			What:     "Solver content too small",
+			Where:    "solver/ directory",
+			HowToFix: "Include a meaningful writeup or solution script.",
+		}
+	}
+
 	return nil
 }
 
