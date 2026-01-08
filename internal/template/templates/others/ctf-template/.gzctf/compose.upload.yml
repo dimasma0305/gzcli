@@ -1,5 +1,7 @@
+name: '{{.Workspace}}'
+
 services:
-  manager:
+  upload-server:
     build:
       context: ./manager/
       dockerfile: Dockerfile
