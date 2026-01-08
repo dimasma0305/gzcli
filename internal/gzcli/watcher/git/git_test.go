@@ -290,9 +290,7 @@ func TestResolveRepoPaths(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create temp dir: %v", err)
 			}
-			if err != nil {
-				t.Fatalf("Failed to create temp dir: %v", err)
-			}
+
 			defer func() { _ = os.RemoveAll(tmpDir) }()
 
 			if tt.setup != nil {
@@ -317,7 +315,7 @@ func TestResolveRepoPaths(t *testing.T) {
 				}
 
 				// Normalize expected paths to absolute paths
-				var expectedAbs []string
+				expectedAbs := make([]string, 0, len(tt.expectedPaths))
 				for _, p := range tt.expectedPaths {
 					expectedAbs = append(expectedAbs, filepath.Join(tmpDir, p))
 				}

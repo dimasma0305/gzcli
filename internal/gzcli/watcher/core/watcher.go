@@ -424,7 +424,14 @@ func (w *Watcher) HandleStopEventCommand(cmd watchertypes.WatcherCommand) watche
 // GetWatchedChallenges returns all watched challenges from all events
 func (w *Watcher) GetWatchedChallenges() []string {
 	eventWatchers := w.GetAllEventWatchers()
-	var allChallenges []string
+
+	// Calculate total capacity for allChallenges
+	totalChallengesCount := 0
+	for _, ew := range eventWatchers {
+		totalChallengesCount += len(ew.GetWatchedChallenges())
+	}
+
+	allChallenges := make([]string, 0, totalChallengesCount)
 
 	for eventName, ew := range eventWatchers {
 		challenges := ew.GetWatchedChallenges()
