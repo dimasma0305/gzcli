@@ -241,4 +241,53 @@ scripts:
 			"docker-compose.yml": "services:\n  web:\n    image: nginx\n",
 		},
 	}, "")
+	// 11. Privileged Service Rejection
+	runCase("PrivilegedService", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "D11"
+author: "a"
+type: "DynamicContainer"
+value: 1
+flags: ["f"]
+container:
+  flagTemplate: "f"
+  containerImage: "i"
+`,
+		IncludeSolver: true,
+		DistFiles: map[string]string{".gitkeep": ""},
+		ExtraRootFiles: map[string]string{
+			"docker-compose.yml": "services:\n  web:\n    image: nginx\n",
+		},
+		SrcFiles: map[string]string{
+			"docker-compose.yml": `services:
+  app:
+    image: alpine
+    privileged: true
+`,
+		},
+	}, "uses privileged mode")
+
+	// 12. Non-Privileged Service Allowed
+	runCase("NonPrivilegedService", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "D12"
+author: "a"
+type: "DynamicContainer"
+value: 1
+flags: ["f"]
+container:
+  flagTemplate: "f"
+  containerImage: "i"
+`,
+		IncludeSolver: true,
+		DistFiles: map[string]string{".gitkeep": ""},
+		ExtraRootFiles: map[string]string{
+			"docker-compose.yml": "services:\n  web:\n    image: nginx\n",
+		},
+		SrcFiles: map[string]string{
+			"docker-compose.yml": `services:
+  app:
+    image: alpine
+    privileged: false
+`,
+		},
+	}, "")
 }

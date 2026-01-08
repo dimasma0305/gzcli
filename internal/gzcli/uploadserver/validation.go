@@ -44,6 +44,10 @@ func validateUploadChallenge(root string, chall config.ChallengeYaml) error {
 		return err
 	}
 
+	if err := validateDockerComposePrivileged(root); err != nil {
+		return err
+	}
+
 	if err := validateChallengeScripts(chall); err != nil {
 		return err
 	}
@@ -379,5 +383,41 @@ func validateRestartScript(sv config.ScriptValue) error {
 			HowToFix: fmt.Sprintf("Restart script must be: %s", allowedRestart),
 		}
 	}
+	return nil
+}
+
+func validateDockerComposePrivileged(root string) error {
+	dcPath := filepath.Join(root, "src/docker-compose.yml")
+	if _, err := os.Stat(dcPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	content, err := os.ReadFile(dcPath)
+	if err != nil {
+		return fmt.Errorf("failed to read src/docker-compose.yml: %w", err)
+	}
+
+	var compose struct {
+		Services map[string]struct {
+			Privileged bool `yaml:"privileged"`
+		} `yaml:"services"`
+	}
+
+	if err := yaml.Unmarshal(content, &compose); err != nil {
+		// Just log error or ignore if structure is very different?
+		// Better to fail if it's not valid yaml if we expect it to be one.
+		return fmt.Errorf("failed to parse src/docker-compose.yml: %w", err)
+	}
+
+	for name, service := range compose.Services {
+		if service.Privileged {
+			return &ValidationError{
+				What:     fmt.Sprintf("Service '%s' uses privileged mode", name),
+				Where:    "src/docker-compose.yml (services.privileged)",
+				HowToFix: "Remove 'privileged: true' from the service configuration. Privileged mode is not allowed.",
+			}
+		}
+	}
+
 	return nil
 }
