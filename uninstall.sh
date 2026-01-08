@@ -9,7 +9,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-
 # Constants
 BINARY_NAME="gzcli"
 INSTALL_DIR_SYSTEM="/usr/local/bin"
