@@ -22,9 +22,6 @@ type: "StaticAttachment"
 value: 50
 flags:
   - "flag{TEST}"
-scripts:
-  start: echo start
-  stop: echo stop
 `
 
 const sampleChallengeProvideDist = sampleChallengeYAML + `

@@ -44,6 +44,10 @@ func validateUploadChallenge(root string, chall config.ChallengeYaml) error {
 		return err
 	}
 
+	if err := validateChallengeScripts(chall); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -302,5 +306,78 @@ func validateDockerfileResources(contextPath, dockerfilePath string) error {
 		}
 	}
 
+	return nil
+}
+
+func validateChallengeScripts(chall config.ChallengeYaml) error {
+	if chall.Scripts == nil {
+		return nil
+	}
+
+	if err := validateStartScript(chall.Scripts["start"]); err != nil {
+		return err
+	}
+	if err := validateStopScript(chall.Scripts["stop"]); err != nil {
+		return err
+	}
+	if err := validateRestartScript(chall.Scripts["restart"]); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateStartScript(sv config.ScriptValue) error {
+	cmd := strings.TrimSpace(sv.GetCommand())
+	if cmd == "" {
+		return nil
+	}
+
+	allowedStart1 := "cd src && docker build -t {{.slug}} ."
+	allowedStart2 := "cd src && docker compose -p {{.slug}} up --build -d"
+
+	if cmd != allowedStart1 && cmd != allowedStart2 {
+		return &ValidationError{
+			What:     "Invalid 'start' script",
+			Where:    "challenge.yml (scripts.start)",
+			HowToFix: fmt.Sprintf("Start script must be either:\n  1. %s\n  2. %s", allowedStart1, allowedStart2),
+		}
+	}
+	return nil
+}
+
+func validateStopScript(sv config.ScriptValue) error {
+	cmd := strings.TrimSpace(sv.GetCommand())
+	if cmd == "" {
+		return nil
+	}
+
+	allowedStop := "cd src && docker compose -p {{.slug}} down --volumes"
+
+	if cmd != allowedStop {
+		return &ValidationError{
+			What:     "Invalid 'stop' script",
+			Where:    "challenge.yml (scripts.stop)",
+			HowToFix: fmt.Sprintf("Stop script must be: %s", allowedStop),
+		}
+	}
+	return nil
+}
+
+func validateRestartScript(sv config.ScriptValue) error {
+	cmd := strings.TrimSpace(sv.GetCommand())
+	if cmd == "" {
+		return nil
+	}
+
+	allowedRestart := "cd src && docker compose -p {{.slug}} restart"
+
+	if cmd != allowedRestart {
+		return &ValidationError{
+			What:     "Invalid 'restart' script",
+			Where:    "challenge.yml (scripts.restart)",
+			HowToFix: fmt.Sprintf("Restart script must be: %s", allowedRestart),
+		}
+	}
 	return nil
 }

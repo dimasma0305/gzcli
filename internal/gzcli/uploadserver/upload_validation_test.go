@@ -202,4 +202,43 @@ COPY missing.txt /app/
         },
         DistFiles: map[string]string{".gitkeep": ""},
     }, "")
+	// 9. Invalid Script
+	runCase("InvalidScript", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "D9"
+author: "a"
+type: "DynamicContainer"
+value: 1
+flags: ["f"]
+container:
+  flagTemplate: "f"
+  containerImage: "i"
+scripts:
+  start: "echo hello"
+`,
+		IncludeSolver: true,
+		DistFiles: map[string]string{".gitkeep": ""},
+		ExtraRootFiles: map[string]string{
+			"docker-compose.yml": "services:\n  web:\n    image: nginx\n",
+		},
+	}, "Invalid 'start' script")
+
+	// 10. Valid Script
+	runCase("ValidScript", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "D10"
+author: "a"
+type: "DynamicContainer"
+value: 1
+flags: ["f"]
+container:
+  flagTemplate: "f"
+  containerImage: "i"
+scripts:
+  start: "cd src && docker build -t {{.slug}} ."
+`,
+		IncludeSolver: true,
+		DistFiles: map[string]string{".gitkeep": ""},
+		ExtraRootFiles: map[string]string{
+			"docker-compose.yml": "services:\n  web:\n    image: nginx\n",
+		},
+	}, "")
 }
