@@ -43,7 +43,7 @@ func TestProcessUpload_Validation(t *testing.T) {
 		})
 	}
 
-	// 1. Missing Dashboard Config
+	// 1. Missing Dashboard Config (Invalid value)
 	runCase("MissingDashboardConfig", buildChallengeArchiveConfig{
 		ChallengeYAML: `name: "D1"
 author: "a"
@@ -52,7 +52,7 @@ value: 1
 flags: ["f"]
 dashboard:
   type: "grafana"
-  config: "missing.ini"
+  config: "./src/docker-compose.yml"
 `,
 		IncludeSolver: true,
 		DistFiles: map[string]string{".gitkeep": ""},
@@ -67,11 +67,11 @@ value: 1
 flags: ["f"]
 dashboard:
   type: "grafana"
-  config: "grafana.ini"
+  config: "./src/docker-compose.yml"
 `,
-		ExtraRootFiles: map[string]string{"grafana.ini": "config"},
+		SrcFiles:      map[string]string{"docker-compose.yml": "services:\n  val:\n    image: nginx"},
 		IncludeSolver: true,
-		DistFiles: map[string]string{".gitkeep": ""},
+		DistFiles:     map[string]string{".gitkeep": ""},
 	}, "")
 
 	// 3. DynamicContainer missing docker-compose.yml
@@ -160,14 +160,16 @@ value: 1
 flags: ["f"]
 dashboard:
   type: "grafana"
-  config: "conf.ini"
+  config: "./src/docker-compose.yml"
 container:
     flagTemplate: "f"
     containerImage: "i"
 `,
         IncludeSolver: true,
+        SrcFiles: map[string]string{
+            "docker-compose.yml": "services:\n  dummy:\n    image: nginx",
+        },
         ExtraRootFiles: map[string]string{
-            "conf.ini": "config",
             "docker-compose.yml": `services:
   web:
     build: .

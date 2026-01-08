@@ -60,6 +60,14 @@ func ensureDashboardConfigExists(root string, chall config.ChallengeYaml) error 
 		return nil
 	}
 
+	if chall.Dashboard.Config != "./src/docker-compose.yml" {
+		return &ValidationError{
+			What:     "Invalid dashboard config path",
+			Where:    "challenge.yml (dashboard.config)",
+			HowToFix: "Dashboard config must be set to './src/docker-compose.yml'",
+		}
+	}
+
 	configPath := filepath.Join(root, chall.Dashboard.Config)
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return &ValidationError{
@@ -392,6 +400,7 @@ func validateDockerComposePrivileged(root string) error {
 		return nil
 	}
 
+	//nolint:gosec // Validating user-provided challenge directory
 	content, err := os.ReadFile(dcPath)
 	if err != nil {
 		return fmt.Errorf("failed to read src/docker-compose.yml: %w", err)
