@@ -46,7 +46,8 @@ universal_binaries:
 
 archives:
   - id: gzcli-archive
-    format: tar.gz
+    formats:
+      - tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -57,7 +58,8 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
     files:
       - README.md
       - LICENSE
@@ -106,21 +108,3 @@ release:
   prerelease: auto
   mode: replace
   name_template: "{{.ProjectName}} v{{.Version}}"
-
-# Homebrew tap configuration - commented out until repository is created
-# To enable: create the repository github.com/dimasma0305/homebrew-tap and uncomment below
-# brews:
-#   - repository:
-#       owner: dimasma0305
-#       name: homebrew-tap
-#     directory: Formula
-#     homepage: "https://github.com/dimasma0305/gzcli"
-#     description: "High-performance command-line interface for GZ::CTF operations"
-#     license: "MIT"
-#     test: |
-#       system "#{bin}/gzcli", "--version"
-#     install: |
-#       bin.install "gzcli"
-#       bash_completion.install "completions/gzcli.bash" => "gzcli"
-#       zsh_completion.install "completions/_gzcli" => "_gzcli"
-#       fish_completion.install "completions/gzcli.fish"
