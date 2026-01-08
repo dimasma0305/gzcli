@@ -1,3 +1,9 @@
+## [1.35.0](https://github.com/dimasma0305/gzcli/compare/v1.34.0...v1.35.0) (2026-01-08)
+
+### Features
+
+* new update ([f273c40](https://github.com/dimasma0305/gzcli/commit/f273c40af972e0826ba0b377f9a56be4cd218aa1))
+
 ## [1.34.0](https://github.com/dimasma0305/gzcli/compare/v1.33.0...v1.34.0) (2026-01-08)
 
 ### Features
