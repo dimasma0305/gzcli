@@ -1,3 +1,9 @@
+## [1.36.1](https://github.com/dimasma0305/gzcli/compare/v1.36.0...v1.36.1) (2026-01-08)
+
+### Bug Fixes
+
+* update upload.yml ([5c45fa7](https://github.com/dimasma0305/gzcli/commit/5c45fa7bb7cc30a4b16c5d5d7273b0e09d39057b))
+
 ## [1.36.0](https://github.com/dimasma0305/gzcli/compare/v1.35.0...v1.36.0) (2026-01-08)
 
 ### Features
