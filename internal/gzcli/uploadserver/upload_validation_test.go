@@ -318,4 +318,58 @@ flags: ["f"]
 		SolverReadme:  strings.Repeat("a", 60),
 		DistFiles:     map[string]string{".gitkeep": ""},
 	}, "")
+	// 15. Default Name Rejection
+	runCase("DefaultNameRejected", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "static-attachment-with-compose"
+author: "a"
+type: "StaticAttachment"
+value: 1
+flags: ["f"]
+description: "Valid description"
+`,
+		IncludeSolver: true,
+		DistFiles:     map[string]string{".gitkeep": ""},
+	}, "Challenge name is default")
+
+	// 16. Default Description Rejection
+	runCase("DefaultDescriptionRejected", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "MyUniqueChall"
+author: "a"
+type: "StaticAttachment"
+value: 1
+flags: ["f"]
+description: |
+  Example static attachment
+  Connect: nc {{ .host }} 8011
+`,
+		IncludeSolver: true,
+		DistFiles:     map[string]string{".gitkeep": ""},
+	}, "Challenge description contains default text")
+
+	// 17. Default Flag Rejection
+	runCase("DefaultFlagRejected", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "MyUniqueChall"
+author: "a"
+type: "StaticAttachment"
+value: 1
+flags:
+  - "flag{testing}"
+description: "Valid descc"
+`,
+		IncludeSolver: true,
+		DistFiles:     map[string]string{".gitkeep": ""},
+	}, "Default flag found")
+
+	// 18. Valid Custom Values
+	runCase("ValidCustomValues", buildChallengeArchiveConfig{
+		ChallengeYAML: `name: "MyUniqueChall"
+author: "a"
+type: "StaticAttachment"
+value: 1
+flags: ["flag{real_secret}"]
+description: "This is a real challenge description."
+`,
+		IncludeSolver: true,
+		DistFiles:     map[string]string{".gitkeep": ""},
+	}, "")
 }

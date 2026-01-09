@@ -56,6 +56,10 @@ func validateUploadChallenge(root string, chall config.ChallengeYaml) error {
 		return err
 	}
 
+	if err := validateDefaultValues(chall); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -460,5 +464,34 @@ func validateDockerComposePrivileged(root string) error {
 		}
 	}
 
+	return nil
+}
+
+func validateDefaultValues(chall config.ChallengeYaml) error {
+	if chall.Name == "static-attachment-with-compose" {
+		return &ValidationError{
+			What:     "Challenge name is default",
+			Where:    "challenge.yml (name)",
+			HowToFix: "Change 'name' to something unique.",
+		}
+	}
+
+	if strings.Contains(chall.Description, "Example static attachment") {
+		return &ValidationError{
+			What:     "Challenge description contains default text",
+			Where:    "challenge.yml (description)",
+			HowToFix: "Update 'description' to describe your challenge.",
+		}
+	}
+
+	for _, flag := range chall.Flags {
+		if flag == "flag{testing}" {
+			return &ValidationError{
+				What:     "Default flag found",
+				Where:    "challenge.yml (flags)",
+				HowToFix: "Change the flag to a unique secret.",
+			}
+		}
+	}
 	return nil
 }
