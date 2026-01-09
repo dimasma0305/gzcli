@@ -1,3 +1,9 @@
+## [1.36.2](https://github.com/dimasma0305/gzcli/compare/v1.36.1...v1.36.2) (2026-01-09)
+
+### Bug Fixes
+
+* add more validation ([cab2800](https://github.com/dimasma0305/gzcli/commit/cab2800c5de8ba3577656071bd7ddfc5fc6260cb))
+
 ## [1.36.1](https://github.com/dimasma0305/gzcli/compare/v1.36.0...v1.36.1) (2026-01-08)
 
 ### Bug Fixes
