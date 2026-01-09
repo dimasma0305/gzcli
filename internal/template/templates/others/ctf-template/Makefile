@@ -130,3 +130,9 @@ help:
 	@echo "  up                  - Alias for platform-up"
 	@echo "  down                - Alias for platform-down"
 	@echo "  clean               - Alias for platform-clean"
+
+# Default check interval in minutes
+UPDATE_Check_MIN ?= 1440
+
+list-updated:
+	@find events -name "challenge.yml" -mmin -${UPDATE_Check_MIN} -printf "%TY-%Tm-%Td %TH:%TM:%TS %p\n" | sort -r
