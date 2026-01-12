@@ -5,6 +5,7 @@ go 1.24.0
 toolchain go1.24.2
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/disgoorg/disgo v0.18.16
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.9.0
@@ -16,13 +17,13 @@ require (
 	github.com/sethvargo/go-password v0.3.1
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/spf13/cobra v1.10.1
+	golang.org/x/net v0.44.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gopkg.in/yaml.v2 v2.4.0
-	modernc.org/sqlite v1.40.0
+	modernc.org/sqlite v1.43.0
 )
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/disgoorg/json v1.2.0 // indirect
 	github.com/disgoorg/snowflake/v2 v2.0.3 // indirect
@@ -50,7 +51,6 @@ require (
 	golang.org/x/crypto v0.42.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/mod v0.28.0 // indirect
-	golang.org/x/net v0.44.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/term v0.35.0 // indirect
