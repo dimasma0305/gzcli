@@ -1,3 +1,9 @@
+## [1.36.3](https://github.com/dimasma0305/gzcli/compare/v1.36.2...v1.36.3) (2026-02-06)
+
+### Code Refactoring
+
+* ensure deterministic zip creation and prevent attachment file content modification. ([15d9f19](https://github.com/dimasma0305/gzcli/commit/15d9f194b77423a1dd7d575f1d0a2d301c69bd68))
+
 ## [1.36.2](https://github.com/dimasma0305/gzcli/compare/v1.36.1...v1.36.2) (2026-01-09)
 
 ### Bug Fixes
