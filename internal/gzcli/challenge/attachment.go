@@ -146,23 +146,8 @@ func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gz
 
 // CreateUniqueAttachmentFile creates a unique version of the attachment file by appending metadata
 func CreateUniqueAttachmentFile(srcPath, dstPath, challengeName string) error {
-	// Copy the original file
-	if err := fileutil.CopyFile(srcPath, dstPath); err != nil {
-		return err
-	}
-
-	// Append challenge-specific metadata to make the file unique
-	//nolint:gosec // G304: File path constructed from validated challenge config
-	file, err := os.OpenFile(dstPath, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = file.Close() }()
-
-	// Add a comment or metadata that makes this file unique for this challenge
-	metadata := fmt.Sprintf("\n# Challenge: %s\n", challengeName)
-	_, err = file.WriteString(metadata)
-	return err
+	_ = challengeName // kept for backward-compatible signature; uniqueness must not change bytes
+	return fileutil.CopyFile(srcPath, dstPath)
 }
 
 // CreateAssetsIfNotExistOrDifferent creates assets if they don't exist or are different

@@ -36,9 +36,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
+	"sort"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -118,84 +117,41 @@ func ZipSource(source, target string) error {
 		return flate.NewWriter(w, flate.BestSpeed)
 	})
 
-	// Pre-allocate buffer pool
-	bufPool := sync.Pool{
-		New: func() interface{} { return make([]byte, 32<<10) }, // 32KB buffers
-	}
-
-	// Collect files first to enable parallel processing
-	var filePaths []string
-	_ = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return err
-		}
-		filePaths = append(filePaths, path)
-		return nil
-	})
-
-	// Process files in parallel but write sequentially
-	type result struct {
-		path string
-		data []byte
-		err  error
-	}
-	resultChan := make(chan result, len(filePaths))
-
-	// Worker pool for parallel reading
-	sem := make(chan struct{}, runtime.NumCPU())
-	var wg sync.WaitGroup
-
 	// Use a fixed timestamp for reproducible builds
 	fixedTime := time.Date(2025, 3, 18, 0, 0, 0, 0, time.UTC)
 
-	for _, path := range filePaths {
-		wg.Add(1)
-		go func(p string) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			// Read file content
-			//nolint:gosec // G304: File paths come from validated challenge directory
-			data, err := os.ReadFile(p)
-			resultChan <- result{p, data, err}
-		}(path)
-	}
-
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	// Write results in original order while maintaining directory structure
-	writtenFiles := make(map[string]struct{})
-	for res := range resultChan {
-		if res.err != nil {
-			return res.err
+	// Collect and sort relative paths to ensure deterministic ZIP output.
+	// Notes:
+	// - filepath.Walk can surface errors via the callback; we intentionally swallow them
+	//   to preserve the previous behavior (best-effort empty ZIP for missing/partial trees).
+	// - Use forward slashes for ZIP entry names for cross-platform compatibility.
+	var relPaths []string
+	_ = filepath.Walk(source, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil || info == nil || info.IsDir() {
+			return nil
 		}
+		relPath, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		// If source is a single file, Rel will be "."; use the base name instead.
+		if relPath == "." {
+			relPath = filepath.Base(path)
+		}
+		relPaths = append(relPaths, filepath.ToSlash(relPath))
+		return nil
+	})
 
-		relPath, err := filepath.Rel(source, res.path)
+	sort.Strings(relPaths)
+
+	for _, relPath := range relPaths {
+		fullPath := filepath.Join(source, filepath.FromSlash(relPath))
+		//nolint:gosec // G304: File paths come from validated challenge directory
+		data, err := os.ReadFile(fullPath)
 		if err != nil {
 			return err
 		}
 
-		// Ensure directory entries exist
-		dirPath := filepath.Dir(relPath)
-		if dirPath != "." {
-			if _, exists := writtenFiles[dirPath]; !exists {
-				header := &zip.FileHeader{
-					Name:     dirPath + "/",
-					Method:   zip.Deflate,
-					Modified: fixedTime,
-				}
-				if _, err := writer.CreateHeader(header); err != nil {
-					return err
-				}
-				writtenFiles[dirPath] = struct{}{}
-			}
-		}
-
-		// Create file header
 		header := &zip.FileHeader{
 			Name:     relPath,
 			Method:   zip.Deflate,
@@ -203,17 +159,12 @@ func ZipSource(source, target string) error {
 		}
 		header.SetMode(0644)
 
-		// Use buffer from pool
-		buf := bufPool.Get().([]byte)
-		defer bufPool.Put(&buf)
-
-		// Write to zip
 		w, err := writer.CreateHeader(header)
 		if err != nil {
 			return err
 		}
 
-		if _, err := io.CopyBuffer(w, bytes.NewReader(res.data), buf); err != nil {
+		if _, err := io.Copy(w, bytes.NewReader(data)); err != nil {
 			return err
 		}
 	}
