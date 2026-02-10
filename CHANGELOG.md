@@ -1,3 +1,10 @@
+## [1.37.0](https://github.com/dimasma0305/gzcli/compare/v1.36.3...v1.37.0) (2026-02-10)
+
+### Features
+
+* Continuously process pending file changes in the event watcher to prevent missed updates during rapid filesystem activity. ([6f7e25e](https://github.com/dimasma0305/gzcli/commit/6f7e25ebd699d2046e9efb0593f7329453b460f1))
+* Implement container image build and push to registry during challenge synchronization. ([12fd524](https://github.com/dimasma0305/gzcli/commit/12fd52425b25b7bc829f8507b6de9c0da4a48870))
+
 ## [1.36.3](https://github.com/dimasma0305/gzcli/compare/v1.36.2...v1.36.3) (2026-02-06)
 
 ### Code Refactoring
