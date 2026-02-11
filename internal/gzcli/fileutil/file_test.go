@@ -503,3 +503,49 @@ func TestZipSource_LargeFiles(t *testing.T) {
 		t.Error("Zip file is empty")
 	}
 }
+
+func TestZipSource_DeterministicOutput(t *testing.T) {
+	tmpDir := t.TempDir()
+	sourceDir := filepath.Join(tmpDir, "source")
+	if err := os.MkdirAll(filepath.Join(sourceDir, "b", "c"), 0750); err != nil {
+		t.Fatalf("Failed to create nested dirs: %v", err)
+	}
+
+	files := map[string]string{
+		"z.txt":         "z",
+		"a.txt":         "a",
+		"b/c/inner.txt": "inner",
+	}
+	for rel, content := range files {
+		full := filepath.Join(sourceDir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(full), 0750); err != nil {
+			t.Fatalf("Failed to create parent dir: %v", err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0600); err != nil {
+			t.Fatalf("Failed to write file: %v", err)
+		}
+	}
+
+	zip1 := filepath.Join(tmpDir, "one.zip")
+	zip2 := filepath.Join(tmpDir, "two.zip")
+
+	if err := ZipSource(sourceDir, zip1); err != nil {
+		t.Fatalf("ZipSource() first run failed: %v", err)
+	}
+	if err := ZipSource(sourceDir, zip2); err != nil {
+		t.Fatalf("ZipSource() second run failed: %v", err)
+	}
+
+	h1, err := GetFileHashHex(zip1)
+	if err != nil {
+		t.Fatalf("GetFileHashHex(zip1) failed: %v", err)
+	}
+	h2, err := GetFileHashHex(zip2)
+	if err != nil {
+		t.Fatalf("GetFileHashHex(zip2) failed: %v", err)
+	}
+
+	if h1 != h2 {
+		t.Fatalf("ZipSource output is not deterministic: %s != %s", h1, h2)
+	}
+}

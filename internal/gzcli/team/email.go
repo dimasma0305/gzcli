@@ -7,96 +7,123 @@ import (
 )
 
 // GenerateEmailBody generates the HTML body for the email
-func GenerateEmailBody(realName, website string, creds *TeamCreds) string {
+func GenerateEmailBody(realName, website string, creds *TeamCreds, isSolo bool) string {
+	modeLabel := "Team CTF"
+	modeInstructions := `
+		<p>After logging in, open the <strong>/teams</strong> page to copy your team invitation code.</p>
+		<p>Ask teammates to register first, then join from the <strong>/team</strong> page using that code.</p>
+		<p>Your team has already been joined to the event automatically. Go to <strong>/games</strong> to verify status and prepare.</p>
+	`
+
+	if isSolo {
+		modeLabel = "Solo CTF"
+		modeInstructions = `
+		<p>This event is configured as <strong>Solo CTF</strong>, so no team invitation code is required.</p>
+		<p>Your account has already been joined to the event automatically. Go to <strong>/games</strong> to verify status and prepare.</p>
+	`
+	}
+
 	return fmt.Sprintf(`
-	&nbsp;
 	<html>
 	<head>
 		<style>
 			body {
 				font-family: Arial, sans-serif;
 				line-height: 1.6;
-				color: #333;
+				color: #1f2937;
+				background-color: #f3f4f6;
+				margin: 0;
+				padding: 24px 12px;
 			}
 			.block {
 				max-width: 600px;
 				margin: 0 auto;
-				padding: 20px;
-				border: 1px solid #eaeaea;
-				border-radius: 5px;
-				background-color: #f9f9f9;
+				padding: 24px;
+				border: 1px solid #e5e7eb;
+				border-radius: 10px;
+				background-color: #ffffff;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 			}
 			h1 {
-				color: #333;
+				color: #111827;
+				margin-top: 0;
+				margin-bottom: 8px;
+			}
+			.subtitle {
+				margin-top: 0;
+				margin-bottom: 20px;
+				color: #4b5563;
+			}
+			.mode {
+				display: inline-block;
+				margin-bottom: 16px;
+				padding: 6px 10px;
+				border-radius: 999px;
+				background-color: #ecfeff;
+				color: #0f766e;
+				font-size: 13px;
+				font-weight: 700;
 			}
 			.creds {
-				margin-bottom: 20px;
+				margin-bottom: 18px;
+				padding: 12px;
+				border: 1px solid #e5e7eb;
+				border-radius: 8px;
+				background-color: #f9fafb;
 			}
 			.creds p {
 				margin: 5px 0;
 			}
+			.steps p {
+				margin: 10px 0;
+			}
 			.cta {
 				text-align: center;
-				margin-top: 20px;
+				margin-top: 24px;
 			}
 			.cta a {
 				display: inline-block;
-				padding: 10px 20px;
+				padding: 10px 18px;
 				text-decoration: none;
 				color: white;
-				background-color: #007BFF;
+				background-color: #2563eb;
 				border-radius: 5px;
+				font-weight: 600;
 			}
 			.cta a:hover {
-				background-color: #0056b3;
-			}
-			.warning {
-				color: #721c24;
-				background-color: #f8d7da;
-				border-color: #f5c6cb;
-				padding: 10px;
-				border-radius: 5px;
-				margin-bottom: 20px;
-				font-weight: bold;
+				background-color: #1d4ed8;
 			}
 		</style>
 	</head>
 	<body>
 		<div class="block">
 		<h1>Hello %s,</h1>
-		&nbsp;
-		<div class="warning">
-			IMPORTANT: Do not change the account username and password.
-		</div>
+		<p class="subtitle">Your account has been created successfully.</p>
+		<div class="mode">%s</div>
 		<div class="creds">
-			<p>Here are your team credentials:</p>
-			&nbsp;
+			<p><strong>Credentials</strong></p>
 			<p><strong>Username:</strong> %s</p>
 			<p><strong>Password:</strong> %s</p>
 			<p><strong>Team Name:</strong> %s</p>
 			<p><strong>Website:</strong> <a href="%s">%s</a></p>
 		</div>
-		&nbsp;
-		<p>After logging in with your credentials, you can copy your team invitation code from the /teams page, and then share it with your team members.</p>
-		&nbsp;
-		<p>Make sure to notify your team members to register first and then use the invitation code on the /team page.</p>
-		&nbsp;
-		<p>Once all your team members have joined, you can navigate to the /games page and request to join the game. The admin will verify your request, and you just need to wait for the CTF to start.</p>
-		&nbsp;
+		<div class="steps">
+			%s
+		</div>
+		<p>If anything looks wrong, reply to this email so we can help quickly.</p>
 		<div class="cta">
 			<a href="%s">Go to Website</a>
 		</div>
-		&nbsp;
 		</div>
 	</body>
 	</html>
 	`,
-		realName, creds.Username, creds.Password, creds.TeamName, website, website, website,
+		realName, modeLabel, creds.Username, creds.Password, creds.TeamName, website, website, modeInstructions, website,
 	)
 }
 
 // SendEmail sends the team credentials to the specified email address using gomail
-func SendEmail(realName string, website string, creds *TeamCreds, appsettings AppSettingsInterface) error {
+func SendEmail(realName string, website string, creds *TeamCreds, appsettings AppSettingsInterface, isSolo bool) error {
 	emailConfig := appsettings.GetEmailConfig()
 	smtp := emailConfig.SMTP
 
@@ -111,7 +138,7 @@ func SendEmail(realName string, website string, creds *TeamCreds, appsettings Ap
 	m.SetHeader("To", creds.Email)
 	m.SetHeader("Subject", "Your Team Credentials")
 
-	htmlBody := GenerateEmailBody(realName, website, creds)
+	htmlBody := GenerateEmailBody(realName, website, creds, isSolo)
 
 	// Set the email body as HTML
 	m.SetBody("text/html", htmlBody)

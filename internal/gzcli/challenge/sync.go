@@ -2,6 +2,7 @@
 package challenge
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -328,6 +329,7 @@ func NewSyncOrchestrator(conf *config.Config, challengeConf config.ChallengeYaml
 func (s *SyncOrchestrator) Execute() error {
 	s.handle("determining sync path", s.determineSyncPath)
 	s.handle("processing attachments and flags", s.processAttachmentsAndFlags)
+	s.handle("building/pushing container image", s.prepareContainerImage)
 	s.handle("merging and updating challenge", s.mergeAndupdate)
 
 	if s.err != nil {
@@ -383,6 +385,75 @@ func (s *SyncOrchestrator) processAttachmentsAndFlags() error {
 func (s *SyncOrchestrator) mergeAndupdate() error {
 	s.challengeData = MergeChallengeData(&s.challengeConf, s.challengeData)
 	return updateChallengeIfNeeded(s.conf, &s.challengeConf, s.challengeData, s.getCache, s.setCache)
+}
+
+func (s *SyncOrchestrator) prepareContainerImage() error {
+	// Only do anything when a registry is configured in appsettings.json.
+	// This avoids making docker a hard requirement for sync in environments
+	// that just reference prebuilt remote images.
+	if s.conf == nil || s.conf.Appsettings == nil {
+		return nil
+	}
+	reg := s.conf.Appsettings.RegistryConfig.ServerAddress
+	if strings.TrimSpace(reg) == "" {
+		return nil
+	}
+
+	// Only container challenges use container images.
+	if !isContainerChallengeType(s.challengeConf.Type) {
+		return nil
+	}
+
+	// If containerImage is already a remote-ish image reference (contains a '/')
+	// and it doesn't resolve to a local path, leave it alone.
+	ci := strings.TrimSpace(s.challengeConf.Container.ContainerImage)
+	if ci != "" && strings.Contains(ci, "/") && !containerImageResolvesToLocalPath(s.challengeConf.Cwd, ci) {
+		return nil
+	}
+
+	slug := config.GenerateSlug(s.conf.EventName, s.challengeConf.Category, s.challengeConf.Name)
+	localTag := fmt.Sprintf("%s:latest", slug)
+
+	ctx := context.Background()
+
+	// Build local image first.
+	buildDir, dockerfile, err := resolveDockerBuildContext(s.challengeConf.Cwd, s.challengeConf.Container.ContainerImage)
+	if err != nil {
+		return err
+	}
+	log.InfoH3("Building image for %s: %s (context=%s)", s.challengeConf.Name, localTag, buildDir)
+	if err := dockerBuild(ctx, buildDir, dockerfile, localTag); err != nil {
+		return err
+	}
+
+	// Push to registry, then make containerImage point at the pushed tag.
+	repoPrefix, loginServer := parseRegistryServerAddress(reg)
+	if repoPrefix == "" || loginServer == "" {
+		return fmt.Errorf("invalid registry server address in appsettings.json: %q", reg)
+	}
+
+	remoteTag := fmt.Sprintf("%s/%s:latest", repoPrefix, slug)
+
+	if strings.TrimSpace(s.conf.Appsettings.RegistryConfig.UserName) != "" {
+		log.InfoH3("Logging in to registry: %s", loginServer)
+		if err := dockerLoginOnce(ctx, loginServer, s.conf.Appsettings.RegistryConfig.UserName, s.conf.Appsettings.RegistryConfig.Password); err != nil {
+			return err
+		}
+	}
+
+	log.InfoH3("Tagging image: %s -> %s", localTag, remoteTag)
+	if err := dockerTag(ctx, localTag, remoteTag); err != nil {
+		return err
+	}
+
+	log.InfoH3("Pushing image: %s", remoteTag)
+	if err := dockerPush(ctx, remoteTag); err != nil {
+		return err
+	}
+
+	// Ensure the challenge config synced to the API points at the registry image.
+	s.challengeConf.Container.ContainerImage = remoteTag
+	return nil
 }
 
 // SyncChallenge synchronizes a single challenge.

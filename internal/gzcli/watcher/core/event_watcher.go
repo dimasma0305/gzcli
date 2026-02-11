@@ -365,56 +365,103 @@ func (ew *EventWatcher) HandleFileChange(filePath string) {
 
 	// Process update
 	go func() {
-		defer ew.setUpdating(challengeName, false)
+		finishOrContinue := func() (string, bool) {
+			// Serialize with HandleFileChange so no pending update can be added between
+			// "check pending" and "mark not updating".
+			challengeMutex := ew.GetChallengeUpdateMutex(challengeName)
+			challengeMutex.Lock()
+			defer challengeMutex.Unlock()
 
-		// Add a small delay to batch rapid file changes (100ms)
-		time.Sleep(100 * time.Millisecond)
-
-		updateType := filesystem.DetermineUpdateType(filePath, challengeCwd)
-		log.Info("[%s] Update type for %s: %v", ew.eventName, challengeName, updateType)
-
-		// Check for pending updates and upgrade update type if needed
-		// Do this early to capture any changes that came in during the delay
-		if pendingFilePath, hasPending := ew.getPendingUpdate(challengeName); hasPending {
-			log.InfoH3("[%s] Found pending update for %s, will also process: %s", ew.eventName, challengeName, pendingFilePath)
-			// Re-determine update type for pending file
-			pendingUpdateType := filesystem.DetermineUpdateType(pendingFilePath, challengeCwd)
-			if pendingUpdateType > updateType {
-				updateType = pendingUpdateType
-				log.InfoH3("[%s] Upgraded update type to: %v", ew.eventName, updateType)
+			if pendingFilePath, hasPending := ew.getPendingUpdate(challengeName); hasPending {
+				return pendingFilePath, true
 			}
+
+			ew.setUpdating(challengeName, false)
+			return "", false
 		}
 
-		// Skip if no update needed
-		if updateType == watchertypes.UpdateNone {
-			log.InfoH3("[%s] No update needed for %s", ew.eventName, challengeName)
-			return
-		}
+		// Keep processing until we drain any pending updates that arrived while a sync was running.
+		// Without this, a file change that happens after the "pending update" check below can be
+		// recorded but never processed until another filesystem event happens to arrive.
+		nextFilePath := filePath
+		first := true
+		for {
+			// Add a small delay to batch rapid file changes.
+			if first {
+				time.Sleep(100 * time.Millisecond)
+				first = false
+			} else {
+				time.Sleep(50 * time.Millisecond)
+			}
 
-		log.InfoH3("[%s] Sync needed for %s (type: %v)", ew.eventName, challengeName, updateType)
-		log.InfoH3("[%s] Challenge path: %s", ew.eventName, challengeCwd)
+			updateType := filesystem.DetermineUpdateType(nextFilePath, challengeCwd)
+			log.Info("[%s] Update type for %s: %v", ew.eventName, challengeName, updateType)
 
-		// Update challenge state in database
-		if ew.scriptMgr != nil {
-			activeScripts := ew.scriptMgr.GetActiveIntervalScripts()
-			ew.UpdateChallengeState(challengeName, "syncing", "", activeScripts)
-		}
+			// Drain any pending update(s) and upgrade update type if needed.
+			// This captures changes that came in during the batching delay and during the previous sync.
+			for {
+				pendingFilePath, hasPending := ew.getPendingUpdate(challengeName)
+				if !hasPending {
+					break
+				}
+				log.InfoH3("[%s] Found pending update for %s, will also process: %s", ew.eventName, challengeName, pendingFilePath)
+				pendingUpdateType := filesystem.DetermineUpdateType(pendingFilePath, challengeCwd)
+				if pendingUpdateType > updateType {
+					updateType = pendingUpdateType
+					log.InfoH3("[%s] Upgraded update type to: %v", ew.eventName, updateType)
+				}
+				// Prefer the most recent file path for subsequent iterations/debugging.
+				nextFilePath = pendingFilePath
+			}
 
-		// Perform the actual sync
-		if err := ew.syncSingleChallenge(challengeName, challengeCwd); err != nil {
-			log.Error("[%s] Failed to sync challenge %s: %v", ew.eventName, challengeName, err)
+			// Skip if no update needed, but keep looping if new pending updates appear.
+			if updateType == watchertypes.UpdateNone {
+				log.InfoH3("[%s] No update needed for %s", ew.eventName, challengeName)
+				if pendingFilePath, shouldContinue := finishOrContinue(); shouldContinue {
+					nextFilePath = pendingFilePath
+					continue
+				}
+				return
+			}
+
+			log.InfoH3("[%s] Sync needed for %s (type: %v)", ew.eventName, challengeName, updateType)
+			log.InfoH3("[%s] Challenge path: %s", ew.eventName, challengeCwd)
+
+			// Update challenge state in database
 			if ew.scriptMgr != nil {
 				activeScripts := ew.scriptMgr.GetActiveIntervalScripts()
-				ew.UpdateChallengeState(challengeName, "error", err.Error(), activeScripts)
+				ew.UpdateChallengeState(challengeName, "syncing", "", activeScripts)
 			}
-			return
-		}
 
-		// Log completion
-		log.Info("[%s] ✓ Sync completed for challenge: %s", ew.eventName, challengeName)
-		if ew.scriptMgr != nil {
-			activeScripts := ew.scriptMgr.GetActiveIntervalScripts()
-			ew.UpdateChallengeState(challengeName, "watching", "", activeScripts)
+			// Perform the actual sync
+			if err := ew.syncSingleChallenge(challengeName, challengeCwd); err != nil {
+				log.Error("[%s] Failed to sync challenge %s: %v", ew.eventName, challengeName, err)
+				if ew.scriptMgr != nil {
+					activeScripts := ew.scriptMgr.GetActiveIntervalScripts()
+					ew.UpdateChallengeState(challengeName, "error", err.Error(), activeScripts)
+				}
+				if pendingFilePath, shouldContinue := finishOrContinue(); shouldContinue {
+					log.InfoH3("[%s] Pending updates exist after sync failure for %s; retrying", ew.eventName, challengeName)
+					nextFilePath = pendingFilePath
+					continue
+				}
+				return
+			}
+
+			// Log completion
+			log.Info("[%s] ✓ Sync completed for challenge: %s", ew.eventName, challengeName)
+			if ew.scriptMgr != nil {
+				activeScripts := ew.scriptMgr.GetActiveIntervalScripts()
+				ew.UpdateChallengeState(challengeName, "watching", "", activeScripts)
+			}
+
+			// If nothing else is pending, we're done.
+			pendingFilePath, shouldContinue := finishOrContinue()
+			if !shouldContinue {
+				return
+			}
+			nextFilePath = pendingFilePath
+			log.InfoH3("[%s] Pending updates detected after sync for %s; syncing again", ew.eventName, challengeName)
 		}
 	}()
 }

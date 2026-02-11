@@ -223,9 +223,9 @@ func TestCreateUniqueAttachmentFile(t *testing.T) {
 		t.Errorf("Destination file missing original content")
 	}
 
-	// Should contain challenge name
-	if !strings.Contains(contentStr, challengeName) {
-		t.Errorf("Destination file missing challenge name metadata")
+	// Bytes must be unchanged; uniqueness must not affect hashes.
+	if contentStr != originalContent {
+		t.Errorf("Destination content changed: got %q, want %q", contentStr, originalContent)
 	}
 }
 

@@ -1,3 +1,22 @@
+## [1.38.0](https://github.com/dimasma0305/gzcli/compare/v1.37.0...v1.38.0) (2026-02-11)
+
+### Features
+
+* Add solo CTF mode support to team creation emails and update email template styling. ([7924094](https://github.com/dimasma0305/gzcli/commit/79240940a29938e66ca7b898282d668bbf24eb44))
+
+## [1.37.0](https://github.com/dimasma0305/gzcli/compare/v1.36.3...v1.37.0) (2026-02-10)
+
+### Features
+
+* Continuously process pending file changes in the event watcher to prevent missed updates during rapid filesystem activity. ([6f7e25e](https://github.com/dimasma0305/gzcli/commit/6f7e25ebd699d2046e9efb0593f7329453b460f1))
+* Implement container image build and push to registry during challenge synchronization. ([12fd524](https://github.com/dimasma0305/gzcli/commit/12fd52425b25b7bc829f8507b6de9c0da4a48870))
+
+## [1.36.3](https://github.com/dimasma0305/gzcli/compare/v1.36.2...v1.36.3) (2026-02-06)
+
+### Code Refactoring
+
+* ensure deterministic zip creation and prevent attachment file content modification. ([15d9f19](https://github.com/dimasma0305/gzcli/commit/15d9f194b77423a1dd7d575f1d0a2d301c69bd68))
+
 ## [1.36.2](https://github.com/dimasma0305/gzcli/compare/v1.36.1...v1.36.2) (2026-01-09)
 
 ### Bug Fixes
