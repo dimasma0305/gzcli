@@ -102,7 +102,7 @@ func sendCredentialsEmail(teamCreds *TeamCreds, currentCreds *TeamCreds, config 
 		environtURL = config.GetUrl()
 	}
 
-	if err := SendEmail(teamCreds.Username, environtURL, currentCreds, config.GetAppSettings()); err != nil {
+	if err := SendEmail(teamCreds.Username, environtURL, currentCreds, config.GetAppSettings(), config.GetTeamMemberCountLimit() == 1); err != nil {
 		log.ErrorH2("Failed to send email to %s: %v", currentCreds.Email, err)
 		return
 	}
@@ -304,6 +304,7 @@ type ConfigInterface interface {
 	GetUrl() string
 	GetEventId() int
 	GetEventTitle() string
+	GetTeamMemberCountLimit() int
 	GetInviteCode() string
 	GetAppSettings() AppSettingsInterface
 	GetAdminAPI() *gzapi.GZAPI

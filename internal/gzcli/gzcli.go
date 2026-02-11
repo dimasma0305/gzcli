@@ -656,6 +656,10 @@ func (t *teamConfigAdapter) GetEventTitle() string {
 	return t.conf.Event.Title
 }
 
+func (t *teamConfigAdapter) GetTeamMemberCountLimit() int {
+	return t.conf.Event.TeamMemberCountLimit
+}
+
 func (t *teamConfigAdapter) GetInviteCode() string {
 	if t.inviteCode != "" {
 		return t.inviteCode

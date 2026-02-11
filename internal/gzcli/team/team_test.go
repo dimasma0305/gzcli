@@ -274,6 +274,7 @@ type mockConfig struct {
 	url         string
 	eventId     int
 	eventTitle  string
+	teamLimit   int
 	inviteCode  string
 	appSettings *mockAppSettings
 	adminApi    *gzapi.GZAPI
@@ -289,6 +290,9 @@ func (m *mockConfig) GetAdminAPI() *gzapi.GZAPI {
 func (m *mockConfig) GetUrl() string        { return m.url }
 func (m *mockConfig) GetEventId() int       { return m.eventId }
 func (m *mockConfig) GetEventTitle() string { return m.eventTitle }
+func (m *mockConfig) GetTeamMemberCountLimit() int {
+	return m.teamLimit
+}
 func (m *mockConfig) GetInviteCode() string { return m.inviteCode }
 func (m *mockConfig) GetAppSettings() AppSettingsInterface {
 	if m.appSettings == nil {
