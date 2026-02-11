@@ -417,10 +417,7 @@ func (s *SyncOrchestrator) prepareContainerImage() error {
 	ctx := context.Background()
 
 	// Build local image first.
-	buildDir, dockerfile, err := resolveDockerBuildContext(s.challengeConf.Cwd, s.challengeConf.Container.ContainerImage)
-	if err != nil {
-		return err
-	}
+	buildDir, dockerfile := resolveDockerBuildContext(s.challengeConf.Cwd, s.challengeConf.Container.ContainerImage)
 	log.InfoH3("Building image for %s: %s (context=%s)", s.challengeConf.Name, localTag, buildDir)
 	if err := dockerBuild(ctx, buildDir, dockerfile, localTag); err != nil {
 		return err

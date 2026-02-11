@@ -44,7 +44,7 @@ func parseRegistryServerAddress(serverAddress string) (repoPrefix string, loginS
 	return repoPrefix, loginServer
 }
 
-func resolveDockerBuildContext(challengeCwd string, containerImageValue string) (contextDir string, dockerfile string, err error) {
+func resolveDockerBuildContext(challengeCwd string, containerImageValue string) (contextDir string, dockerfile string) {
 	// If containerImage points to an existing path (dir or Dockerfile), prefer it as build context.
 	// This supports setups like: containerImage: ../../shared/docker-images/web-base
 	if p := strings.TrimSpace(containerImageValue); p != "" {
@@ -54,26 +54,26 @@ func resolveDockerBuildContext(challengeCwd string, containerImageValue string) 
 		}
 		if st, statErr := os.Stat(candidate); statErr == nil {
 			if st.IsDir() {
-				return candidate, "", nil
+				return candidate, ""
 			}
 			// If it's a file, treat it as an explicit Dockerfile.
-			return filepath.Dir(candidate), candidate, nil
+			return filepath.Dir(candidate), candidate
 		}
 	}
 
 	// Otherwise, follow common challenge layouts.
 	srcDockerfile := filepath.Join(challengeCwd, "src", "Dockerfile")
 	if st, statErr := os.Stat(srcDockerfile); statErr == nil && !st.IsDir() {
-		return filepath.Dir(srcDockerfile), srcDockerfile, nil
+		return filepath.Dir(srcDockerfile), srcDockerfile
 	}
 
 	rootDockerfile := filepath.Join(challengeCwd, "Dockerfile")
 	if st, statErr := os.Stat(rootDockerfile); statErr == nil && !st.IsDir() {
-		return challengeCwd, rootDockerfile, nil
+		return challengeCwd, rootDockerfile
 	}
 
 	// Fallback: let docker decide; this will error clearly if no Dockerfile exists.
-	return challengeCwd, "", nil
+	return challengeCwd, ""
 }
 
 func containerImageResolvesToLocalPath(challengeCwd string, containerImageValue string) bool {
@@ -141,7 +141,6 @@ func dockerLoginOnce(ctx context.Context, server string, username string, passwo
 }
 
 func runDocker(ctx context.Context, dir string, args []string, stdin string) error {
-	//nolint:gosec // G204: docker invocation is intended and args are constructed by this program.
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	if strings.TrimSpace(dir) != "" {
 		cmd.Dir = dir

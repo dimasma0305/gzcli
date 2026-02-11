@@ -1,4 +1,6 @@
 // Package template provides utilities for processing and applying templates
+//
+//nolint:revive // Package name is intentional and stable in project imports.
 package template
 
 import (

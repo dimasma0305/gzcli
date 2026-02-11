@@ -410,8 +410,6 @@ func (ew *EventWatcher) HandleFileChange(filePath string) {
 					updateType = pendingUpdateType
 					log.InfoH3("[%s] Upgraded update type to: %v", ew.eventName, updateType)
 				}
-				// Prefer the most recent file path for subsequent iterations/debugging.
-				nextFilePath = pendingFilePath
 			}
 
 			// Skip if no update needed, but keep looping if new pending updates appear.
