@@ -1,3 +1,9 @@
+## [1.39.0](https://github.com/dimasma0305/gzcli/compare/v1.38.2...v1.39.0) (2026-02-11)
+
+### Features
+
+* Add `//nolint:revive` directive to template test to allow testing unexported internals. ([f62c710](https://github.com/dimasma0305/gzcli/commit/f62c7100aa121aa7f5034fffcbb2f9e276022a94))
+
 ## [1.38.2](https://github.com/dimasma0305/gzcli/compare/v1.38.1...v1.38.2) (2026-02-11)
 
 ### Code Refactoring
