@@ -1,3 +1,9 @@
+## [1.38.1](https://github.com/dimasma0305/gzcli/compare/v1.38.0...v1.38.1) (2026-02-11)
+
+### Code Refactoring
+
+* simplify username generation to preserve input and only append a numeric suffix for uniqueness, and add new tests. ([d5de5fc](https://github.com/dimasma0305/gzcli/commit/d5de5fc7b3fdd093050a2022e625867294c9de45))
+
 ## [1.38.0](https://github.com/dimasma0305/gzcli/compare/v1.37.0...v1.38.0) (2026-02-11)
 
 ### Features
