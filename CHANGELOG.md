@@ -1,3 +1,9 @@
+## [1.38.2](https://github.com/dimasma0305/gzcli/compare/v1.38.1...v1.38.2) (2026-02-11)
+
+### Code Refactoring
+
+* Simplify Docker build context resolution by removing error returns, update nolint directives, and disable Go cache in CI. ([68c245b](https://github.com/dimasma0305/gzcli/commit/68c245b36012f00d26251bec50d4a7dda02496f9))
+
 ## [1.38.1](https://github.com/dimasma0305/gzcli/compare/v1.38.0...v1.38.1) (2026-02-11)
 
 ### Code Refactoring
