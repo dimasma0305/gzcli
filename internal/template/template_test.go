@@ -1,3 +1,4 @@
+//nolint:revive // Package name is intentional to test unexported template package internals.
 package template
 
 import (
