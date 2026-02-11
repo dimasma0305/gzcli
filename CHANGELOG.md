@@ -1,3 +1,9 @@
+## [1.38.0](https://github.com/dimasma0305/gzcli/compare/v1.37.0...v1.38.0) (2026-02-11)
+
+### Features
+
+* Add solo CTF mode support to team creation emails and update email template styling. ([7924094](https://github.com/dimasma0305/gzcli/commit/79240940a29938e66ca7b898282d668bbf24eb44))
+
 ## [1.37.0](https://github.com/dimasma0305/gzcli/compare/v1.36.3...v1.37.0) (2026-02-10)
 
 ### Features
