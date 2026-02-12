@@ -115,6 +115,7 @@ type registryLoginState struct {
 var (
 	registryLoginMu    sync.Mutex
 	registryLoginCache = make(map[string]registryLoginState)
+	runDockerCommand   = runDocker
 )
 
 const (
@@ -170,10 +171,14 @@ func dockerLoginOnce(ctx context.Context, server string, username string, passwo
 
 	// Prefer password-stdin to avoid leaking passwords in process args.
 	args := []string{"login", server, "-u", username, "--password-stdin"}
-	err := runDocker(ctx, "", args, password+"\n")
+	err := runDockerCommand(ctx, "", args, password+"\n")
+	if err != nil {
+		// Do not cache failures; transient registry/network issues should retry.
+		return err
+	}
 
 	registryLoginMu.Lock()
-	registryLoginCache[server] = registryLoginState{done: true, err: err}
+	registryLoginCache[server] = registryLoginState{done: true, err: nil}
 	registryLoginMu.Unlock()
 
 	return err

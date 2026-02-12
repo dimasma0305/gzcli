@@ -75,6 +75,12 @@ func (m *Manager) PerformPull() error {
 	}
 
 	// Execute system git pull (inherits env; uses current credentials/SSH config)
+	oldHead, oldHeadErr := m.getHeadSHA(root)
+	if oldHeadErr != nil {
+		log.Debug("Unable to read HEAD before pull in %s: %v", root, oldHeadErr)
+	}
+
+	// Execute system git pull (inherits env; uses current credentials/SSH config)
 	//nolint:gosec // G204: Git repository path is validated and configured by user
 	cmd := exec.Command("git", "-C", root, "pull")
 	cmd.Env = os.Environ()
@@ -98,13 +104,34 @@ func (m *Manager) PerformPull() error {
 		log.InfoH3("✅ Git pull completed successfully")
 	}
 
-	// After successful pull, execute callback if provided
+	newHead, newHeadErr := m.getHeadSHA(root)
+	if newHeadErr != nil {
+		log.Debug("Unable to read HEAD after pull in %s: %v", root, newHeadErr)
+	}
+
+	headChanged := oldHead != "" && newHead != "" && oldHead != newHead
+	if !headChanged {
+		log.InfoH3("📄 No new commits pulled; skipping post-pull sync callback")
+		return nil
+	}
+
+	// After successful pull with new commits, execute callback if provided.
 	if m.onUpdate != nil {
 		log.InfoH3("🔍 Checking for updates after git pull...")
 		m.onUpdate()
 	}
 
 	return nil
+}
+
+func (m *Manager) getHeadSHA(root string) (string, error) {
+	cmd := exec.Command("git", "-C", root, "rev-parse", "HEAD")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse HEAD failed: %w (%s)", err, strings.TrimSpace(string(out)))
+	}
+
+	return strings.TrimSpace(string(out)), nil
 }
 
 // ResolveRepoPaths attempts to find git repositories in the following order:

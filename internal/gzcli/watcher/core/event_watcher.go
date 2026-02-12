@@ -134,10 +134,17 @@ func (ew *EventWatcher) Start() error {
 				for _, repoPath := range repoPaths {
 					log.Info("[%s] Git monitoring initialized at: %s", ew.eventName, repoPath)
 					mgr := git.NewManager(repoPath, ew.config.GitPullInterval, func() {
-						log.Info("[%s] Git pull completed, checking for new challenges...", ew.eventName)
-						// Re-discover challenges after git pull
+						log.Info("[%s] Git pull brought new commits, rediscovering and syncing challenges...", ew.eventName)
+						// Re-discover challenges after git pull.
 						if err := ew.discoverChallenges(); err != nil {
 							log.Error("[%s] Failed to rediscover challenges after git pull: %v", ew.eventName, err)
+							return
+						}
+
+						// Force a sync pass after pulls that changed HEAD. This ensures newly
+						// pulled challenges are pushed to GZCTF even if fsnotify misses events.
+						if err := ew.enqueueSyncForWatchedChallenges(); err != nil {
+							log.Error("[%s] Failed to enqueue challenge sync after git pull: %v", ew.eventName, err)
 						}
 					})
 					ew.gitMgrs = append(ew.gitMgrs, mgr)
@@ -881,4 +888,27 @@ func (ew *EventWatcher) GetEventName() string {
 // GetScriptManager returns the script manager for this event
 func (ew *EventWatcher) GetScriptManager() *scripts.Manager {
 	return ew.scriptMgr
+}
+
+// enqueueSyncForWatchedChallenges schedules sync for all currently watched challenges.
+func (ew *EventWatcher) enqueueSyncForWatchedChallenges() error {
+	challenges := ew.challengeMgr.GetChallenges()
+	if len(challenges) == 0 {
+		return nil
+	}
+
+	for challengeName, challengePath := range challenges {
+		challengeFile := filepath.Join(challengePath, "challenge.yaml")
+		if _, err := os.Stat(challengeFile); os.IsNotExist(err) {
+			challengeFile = filepath.Join(challengePath, "challenge.yml")
+			if _, err := os.Stat(challengeFile); os.IsNotExist(err) {
+				log.InfoH3("[%s] Skipping %s: no challenge.yaml/challenge.yml found", ew.eventName, challengeName)
+				continue
+			}
+		}
+
+		ew.HandleFileChange(challengeFile)
+	}
+
+	return nil
 }
