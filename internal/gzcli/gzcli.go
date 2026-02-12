@@ -325,6 +325,7 @@ func (gz *GZ) processChallenges(conf *config.Config, challengesConf []config.Cha
 
 	workers := resolveSyncWorkerCount(total)
 	log.Info("Syncing %d challenges with %d worker(s)...", total, workers)
+	totalI32 := int32(total)
 
 	var wg sync.WaitGroup
 	errChan := make(chan error, total)
@@ -344,7 +345,11 @@ func (gz *GZ) processChallenges(conf *config.Config, challengesConf []config.Cha
 				continue
 			}
 
-			log.Info("[%d/%d] Synced challenge: %s", done, total, c.Name)
+			if done%25 == 0 || done == totalI32 {
+				log.Info("[%d/%d] Sync progress...", done, total)
+			} else {
+				log.Debug("[%d/%d] Synced challenge: %s", done, total, c.Name)
+			}
 			atomic.AddInt32(&successCount, 1)
 		}
 	}

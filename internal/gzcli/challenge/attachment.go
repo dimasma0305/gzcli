@@ -96,15 +96,15 @@ func (c *assetsCache) set(file gzapi.FileInfo) {
 }
 
 func HandleChallengeAttachments(challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
-	log.InfoH3("Processing attachments for challenge: %s", challengeConf.Name)
+	log.DebugH3("Processing attachments for challenge: %s", challengeConf.Name)
 
 	switch {
 	case challengeConf.Provide != nil:
-		log.InfoH3("Challenge %s has attachment: %s", challengeConf.Name, *challengeConf.Provide)
+		log.DebugH3("Challenge %s has attachment: %s", challengeConf.Name, *challengeConf.Provide)
 
 		switch {
 		case strings.HasPrefix(*challengeConf.Provide, "http"):
-			log.InfoH3("Creating remote attachment for %s: %s", challengeConf.Name, *challengeConf.Provide)
+			log.DebugH3("Creating remote attachment for %s: %s", challengeConf.Name, *challengeConf.Provide)
 			if err := challengeData.CreateAttachment(gzapi.CreateAttachmentForm{
 				AttachmentType: "Remote",
 				RemoteUrl:      *challengeConf.Provide,
@@ -112,30 +112,30 @@ func HandleChallengeAttachments(challengeConf config.ChallengeYaml, challengeDat
 				log.Error("Failed to create remote attachment for %s: %v", challengeConf.Name, err)
 				return fmt.Errorf("remote attachment creation failed for %s: %w", challengeConf.Name, err)
 			}
-			log.InfoH3("Successfully created remote attachment for %s", challengeConf.Name)
+			log.DebugH3("Successfully created remote attachment for %s", challengeConf.Name)
 		default:
-			log.InfoH3("Processing local attachment for %s: %s", challengeConf.Name, *challengeConf.Provide)
+			log.DebugH3("Processing local attachment for %s: %s", challengeConf.Name, *challengeConf.Provide)
 			return HandleLocalAttachment(challengeConf, challengeData, api)
 		}
 	case challengeData.Attachment != nil:
-		log.InfoH3("Removing existing attachment for %s", challengeConf.Name)
+		log.DebugH3("Removing existing attachment for %s", challengeConf.Name)
 		if err := challengeData.CreateAttachment(gzapi.CreateAttachmentForm{
 			AttachmentType: "None",
 		}); err != nil {
 			log.Error("Failed to remove attachment for %s: %v", challengeConf.Name, err)
 			return fmt.Errorf("attachment removal failed for %s: %w", challengeConf.Name, err)
 		}
-		log.InfoH3("Successfully removed attachment for %s", challengeConf.Name)
+		log.DebugH3("Successfully removed attachment for %s", challengeConf.Name)
 	default:
-		log.InfoH3("No attachment processing needed for %s", challengeConf.Name)
+		log.DebugH3("No attachment processing needed for %s", challengeConf.Name)
 	}
 
-	log.InfoH3("Attachment processing completed for %s", challengeConf.Name)
+	log.DebugH3("Attachment processing completed for %s", challengeConf.Name)
 	return nil
 }
 
 func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
-	log.InfoH3("Creating local attachment for %s", challengeConf.Name)
+	log.DebugH3("Creating local attachment for %s", challengeConf.Name)
 
 	zipFilename := "dist.zip"
 	// Write zip to temp dir to avoid triggering watcher events inside challenge dir
@@ -146,19 +146,19 @@ func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gz
 	var artifactPath string
 	var artifactBase string
 
-	log.InfoH3("Checking attachment path: %s", attachmentPath)
+	log.DebugH3("Checking attachment path: %s", attachmentPath)
 	if info, err := os.Stat(attachmentPath); err != nil || info.IsDir() {
-		log.InfoH3("Creating zip file for %s from: %s", challengeConf.Name, attachmentPath)
+		log.DebugH3("Creating zip file for %s from: %s", challengeConf.Name, attachmentPath)
 		if err := fileutil.ZipSource(attachmentPath, zipOutput); err != nil {
 			log.Error("Failed to create zip for %s: %v", challengeConf.Name, err)
 			return fmt.Errorf("zip creation failed for %s: %w", challengeConf.Name, err)
 		}
-		log.InfoH3("Successfully created zip file: %s", zipOutput)
+		log.DebugH3("Successfully created zip file: %s", zipOutput)
 		// Use the temp zip directly as the artifact, do not write into challenge directory
 		artifactPath = zipOutput
 		artifactBase = filepath.Base(zipOutput)
 	} else {
-		log.InfoH3("Using existing file: %s", attachmentPath)
+		log.DebugH3("Using existing file: %s", attachmentPath)
 		artifactPath = attachmentPath
 		artifactBase = filepath.Base(attachmentPath)
 	}
@@ -170,7 +170,7 @@ func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gz
 	uniqueFilename := sanitizedBase + ext
 	uniqueFilePath := filepath.Join(os.TempDir(), uniqueFilename)
 
-	log.InfoH3("Creating unique attachment file: %s", uniqueFilePath)
+	log.DebugH3("Creating unique attachment file: %s", uniqueFilePath)
 
 	// Copy the artifact and append challenge metadata to make it unique
 	if err := CreateUniqueAttachmentFile(artifactPath, uniqueFilePath, challengeConf.Name); err != nil {
@@ -178,24 +178,24 @@ func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gz
 		return fmt.Errorf("unique file creation failed for %s: %w", challengeConf.Name, err)
 	}
 
-	log.InfoH3("Creating/checking assets for %s", challengeConf.Name)
+	log.DebugH3("Creating/checking assets for %s", challengeConf.Name)
 	fileinfo, err := CreateAssetsIfNotExistOrDifferent(uniqueFilePath, api)
 	if err != nil {
 		_ = os.Remove(uniqueFilePath) // Clean up on error
 		log.Error("Failed to create/check assets for %s: %v", challengeConf.Name, err)
 		return fmt.Errorf("asset creation failed for %s: %w", challengeConf.Name, err)
 	}
-	log.InfoH3("Asset info for %s: Hash=%s, Name=%s", challengeConf.Name, fileinfo.Hash, fileinfo.Name)
+	log.DebugH3("Asset info for %s: Hash=%s, Name=%s", challengeConf.Name, fileinfo.Hash, fileinfo.Name)
 
 	// Check if the challenge already has the same attachment hash
 	if challengeData.Attachment != nil && strings.Contains(challengeData.Attachment.Url, fileinfo.Hash) {
-		log.InfoH3("Attachment for %s is unchanged (hash: %s)", challengeConf.Name, fileinfo.Hash)
+		log.DebugH3("Attachment for %s is unchanged (hash: %s)", challengeConf.Name, fileinfo.Hash)
 	} else {
 		var attachmentUrl string
 		if challengeData.Attachment != nil {
 			attachmentUrl = challengeData.Attachment.Url
 		}
-		log.InfoH3("Updating attachment for %s (hash: %s, current: %s)", challengeConf.Name, fileinfo.Hash, attachmentUrl)
+		log.DebugH3("Updating attachment for %s (hash: %s, current: %s)", challengeConf.Name, fileinfo.Hash, attachmentUrl)
 
 		// Try to create the attachment
 		err := challengeData.CreateAttachment(gzapi.CreateAttachmentForm{
@@ -208,21 +208,21 @@ func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gz
 			_ = os.Remove(uniqueFilePath) // Clean up on error
 			return fmt.Errorf("local attachment creation failed for %s: %w", challengeConf.Name, err)
 		} else {
-			log.InfoH3("Successfully created local attachment for %s", challengeConf.Name)
+			log.DebugH3("Successfully created local attachment for %s", challengeConf.Name)
 		}
 	}
 
 	// Clean up temporary files
 	if strings.HasSuffix(zipOutput, ".zip") {
-		log.InfoH3("Cleaning up temporary zip file: %s", zipOutput)
+		log.DebugH3("Cleaning up temporary zip file: %s", zipOutput)
 		_ = os.Remove(zipOutput)
 	}
 
 	// Clean up the unique file after successful upload
-	log.InfoH3("Cleaning up unique attachment file: %s", uniqueFilePath)
+	log.DebugH3("Cleaning up unique attachment file: %s", uniqueFilePath)
 	_ = os.Remove(uniqueFilePath)
 
-	log.InfoH3("Local attachment processing completed for %s", challengeConf.Name)
+	log.DebugH3("Local attachment processing completed for %s", challengeConf.Name)
 	return nil
 }
 
