@@ -546,6 +546,69 @@ func TestIsConfigEdited(t *testing.T) {
 	}
 }
 
+func TestIsConfigEdited_IgnoresRuntimeFields(t *testing.T) {
+	cacheData := make(map[string]interface{})
+	getCache := func(key string, v interface{}) error {
+		if data, ok := cacheData[key]; ok {
+			if ptr, ok := v.(*gzapi.Challenge); ok {
+				if cached, ok := data.(gzapi.Challenge); ok {
+					*ptr = cached
+				}
+			}
+		}
+		return nil
+	}
+
+	conf := &config.Config{
+		EventName: "test-event",
+	}
+
+	challengeConf := config.ChallengeYaml{
+		Name:     "Test",
+		Category: "Web",
+	}
+
+	cacheData["test-event/Web/Test/challenge"] = gzapi.Challenge{
+		Title:               "Test",
+		Category:            "Web",
+		Content:             "same",
+		Type:                "StaticAttachment",
+		Hints:               []string{},
+		ContainerImage:      "repo/challenge:latest",
+		MemoryLimit:         128,
+		CpuCount:            1,
+		StorageLimit:        128,
+		ContainerExposePort: 80,
+		NetworkMode:         "Open",
+		OriginalScore:       100,
+		MinScoreRate:        0.10,
+	}
+
+	current := gzapi.Challenge{
+		Title:               "Test",
+		Category:            "Web",
+		Content:             "same",
+		Type:                "StaticAttachment",
+		Hints:               []string{},
+		ContainerImage:      "repo/challenge:latest",
+		MemoryLimit:         128,
+		CpuCount:            1,
+		StorageLimit:        128,
+		ContainerExposePort: 80,
+		NetworkMode:         "Open",
+		OriginalScore:       100,
+		MinScoreRate:        0.10,
+		GameId:              999,            // runtime-only
+		CS:                  &gzapi.GZAPI{}, // runtime-only
+		AcceptedCount:       42,             // server-managed
+		Difficulty:          2.5,            // server-managed
+	}
+
+	if got := IsConfigEdited(conf, &challengeConf, &current, getCache); got {
+		t.Fatalf("expected runtime/server fields to be ignored in config diff")
+	}
+}
+
 func TestMergeChallengeDataWithCategoryNormalization(t *testing.T) {
 	tests := []struct {
 		name          string

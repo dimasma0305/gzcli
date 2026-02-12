@@ -156,11 +156,64 @@ func IsConfigEdited(conf *config.Config, challengeConf *config.ChallengeYaml, ch
 	if err := getCache(cacheKey, &cacheChallenge); err != nil {
 		return true
 	}
+	// Some cache providers may return zero-value data on misses without an error.
+	if cacheChallenge.Title == "" && challengeData.Title != "" {
+		return true
+	}
 
 	if challengeData.Hints == nil {
 		challengeData.Hints = []string{}
 	}
-	return !cmp.Equal(*challengeData, cacheChallenge)
+	return !cmp.Equal(toComparableChallenge(*challengeData), toComparableChallenge(cacheChallenge))
+}
+
+type comparableChallenge struct {
+	Title                string
+	Content              string
+	Category             string
+	Type                 string
+	Hints                []string
+	FlagTemplate         string
+	IsEnabled            *bool
+	ContainerImage       string
+	MemoryLimit          int
+	CpuCount             int
+	StorageLimit         int
+	ContainerExposePort  int
+	NetworkMode          string
+	EnableTrafficCapture bool
+	DisableBloodBonus    bool
+	DeadlineUtc          int64
+	SubmissionLimit      int
+	OriginalScore        int
+	MinScoreRate         float64
+}
+
+func toComparableChallenge(c gzapi.Challenge) comparableChallenge {
+	if c.Hints == nil {
+		c.Hints = []string{}
+	}
+	return comparableChallenge{
+		Title:                c.Title,
+		Content:              c.Content,
+		Category:             c.Category,
+		Type:                 c.Type,
+		Hints:                c.Hints,
+		FlagTemplate:         c.FlagTemplate,
+		IsEnabled:            c.IsEnabled,
+		ContainerImage:       c.ContainerImage,
+		MemoryLimit:          c.MemoryLimit,
+		CpuCount:             c.CpuCount,
+		StorageLimit:         c.StorageLimit,
+		ContainerExposePort:  c.ContainerExposePort,
+		NetworkMode:          c.NetworkMode,
+		EnableTrafficCapture: c.EnableTrafficCapture,
+		DisableBloodBonus:    c.DisableBloodBonus,
+		DeadlineUtc:          c.DeadlineUtc,
+		SubmissionLimit:      c.SubmissionLimit,
+		OriginalScore:        c.OriginalScore,
+		MinScoreRate:         c.MinScoreRate,
+	}
 }
 
 func MergeChallengeData(challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge) *gzapi.Challenge {
