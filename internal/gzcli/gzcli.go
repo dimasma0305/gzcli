@@ -331,22 +331,10 @@ func (gz *GZ) processChallenges(conf *config.Config, challengesConf []config.Cha
 	jobs := make(chan config.ChallengeYaml, total)
 	var successCount, failureCount, processedCount int32
 
-	challengeMutexes := make(map[string]*sync.Mutex)
-	var mutexesMu sync.RWMutex
-
 	worker := func() {
 		defer wg.Done()
 		for c := range jobs {
-			mutexesMu.Lock()
-			if challengeMutexes[c.Name] == nil {
-				challengeMutexes[c.Name] = &sync.Mutex{}
-			}
-			mutex := challengeMutexes[c.Name]
-			mutexesMu.Unlock()
-
-			mutex.Lock()
 			err := challenge.SyncChallenge(conf, c, remoteChallenges, gz.api, GetCache, setCache)
-			mutex.Unlock()
 
 			done := atomic.AddInt32(&processedCount, 1)
 			if err != nil {

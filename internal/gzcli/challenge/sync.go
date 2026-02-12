@@ -252,27 +252,20 @@ func createChallengeWithRetry(conf *config.Config, challengeConf config.Challeng
 
 // handleNewChallenge handles creation or fetching of a new challenge
 func handleNewChallenge(conf *config.Config, challengeConf config.ChallengeYaml, challenges []gzapi.Challenge, api *gzapi.GZAPI) (*gzapi.Challenge, error) {
-	freshChallenges, err := conf.Event.GetChallenges()
-	if err != nil {
-		log.Error("Failed to get fresh challenges list for %s: %v", challengeConf.Name, err)
-		freshChallenges = challenges
+	// If we already know it exists, fetch it directly.
+	// Otherwise create; duplicate conflicts are handled by createChallengeWithRetry.
+	if IsChallengeExist(challengeConf.Name, challenges) {
+		challengeData, err := conf.Event.GetChallenge(challengeConf.Name)
+		if err != nil {
+			log.Error("Failed to get existing challenge %s: %v", challengeConf.Name, err)
+			return nil, fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
+		}
+		challengeData.CS = api
+		challengeData.GameId = conf.Event.Id
+		return challengeData, nil
 	}
 
-	// Final check to prevent duplicates
-	if !IsChallengeExist(challengeConf.Name, freshChallenges) {
-		return createChallengeWithRetry(conf, challengeConf, api)
-	}
-
-	// Challenge was created by another goroutine, fetch it
-	challengeData, err := conf.Event.GetChallenge(challengeConf.Name)
-	if err != nil {
-		log.Error("Failed to get newly created challenge %s: %v", challengeConf.Name, err)
-		return nil, fmt.Errorf("get challenge %s: %w", challengeConf.Name, err)
-	}
-
-	challengeData.CS = api
-	challengeData.GameId = conf.Event.Id
-	return challengeData, nil
+	return createChallengeWithRetry(conf, challengeConf, api)
 }
 
 // handleExistingChallenge handles fetching an existing challenge from cache or API
