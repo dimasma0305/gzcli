@@ -1,3 +1,9 @@
+## [1.44.0](https://github.com/dimasma0305/gzcli/compare/v1.43.0...v1.44.0) (2026-02-12)
+
+### Features
+
+* Enhance challenge synchronization by retrying failed Docker logins and triggering post-git-pull updates only when new commits are detected. ([3a9e4bf](https://github.com/dimasma0305/gzcli/commit/3a9e4bf7d3c3f03bd0fcda53ea3f66963934bd13))
+
 ## [1.43.0](https://github.com/dimasma0305/gzcli/compare/v1.42.0...v1.43.0) (2026-02-12)
 
 ### Features
