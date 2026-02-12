@@ -1,3 +1,14 @@
+## [1.42.0](https://github.com/dimasma0305/gzcli/compare/v1.41.1...v1.42.0) (2026-02-12)
+
+### Features
+
+* improve challenge configuration comparison by ignoring runtime-specific fields and handling zero-value cache misses. ([66dc6d1](https://github.com/dimasma0305/gzcli/commit/66dc6d172a1c2070c4e3b9b07edd2a3f655071c9))
+
+### Performance Improvements
+
+* optimize concurrent challenge detail fetching and prevent redundant attachment uploads by checking file hashes. ([6ae632d](https://github.com/dimasma0305/gzcli/commit/6ae632d4927515f360f47d4ed85da52c1905a819))
+* optimize flag creation with batch API calls and skip unchanged remote attachment updates. ([3a8e68d](https://github.com/dimasma0305/gzcli/commit/3a8e68d91c16a291eba7ce30d0fe9634387be2a8))
+
 ## [1.41.1](https://github.com/dimasma0305/gzcli/compare/v1.41.0...v1.41.1) (2026-02-12)
 
 ### Code Refactoring
