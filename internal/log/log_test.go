@@ -1,4 +1,4 @@
-//nolint:errcheck,gosec,revive // Test file with acceptable error handling patterns; package name is intentional.
+//nolint:errcheck,gosec // Test file with acceptable error handling patterns.
 package log
 
 import (
