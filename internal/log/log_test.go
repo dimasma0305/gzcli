@@ -1,4 +1,4 @@
-//nolint:errcheck,gosec // Test file with acceptable error handling patterns.
+//nolint:errcheck,gosec // Test file patterns are intentional.
 package log
 
 import (
