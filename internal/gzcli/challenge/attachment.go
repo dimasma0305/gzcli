@@ -6,12 +6,94 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/config"
 	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
+
+type assetsCache struct {
+	once    sync.Once
+	loadErr error
+
+	mu     sync.RWMutex
+	byHash map[string]gzapi.FileInfo
+}
+
+var assetsCacheByAPI sync.Map
+
+func cacheKeyForAPI(api *gzapi.GZAPI) string {
+	if api == nil || api.Creds == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s|%s", strings.TrimSpace(api.Url), api.Creds.Username)
+}
+
+func getAssetsCache(api *gzapi.GZAPI) *assetsCache {
+	key := cacheKeyForAPI(api)
+	if key == "" {
+		return nil
+	}
+
+	if cached, ok := assetsCacheByAPI.Load(key); ok {
+		if c, ok2 := cached.(*assetsCache); ok2 {
+			return c
+		}
+	}
+
+	newCache := &assetsCache{
+		byHash: make(map[string]gzapi.FileInfo),
+	}
+	actual, _ := assetsCacheByAPI.LoadOrStore(key, newCache)
+	if c, ok := actual.(*assetsCache); ok {
+		return c
+	}
+	return newCache
+}
+
+func (c *assetsCache) ensureLoaded(api *gzapi.GZAPI) error {
+	if c == nil {
+		return nil
+	}
+	c.once.Do(func() {
+		assets, err := api.GetAssets()
+		if err != nil {
+			c.loadErr = fmt.Errorf("failed to get assets: %w", err)
+			return
+		}
+		c.mu.Lock()
+		for i := range assets {
+			c.byHash[assets[i].Hash] = assets[i]
+		}
+		c.mu.Unlock()
+	})
+	return c.loadErr
+}
+
+func (c *assetsCache) get(hash string) (*gzapi.FileInfo, bool) {
+	if c == nil {
+		return nil, false
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	v, ok := c.byHash[hash]
+	if !ok {
+		return nil, false
+	}
+	out := v
+	return &out, true
+}
+
+func (c *assetsCache) set(file gzapi.FileInfo) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	c.byHash[file.Hash] = file
+	c.mu.Unlock()
+}
 
 func HandleChallengeAttachments(challengeConf config.ChallengeYaml, challengeData *gzapi.Challenge, api *gzapi.GZAPI) error {
 	log.InfoH3("Processing attachments for challenge: %s", challengeConf.Name)
@@ -157,17 +239,13 @@ func CreateAssetsIfNotExistOrDifferent(filePath string, api *gzapi.GZAPI) (*gzap
 		return nil, fmt.Errorf("failed to get file hash: %w", err)
 	}
 
-	// Try to get existing assets
-	assets, err := api.GetAssets()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get assets: %w", err)
+	cache := getAssetsCache(api)
+	if err := cache.ensureLoaded(api); err != nil {
+		return nil, err
 	}
 
-	// Check if asset with same hash already exists
-	for _, asset := range assets {
-		if asset.Hash == hash {
-			return &asset, nil
-		}
+	if existing, ok := cache.get(hash); ok {
+		return existing, nil
 	}
 
 	// Asset doesn't exist, create it
@@ -180,5 +258,6 @@ func CreateAssetsIfNotExistOrDifferent(filePath string, api *gzapi.GZAPI) (*gzap
 		return nil, fmt.Errorf("asset creation returned empty result")
 	}
 
+	cache.set(newAssets[0])
 	return &newAssets[0], nil
 }

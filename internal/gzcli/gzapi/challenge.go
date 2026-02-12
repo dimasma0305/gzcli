@@ -3,6 +3,9 @@ package gzapi
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -98,27 +101,72 @@ func (g *Game) GetChallenges() ([]Challenge, error) {
 	if err := g.CS.get(fmt.Sprintf("/api/edit/games/%d/challenges", g.Id), &tmp); err != nil {
 		return nil, err
 	}
+	if len(tmp) == 0 {
+		return data, nil
+	}
+
+	workers := resolveChallengeFetchWorkers(len(tmp))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
+	jobs := make(chan int, len(tmp))
+	errChan := make(chan error, len(tmp))
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idx := range jobs {
+				var c Challenge
+				if err := g.CS.get(fmt.Sprintf("/api/edit/games/%d/challenges/%d", g.Id, tmp[idx].Id), &c); err != nil {
+					errChan <- fmt.Errorf("fetch challenge id %d: %w", tmp[idx].Id, err)
+					continue
+				}
+				c.GameId = g.Id
+				c.CS = g.CS
+
+				mu.Lock()
+				data = append(data, c)
+				mu.Unlock()
+			}
+		}()
+	}
 
 	for i := range tmp {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			var c Challenge
-			if err := g.CS.get(fmt.Sprintf("/api/edit/games/%d/challenges/%d", g.Id, tmp[i].Id), &c); err != nil {
-				return
-			}
-			c.GameId = g.Id
-			c.CS = g.CS
-
-			mu.Lock()
-			data = append(data, c)
-			mu.Unlock()
-		}(i)
+		jobs <- i
 	}
+	close(jobs)
 	wg.Wait()
+	close(errChan)
+
+	if len(errChan) > 0 {
+		return nil, <-errChan
+	}
 	return data, nil
+}
+
+func resolveChallengeFetchWorkers(total int) int {
+	if total <= 0 {
+		return 1
+	}
+
+	workers := 6
+	if workers > total {
+		workers = total
+	}
+
+	if raw := strings.TrimSpace(os.Getenv("GZCLI_GET_CHALLENGES_WORKERS")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			workers = parsed
+		}
+	}
+
+	if workers > total {
+		workers = total
+	}
+	if workers < 1 {
+		return 1
+	}
+	return workers
 }
 
 func (g *Game) GetChallenge(name string) (*Challenge, error) {
