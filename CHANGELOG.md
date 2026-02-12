@@ -1,3 +1,10 @@
+## [1.41.1](https://github.com/dimasma0305/gzcli/compare/v1.41.0...v1.41.1) (2026-02-12)
+
+### Code Refactoring
+
+* reduce logging verbosity for challenge attachment processing and sync progress. ([4a3e882](https://github.com/dimasma0305/gzcli/commit/4a3e8825491e2ee68e6cd654cd1d423d3e54b87e))
+* Streamline challenge synchronization by removing explicit mutexes and simplifying new challenge creation/fetching logic, and reduce validation logging verbosity. ([ed9028b](https://github.com/dimasma0305/gzcli/commit/ed9028b399c9372e6ac3d8b8742a011256ebe6ea))
+
 ## [1.41.0](https://github.com/dimasma0305/gzcli/compare/v1.40.0...v1.41.0) (2026-02-12)
 
 ### Features
