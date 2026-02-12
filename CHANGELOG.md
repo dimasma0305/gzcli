@@ -1,3 +1,10 @@
+## [1.40.0](https://github.com/dimasma0305/gzcli/compare/v1.39.0...v1.40.0) (2026-02-12)
+
+### Features
+
+* Implement concurrent challenge fetching with a worker pool, add asset caching, and refactor flag management. ([9ce4c99](https://github.com/dimasma0305/gzcli/commit/9ce4c990d5e2fd3dcea1e0807e2c8123bff86fac))
+* Implement concurrent challenge syncing with a worker pool and add configurable timeouts for Docker build, login, tag, and push operations. ([89c810b](https://github.com/dimasma0305/gzcli/commit/89c810be95557f00717bea49ccf29e333c0d2bc3))
+
 ## [1.39.0](https://github.com/dimasma0305/gzcli/compare/v1.38.2...v1.39.0) (2026-02-11)
 
 ### Features
