@@ -194,9 +194,10 @@ func (g *Game) GetChallenges() ([]Challenge, error) {
 
 	workers := resolveChallengeFetchWorkers(len(tmp))
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 	jobs := make(chan int, len(tmp))
-	errChan := make(chan error, len(tmp))
+	errs := make([]error, len(tmp))
+	details := make([]Challenge, len(tmp))
+	ok := make([]bool, len(tmp))
 
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
@@ -205,15 +206,13 @@ func (g *Game) GetChallenges() ([]Challenge, error) {
 			for idx := range jobs {
 				var c Challenge
 				if err := g.CS.get(fmt.Sprintf("/api/edit/games/%d/challenges/%d", g.Id, tmp[idx].Id), &c); err != nil {
-					errChan <- fmt.Errorf("fetch challenge id %d: %w", tmp[idx].Id, err)
+					errs[idx] = fmt.Errorf("fetch challenge id %d: %w", tmp[idx].Id, err)
 					continue
 				}
 				c.GameId = g.Id
 				c.CS = g.CS
-
-				mu.Lock()
-				data = append(data, c)
-				mu.Unlock()
+				details[idx] = c
+				ok[idx] = true
 			}
 		}()
 	}
@@ -223,11 +222,20 @@ func (g *Game) GetChallenges() ([]Challenge, error) {
 	}
 	close(jobs)
 	wg.Wait()
-	close(errChan)
 
-	if len(errChan) > 0 {
-		return nil, <-errChan
+	for i := range errs {
+		if errs[i] != nil {
+			return nil, errs[i]
+		}
 	}
+
+	data = make([]Challenge, 0, len(tmp))
+	for i := range details {
+		if ok[i] {
+			data = append(data, details[i])
+		}
+	}
+
 	challengeCache.setGameChallenges(g.Id, data)
 	return data, nil
 }

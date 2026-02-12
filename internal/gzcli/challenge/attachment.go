@@ -163,6 +163,20 @@ func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gz
 		artifactBase = filepath.Base(attachmentPath)
 	}
 
+	artifactHash, err := fileutil.GetFileHashHex(artifactPath)
+	if err != nil {
+		return fmt.Errorf("failed to hash attachment for %s: %w", challengeConf.Name, err)
+	}
+
+	// Skip all copy/upload work when the challenge already points at the same file hash.
+	if challengeData.Attachment != nil && strings.Contains(challengeData.Attachment.Url, artifactHash) {
+		log.DebugH3("Attachment for %s is unchanged (hash: %s)", challengeConf.Name, artifactHash)
+		if strings.HasSuffix(zipOutput, ".zip") {
+			_ = os.Remove(zipOutput)
+		}
+		return nil
+	}
+
 	// Create a unique attachment file name while preserving extension
 	ext := filepath.Ext(artifactBase)
 	nameNoExt := strings.TrimSuffix(artifactBase, ext)
@@ -179,7 +193,7 @@ func HandleLocalAttachment(challengeConf config.ChallengeYaml, challengeData *gz
 	}
 
 	log.DebugH3("Creating/checking assets for %s", challengeConf.Name)
-	fileinfo, err := CreateAssetsIfNotExistOrDifferent(uniqueFilePath, api)
+	fileinfo, err := CreateAssetsIfNotExistOrDifferentWithHash(uniqueFilePath, artifactHash, api)
 	if err != nil {
 		_ = os.Remove(uniqueFilePath) // Clean up on error
 		log.Error("Failed to create/check assets for %s: %v", challengeConf.Name, err)
@@ -237,6 +251,15 @@ func CreateAssetsIfNotExistOrDifferent(filePath string, api *gzapi.GZAPI) (*gzap
 	hash, err := fileutil.GetFileHashHex(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file hash: %w", err)
+	}
+	return CreateAssetsIfNotExistOrDifferentWithHash(filePath, hash, api)
+}
+
+// CreateAssetsIfNotExistOrDifferentWithHash creates assets if they don't exist or are different,
+// using a precomputed hash to avoid re-hashing the same file in hot paths.
+func CreateAssetsIfNotExistOrDifferentWithHash(filePath, hash string, api *gzapi.GZAPI) (*gzapi.FileInfo, error) {
+	if hash == "" {
+		return nil, fmt.Errorf("file hash cannot be empty")
 	}
 
 	cache := getAssetsCache(api)
