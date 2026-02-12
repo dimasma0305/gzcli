@@ -9,6 +9,84 @@ import (
 	"sync"
 )
 
+type gameChallengeCache struct {
+	mu     sync.RWMutex
+	byGame map[int]*gameChallengeCacheEntry
+}
+
+type gameChallengeCacheEntry struct {
+	byTitle map[string]Challenge
+	byID    map[int]string
+}
+
+var challengeCache = &gameChallengeCache{
+	byGame: make(map[int]*gameChallengeCacheEntry),
+}
+
+func (c *gameChallengeCache) setGameChallenges(gameID int, challenges []Challenge) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	entry := &gameChallengeCacheEntry{
+		byTitle: make(map[string]Challenge, len(challenges)),
+		byID:    make(map[int]string, len(challenges)),
+	}
+	for i := range challenges {
+		ch := challenges[i]
+		entry.byTitle[ch.Title] = ch
+		entry.byID[ch.Id] = ch.Title
+	}
+	c.byGame[gameID] = entry
+}
+
+func (c *gameChallengeCache) upsertChallenge(gameID int, challenge Challenge) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	entry, ok := c.byGame[gameID]
+	if !ok {
+		entry = &gameChallengeCacheEntry{
+			byTitle: make(map[string]Challenge),
+			byID:    make(map[int]string),
+		}
+		c.byGame[gameID] = entry
+	}
+
+	if oldTitle, ok := entry.byID[challenge.Id]; ok && oldTitle != challenge.Title {
+		delete(entry.byTitle, oldTitle)
+	}
+
+	entry.byTitle[challenge.Title] = challenge
+	entry.byID[challenge.Id] = challenge.Title
+}
+
+func (c *gameChallengeCache) getByTitle(gameID int, title string) (Challenge, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	entry, ok := c.byGame[gameID]
+	if !ok {
+		return Challenge{}, false
+	}
+	ch, ok := entry.byTitle[title]
+	return ch, ok
+}
+
+func (c *gameChallengeCache) deleteByID(gameID int, challengeID int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	entry, ok := c.byGame[gameID]
+	if !ok {
+		return
+	}
+
+	if title, ok := entry.byID[challengeID]; ok {
+		delete(entry.byID, challengeID)
+		delete(entry.byTitle, title)
+	}
+}
+
 type Challenge struct {
 	Id                   int         `json:"id" yaml:"id"`
 	Title                string      `json:"title" yaml:"title"`
@@ -44,7 +122,11 @@ func (c *Challenge) Delete() error {
 	if c.CS == nil {
 		return fmt.Errorf("GZAPI client is not initialized")
 	}
-	return c.CS.delete(fmt.Sprintf("/api/edit/games/%d/challenges/%d", c.GameId, c.Id), nil)
+	if err := c.CS.delete(fmt.Sprintf("/api/edit/games/%d/challenges/%d", c.GameId, c.Id), nil); err != nil {
+		return err
+	}
+	challengeCache.deleteByID(c.GameId, c.Id)
+	return nil
 }
 
 func (c *Challenge) Update(challenge Challenge) (*Challenge, error) {
@@ -54,6 +136,9 @@ func (c *Challenge) Update(challenge Challenge) (*Challenge, error) {
 	if err := c.CS.put(fmt.Sprintf("/api/edit/games/%d/challenges/%d", c.GameId, c.Id), &challenge, nil); err != nil {
 		return nil, err
 	}
+	challenge.GameId = c.GameId
+	challenge.CS = c.CS
+	challengeCache.upsertChallenge(c.GameId, challenge)
 	return &challenge, nil
 }
 
@@ -67,6 +152,7 @@ func (c *Challenge) Refresh() (*Challenge, error) {
 	}
 	data.GameId = c.GameId
 	data.CS = c.CS
+	challengeCache.upsertChallenge(c.GameId, data)
 	return &data, nil
 }
 
@@ -88,6 +174,7 @@ func (g *Game) CreateChallenge(challenge CreateChallengeForm) (*Challenge, error
 	}
 	data.GameId = g.Id
 	data.CS = g.CS
+	challengeCache.upsertChallenge(g.Id, *data)
 	return data, nil
 }
 
@@ -141,6 +228,7 @@ func (g *Game) GetChallenges() ([]Challenge, error) {
 	if len(errChan) > 0 {
 		return nil, <-errChan
 	}
+	challengeCache.setGameChallenges(g.Id, data)
 	return data, nil
 }
 
@@ -170,6 +258,12 @@ func resolveChallengeFetchWorkers(total int) int {
 }
 
 func (g *Game) GetChallenge(name string) (*Challenge, error) {
+	if cached, ok := challengeCache.getByTitle(g.Id, name); ok {
+		cached.GameId = g.Id
+		cached.CS = g.CS
+		return &cached, nil
+	}
+
 	var data []Challenge
 	if err := g.CS.get(fmt.Sprintf("/api/edit/games/%d/challenges", g.Id), &data); err != nil {
 		return nil, err
@@ -188,5 +282,6 @@ func (g *Game) GetChallenge(name string) (*Challenge, error) {
 	}
 	challenge.GameId = g.Id
 	challenge.CS = g.CS
+	challengeCache.upsertChallenge(g.Id, *challenge)
 	return challenge, nil
 }
