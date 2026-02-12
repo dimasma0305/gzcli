@@ -1,4 +1,3 @@
-//nolint:revive // Package name kept as "log" for stable internal imports.
 package log
 
 import (
