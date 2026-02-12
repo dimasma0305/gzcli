@@ -131,6 +131,35 @@ func TestHandleChallengeAttachments_RemoteURL(t *testing.T) {
 	}
 }
 
+func TestHandleChallengeAttachments_RemoteURLUnchangedSkipsAPI(t *testing.T) {
+	remoteURL := "https://example.com/file.zip"
+	challengeConf := config.ChallengeYaml{
+		Name:     "Test Challenge",
+		Category: "Web",
+		Provide:  &remoteURL,
+	}
+
+	challengeData := &gzapi.Challenge{
+		Id:     1,
+		GameId: 123,
+		Title:  "Test Challenge",
+		Attachment: &gzapi.Attachment{
+			Type: "Remote",
+			Url:  remoteURL,
+		},
+	}
+
+	// No attachment endpoint handler is registered on purpose.
+	// If code calls API unnecessarily, this test will fail.
+	api, cleanup := mockGZAPI(t, nil)
+	defer cleanup()
+	challengeData.CS = api
+
+	if err := HandleChallengeAttachments(challengeConf, challengeData, api); err != nil {
+		t.Fatalf("HandleChallengeAttachments() should skip unchanged remote attachment, got error: %v", err)
+	}
+}
+
 func TestHandleChallengeAttachments_RemoveExisting(t *testing.T) {
 	challengeConf := config.ChallengeYaml{
 		Name:     "Test Challenge",

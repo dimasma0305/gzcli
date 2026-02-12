@@ -104,6 +104,11 @@ func HandleChallengeAttachments(challengeConf config.ChallengeYaml, challengeDat
 
 		switch {
 		case strings.HasPrefix(*challengeConf.Provide, "http"):
+			if challengeData.Attachment != nil && challengeData.Attachment.Type == "Remote" && challengeData.Attachment.Url == *challengeConf.Provide {
+				log.DebugH3("Remote attachment for %s unchanged, skipping update", challengeConf.Name)
+				return nil
+			}
+
 			log.DebugH3("Creating remote attachment for %s: %s", challengeConf.Name, *challengeConf.Provide)
 			if err := challengeData.CreateAttachment(gzapi.CreateAttachmentForm{
 				AttachmentType: "Remote",

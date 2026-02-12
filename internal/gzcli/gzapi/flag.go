@@ -25,7 +25,14 @@ type CreateFlagForm struct {
 
 // CreateFlag creates a new flag for the challenge
 func (c *Challenge) CreateFlag(flag CreateFlagForm) error {
-	flags := []CreateFlagForm{flag}
+	return c.CreateFlags([]CreateFlagForm{flag})
+}
+
+// CreateFlags creates multiple flags for the challenge in a single API call.
+func (c *Challenge) CreateFlags(flags []CreateFlagForm) error {
+	if len(flags) == 0 {
+		return nil
+	}
 	if err := c.CS.post(fmt.Sprintf("/api/edit/games/%d/challenges/%d/flags", c.GameId, c.Id), flags, nil); err != nil {
 		return err
 	}
