@@ -1,3 +1,9 @@
+## [1.43.0](https://github.com/dimasma0305/gzcli/compare/v1.42.0...v1.43.0) (2026-02-12)
+
+### Features
+
+* Scope challenge cache by API instance and refresh newly created flag data with server-assigned IDs. ([9e6373a](https://github.com/dimasma0305/gzcli/commit/9e6373aade525d1a5e70e039d085400ec985ccc1))
+
 ## [1.42.0](https://github.com/dimasma0305/gzcli/compare/v1.41.1...v1.42.0) (2026-02-12)
 
 ### Features
