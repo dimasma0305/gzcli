@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dimasma0305/gzcli/internal/log"
 )
@@ -115,6 +116,44 @@ var (
 	registryLoginMu    sync.Mutex
 	registryLoginCache = make(map[string]registryLoginState)
 )
+
+const (
+	defaultDockerBuildTimeout = 20 * time.Minute
+	defaultDockerPushTimeout  = 20 * time.Minute
+	defaultDockerLoginTimeout = 2 * time.Minute
+	defaultDockerTagTimeout   = 1 * time.Minute
+)
+
+func getDockerBuildTimeout() time.Duration {
+	return getDockerTimeoutFromEnv("GZCLI_DOCKER_BUILD_TIMEOUT", defaultDockerBuildTimeout)
+}
+
+func getDockerPushTimeout() time.Duration {
+	return getDockerTimeoutFromEnv("GZCLI_DOCKER_PUSH_TIMEOUT", defaultDockerPushTimeout)
+}
+
+func getDockerLoginTimeout() time.Duration {
+	return getDockerTimeoutFromEnv("GZCLI_DOCKER_LOGIN_TIMEOUT", defaultDockerLoginTimeout)
+}
+
+func getDockerTagTimeout() time.Duration {
+	return getDockerTimeoutFromEnv("GZCLI_DOCKER_TAG_TIMEOUT", defaultDockerTagTimeout)
+}
+
+func getDockerTimeoutFromEnv(key string, fallback time.Duration) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback
+	}
+
+	dur, err := time.ParseDuration(raw)
+	if err != nil || dur <= 0 {
+		log.Info("Invalid %s=%q, using default %s", key, raw, fallback)
+		return fallback
+	}
+
+	return dur
+}
 
 func dockerLoginOnce(ctx context.Context, server string, username string, password string) error {
 	server = strings.TrimSpace(server)

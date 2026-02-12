@@ -81,12 +81,12 @@ func RemoveDuplicateChallenges(challenges []gzapi.Challenge, deleteFunc DeleteFu
 }
 
 func IsChallengeExist(challengeName string, challenges []gzapi.Challenge) bool {
-	challengeMap := make(map[string]struct{}, len(challenges))
-	for _, c := range challenges {
-		challengeMap[c.Title] = struct{}{}
+	for i := range challenges {
+		if challenges[i].Title == challengeName {
+			return true
+		}
 	}
-	_, exists := challengeMap[challengeName]
-	return exists
+	return false
 }
 
 // findChallengeByTitle returns a copy of the challenge with the given title, if present.
@@ -414,12 +414,12 @@ func (s *SyncOrchestrator) prepareContainerImage() error {
 	slug := config.GenerateSlug(s.conf.EventName, s.challengeConf.Category, s.challengeConf.Name)
 	localTag := fmt.Sprintf("%s:latest", slug)
 
-	ctx := context.Background()
-
 	// Build local image first.
 	buildDir, dockerfile := resolveDockerBuildContext(s.challengeConf.Cwd, s.challengeConf.Container.ContainerImage)
 	log.InfoH3("Building image for %s: %s (context=%s)", s.challengeConf.Name, localTag, buildDir)
-	if err := dockerBuild(ctx, buildDir, dockerfile, localTag); err != nil {
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), getDockerBuildTimeout())
+	defer cancelBuild()
+	if err := dockerBuild(buildCtx, buildDir, dockerfile, localTag); err != nil {
 		return err
 	}
 
@@ -433,18 +433,24 @@ func (s *SyncOrchestrator) prepareContainerImage() error {
 
 	if strings.TrimSpace(s.conf.Appsettings.RegistryConfig.UserName) != "" {
 		log.InfoH3("Logging in to registry: %s", loginServer)
-		if err := dockerLoginOnce(ctx, loginServer, s.conf.Appsettings.RegistryConfig.UserName, s.conf.Appsettings.RegistryConfig.Password); err != nil {
+		loginCtx, cancelLogin := context.WithTimeout(context.Background(), getDockerLoginTimeout())
+		defer cancelLogin()
+		if err := dockerLoginOnce(loginCtx, loginServer, s.conf.Appsettings.RegistryConfig.UserName, s.conf.Appsettings.RegistryConfig.Password); err != nil {
 			return err
 		}
 	}
 
 	log.InfoH3("Tagging image: %s -> %s", localTag, remoteTag)
-	if err := dockerTag(ctx, localTag, remoteTag); err != nil {
+	tagCtx, cancelTag := context.WithTimeout(context.Background(), getDockerTagTimeout())
+	defer cancelTag()
+	if err := dockerTag(tagCtx, localTag, remoteTag); err != nil {
 		return err
 	}
 
 	log.InfoH3("Pushing image: %s", remoteTag)
-	if err := dockerPush(ctx, remoteTag); err != nil {
+	pushCtx, cancelPush := context.WithTimeout(context.Background(), getDockerPushTimeout())
+	defer cancelPush()
+	if err := dockerPush(pushCtx, remoteTag); err != nil {
 		return err
 	}
 
@@ -508,9 +514,7 @@ func processAttachmentsAndFlagsWithHandlers(conf *config.Config, challengeConf c
 
 // updateChallengeWithRetry attempts to update a challenge and retries on 404
 func updateChallengeWithRetry(conf *config.Config, challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge) (*gzapi.Challenge, error) {
-	fmt.Printf("%+v\n", challengeData)
 	updatedData, err := challengeData.Update(*challengeData)
-	// print all object and key
 	if err == nil {
 		return updatedData, nil
 	}

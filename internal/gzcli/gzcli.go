@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -315,19 +317,26 @@ func (gz *GZ) syncWithRetry(retryCount int) error {
 
 // processChallenges handles the concurrent processing of challenges
 func (gz *GZ) processChallenges(conf *config.Config, challengesConf []config.ChallengeYaml, remoteChallenges []gzapi.Challenge) error {
-	log.Info("Syncing %d challenges...", len(challengesConf))
+	total := len(challengesConf)
+	if total == 0 {
+		log.Info("No challenges found to sync.")
+		return nil
+	}
+
+	workers := resolveSyncWorkerCount(total)
+	log.Info("Syncing %d challenges with %d worker(s)...", total, workers)
+
 	var wg sync.WaitGroup
-	errChan := make(chan error, len(challengesConf))
-	var successCount, failureCount int32
+	errChan := make(chan error, total)
+	jobs := make(chan config.ChallengeYaml, total)
+	var successCount, failureCount, processedCount int32
 
 	challengeMutexes := make(map[string]*sync.Mutex)
 	var mutexesMu sync.RWMutex
 
-	for _, localChallenge := range challengesConf {
-		wg.Add(1)
-		go func(c config.ChallengeYaml) {
-			defer wg.Done()
-
+	worker := func() {
+		defer wg.Done()
+		for c := range jobs {
 			mutexesMu.Lock()
 			if challengeMutexes[c.Name] == nil {
 				challengeMutexes[c.Name] = &sync.Mutex{}
@@ -336,32 +345,67 @@ func (gz *GZ) processChallenges(conf *config.Config, challengesConf []config.Cha
 			mutexesMu.Unlock()
 
 			mutex.Lock()
-			defer mutex.Unlock()
+			err := challenge.SyncChallenge(conf, c, remoteChallenges, gz.api, GetCache, setCache)
+			mutex.Unlock()
 
-			log.Info("Processing challenge: %s", c.Name)
-			if err := challenge.SyncChallenge(conf, c, remoteChallenges, gz.api, GetCache, setCache); err != nil {
-				log.Error("Failed to sync challenge %s: %v", c.Name, err)
+			done := atomic.AddInt32(&processedCount, 1)
+			if err != nil {
+				log.Error("[%d/%d] Failed to sync challenge %s: %v", done, total, c.Name, err)
 				errChan <- fmt.Errorf("challenge sync failed for %s: %w", c.Name, err)
 				atomic.AddInt32(&failureCount, 1)
-			} else {
-				log.Info("Successfully synced challenge: %s", c.Name)
-				atomic.AddInt32(&successCount, 1)
+				continue
 			}
-		}(localChallenge)
+
+			log.Info("[%d/%d] Synced challenge: %s", done, total, c.Name)
+			atomic.AddInt32(&successCount, 1)
+		}
 	}
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go worker()
+	}
+
+	for _, localChallenge := range challengesConf {
+		jobs <- localChallenge
+	}
+	close(jobs)
 
 	wg.Wait()
 	close(errChan)
 
 	log.Info("Sync completed. Success: %d, Failures: %d", successCount, failureCount)
+	if len(errChan) > 0 {
+		return <-errChan
+	}
+	return nil
+}
 
-	// Return the first error encountered, if any
-	if err := <-errChan; err != nil {
-		return err
+func resolveSyncWorkerCount(total int) int {
+	if total <= 0 {
+		return 1
 	}
 
-	log.Info("All challenges synced successfully!")
-	return nil
+	workers := 4
+	if cpuCount := runtime.NumCPU(); cpuCount > 0 && cpuCount < workers {
+		workers = cpuCount
+	}
+
+	if raw := strings.TrimSpace(os.Getenv("GZCLI_SYNC_WORKERS")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			workers = parsed
+		} else {
+			log.Info("Invalid GZCLI_SYNC_WORKERS=%q, using %d", raw, workers)
+		}
+	}
+
+	if workers > total {
+		workers = total
+	}
+	if workers < 1 {
+		return 1
+	}
+	return workers
 }
 
 // MustInit initializes GZ or fatally logs error
