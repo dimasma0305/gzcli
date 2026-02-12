@@ -49,12 +49,22 @@ func TestIsFlagExist(t *testing.T) {
 
 func TestUpdateChallengeFlags_CreateNew(t *testing.T) {
 	flagCreated := false
+	flagRefreshed := false
 
 	api, cleanup := mockGZAPI(t, map[string]http.HandlerFunc{
 		"/api/edit/games/1/challenges/5/flags": func(w http.ResponseWriter, r *http.Request) {
 			flagCreated = true
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{"success": true}`))
+		},
+		"/api/edit/games/1/challenges/5": func(w http.ResponseWriter, r *http.Request) {
+			flagRefreshed = true
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"id": 5,
+				"title": "Test",
+				"flags": [{"id": 1, "flag": "FLAG{new}"}]
+			}`))
 		},
 	})
 	defer cleanup()
@@ -84,6 +94,10 @@ func TestUpdateChallengeFlags_CreateNew(t *testing.T) {
 
 	if !flagCreated {
 		t.Error("Expected flag to be created")
+	}
+
+	if !flagRefreshed {
+		t.Error("Expected challenge to be refreshed after creating flag")
 	}
 }
 
