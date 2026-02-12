@@ -11,7 +11,7 @@ import (
 
 type gameChallengeCache struct {
 	mu     sync.RWMutex
-	byGame map[int]*gameChallengeCacheEntry
+	byGame map[string]*gameChallengeCacheEntry
 }
 
 type gameChallengeCacheEntry struct {
@@ -20,12 +20,23 @@ type gameChallengeCacheEntry struct {
 }
 
 var challengeCache = &gameChallengeCache{
-	byGame: make(map[int]*gameChallengeCacheEntry),
+	byGame: make(map[string]*gameChallengeCacheEntry),
 }
 
-func (c *gameChallengeCache) setGameChallenges(gameID int, challenges []Challenge) {
+func challengeCacheScope(gameID int, api *GZAPI) string {
+	if api != nil && api.Creds != nil {
+		return fmt.Sprintf("%s|%s|%d", strings.TrimSpace(api.Url), api.Creds.Username, gameID)
+	}
+	if api != nil {
+		return fmt.Sprintf("%s|%d", strings.TrimSpace(api.Url), gameID)
+	}
+	return fmt.Sprintf("game|%d", gameID)
+}
+
+func (c *gameChallengeCache) setGameChallenges(gameID int, api *GZAPI, challenges []Challenge) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	scope := challengeCacheScope(gameID, api)
 
 	entry := &gameChallengeCacheEntry{
 		byTitle: make(map[string]Challenge, len(challenges)),
@@ -36,20 +47,21 @@ func (c *gameChallengeCache) setGameChallenges(gameID int, challenges []Challeng
 		entry.byTitle[ch.Title] = ch
 		entry.byID[ch.Id] = ch.Title
 	}
-	c.byGame[gameID] = entry
+	c.byGame[scope] = entry
 }
 
-func (c *gameChallengeCache) upsertChallenge(gameID int, challenge Challenge) {
+func (c *gameChallengeCache) upsertChallenge(gameID int, api *GZAPI, challenge Challenge) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	scope := challengeCacheScope(gameID, api)
 
-	entry, ok := c.byGame[gameID]
+	entry, ok := c.byGame[scope]
 	if !ok {
 		entry = &gameChallengeCacheEntry{
 			byTitle: make(map[string]Challenge),
 			byID:    make(map[int]string),
 		}
-		c.byGame[gameID] = entry
+		c.byGame[scope] = entry
 	}
 
 	if oldTitle, ok := entry.byID[challenge.Id]; ok && oldTitle != challenge.Title {
@@ -60,11 +72,12 @@ func (c *gameChallengeCache) upsertChallenge(gameID int, challenge Challenge) {
 	entry.byID[challenge.Id] = challenge.Title
 }
 
-func (c *gameChallengeCache) getByTitle(gameID int, title string) (Challenge, bool) {
+func (c *gameChallengeCache) getByTitle(gameID int, api *GZAPI, title string) (Challenge, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	scope := challengeCacheScope(gameID, api)
 
-	entry, ok := c.byGame[gameID]
+	entry, ok := c.byGame[scope]
 	if !ok {
 		return Challenge{}, false
 	}
@@ -72,11 +85,12 @@ func (c *gameChallengeCache) getByTitle(gameID int, title string) (Challenge, bo
 	return ch, ok
 }
 
-func (c *gameChallengeCache) deleteByID(gameID int, challengeID int) {
+func (c *gameChallengeCache) deleteByID(gameID int, api *GZAPI, challengeID int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	scope := challengeCacheScope(gameID, api)
 
-	entry, ok := c.byGame[gameID]
+	entry, ok := c.byGame[scope]
 	if !ok {
 		return
 	}
@@ -125,7 +139,7 @@ func (c *Challenge) Delete() error {
 	if err := c.CS.delete(fmt.Sprintf("/api/edit/games/%d/challenges/%d", c.GameId, c.Id), nil); err != nil {
 		return err
 	}
-	challengeCache.deleteByID(c.GameId, c.Id)
+	challengeCache.deleteByID(c.GameId, c.CS, c.Id)
 	return nil
 }
 
@@ -138,7 +152,7 @@ func (c *Challenge) Update(challenge Challenge) (*Challenge, error) {
 	}
 	challenge.GameId = c.GameId
 	challenge.CS = c.CS
-	challengeCache.upsertChallenge(c.GameId, challenge)
+	challengeCache.upsertChallenge(c.GameId, c.CS, challenge)
 	return &challenge, nil
 }
 
@@ -152,7 +166,7 @@ func (c *Challenge) Refresh() (*Challenge, error) {
 	}
 	data.GameId = c.GameId
 	data.CS = c.CS
-	challengeCache.upsertChallenge(c.GameId, data)
+	challengeCache.upsertChallenge(c.GameId, c.CS, data)
 	return &data, nil
 }
 
@@ -174,7 +188,7 @@ func (g *Game) CreateChallenge(challenge CreateChallengeForm) (*Challenge, error
 	}
 	data.GameId = g.Id
 	data.CS = g.CS
-	challengeCache.upsertChallenge(g.Id, *data)
+	challengeCache.upsertChallenge(g.Id, g.CS, *data)
 	return data, nil
 }
 
@@ -236,7 +250,7 @@ func (g *Game) GetChallenges() ([]Challenge, error) {
 		}
 	}
 
-	challengeCache.setGameChallenges(g.Id, data)
+	challengeCache.setGameChallenges(g.Id, g.CS, data)
 	return data, nil
 }
 
@@ -266,7 +280,7 @@ func resolveChallengeFetchWorkers(total int) int {
 }
 
 func (g *Game) GetChallenge(name string) (*Challenge, error) {
-	if cached, ok := challengeCache.getByTitle(g.Id, name); ok {
+	if cached, ok := challengeCache.getByTitle(g.Id, g.CS, name); ok {
 		cached.GameId = g.Id
 		cached.CS = g.CS
 		return &cached, nil
@@ -290,6 +304,6 @@ func (g *Game) GetChallenge(name string) (*Challenge, error) {
 	}
 	challenge.GameId = g.Id
 	challenge.CS = g.CS
-	challengeCache.upsertChallenge(g.Id, *challenge)
+	challengeCache.upsertChallenge(g.Id, g.CS, *challenge)
 	return challenge, nil
 }

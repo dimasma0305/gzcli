@@ -52,6 +52,14 @@ func UpdateChallengeFlags(conf *config.Config, challengeConf config.ChallengeYam
 			return err
 		}
 		mutated = true
+
+		// Newly created flags need server-assigned IDs for future update/delete operations.
+		newChallData, err := challengeData.Refresh()
+		if err != nil {
+			return err
+		}
+		challengeData.Flags = newChallData.Flags
+		return nil
 	}
 
 	if mutated {
