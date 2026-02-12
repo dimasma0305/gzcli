@@ -1,3 +1,9 @@
+## [1.41.0](https://github.com/dimasma0305/gzcli/compare/v1.40.0...v1.41.0) (2026-02-12)
+
+### Features
+
+* Implement in-memory caching for game challenges and integrate it into challenge CRUD and retrieval operations. ([7606d8c](https://github.com/dimasma0305/gzcli/commit/7606d8c7c257ac901eec3115e1f0358309b17452))
+
 ## [1.40.0](https://github.com/dimasma0305/gzcli/compare/v1.39.0...v1.40.0) (2026-02-12)
 
 ### Features
