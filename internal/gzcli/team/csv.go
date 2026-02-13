@@ -12,6 +12,13 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 )
 
+// CommunicationOptions configures a single global communication contact
+// applied to all generated team credentials from one CSV import.
+type CommunicationOptions struct {
+	Type string
+	Link string
+}
+
 // GetData retrieves data from a URL or file path
 func GetData(source string) ([]byte, error) {
 	var output []byte
@@ -48,7 +55,7 @@ func GetData(source string) ([]byte, error) {
 }
 
 // ParseCSV parses CSV data and creates teams
-func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCache []*TeamCreds, isSendEmail bool, createTeamFunc func(*TeamCreds, ConfigInterface, map[string]struct{}, map[string]struct{}, []*TeamCreds, bool, func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error), generateUsername func(string, int, map[string]struct{}) (string, error), setCache func(string, interface{}) error) error {
+func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCache []*TeamCreds, isSendEmail bool, createTeamFunc func(*TeamCreds, ConfigInterface, map[string]struct{}, map[string]struct{}, []*TeamCreds, bool, func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error), generateUsername func(string, int, map[string]struct{}) (string, error), setCache func(string, interface{}) error, communicationOptions ...CommunicationOptions) error {
 	reader := csv.NewReader(strings.NewReader(string(data)))
 
 	// Read all records
@@ -95,6 +102,10 @@ func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCach
 
 	// List to hold the merged team credentials
 	teamsCreds := make([]*TeamCreds, 0, len(records)-1)
+	globalCommunication := CommunicationOptions{}
+	if len(communicationOptions) > 0 {
+		globalCommunication = communicationOptions[0]
+	}
 
 	for _, row := range records[1:] {
 		realName := row[colIndices[teamConfig.ColumnMapping.RealName]]
@@ -120,10 +131,12 @@ func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCach
 
 		// Create or update team and user based on the generated username
 		creds, err := createTeamFunc(&TeamCreds{
-			Username: realName,
-			Email:    email,
-			TeamName: teamName,
-			Events:   events,
+			Username:          realName,
+			Email:             email,
+			TeamName:          teamName,
+			CommunicationType: globalCommunication.Type,
+			CommunicationLink: globalCommunication.Link,
+			Events:            events,
 		}, config, existingTeamNames, uniqueUsernames, credsCache, isSendEmail, generateUsername)
 		if creds != nil {
 			// Merge credentials if already exist in cache
@@ -132,6 +145,8 @@ func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCach
 				existingCreds.Username = creds.Username
 				existingCreds.Password = creds.Password
 				existingCreds.TeamName = creds.TeamName
+				existingCreds.CommunicationType = creds.CommunicationType
+				existingCreds.CommunicationLink = creds.CommunicationLink
 			} else {
 				// Add new credentials to the list
 				teamsCreds = append(teamsCreds, creds)

@@ -8,10 +8,12 @@ import (
 )
 
 var (
-	createSendEmail        bool
-	createEventID          int
-	createInviteCode       string
-	createForceInitMapping bool
+	createSendEmail         bool
+	createEventID           int
+	createInviteCode        string
+	createForceInitMapping  bool
+	createCommunicationType string
+	createCommunicationLink string
 )
 
 var teamCreateCmd = &cobra.Command{
@@ -43,7 +45,7 @@ Example:
 			return
 		}
 
-		if err := gz.CreateTeams(csvFile, createSendEmail, createEventID, createInviteCode, createForceInitMapping); err != nil {
+		if err := gz.CreateTeams(csvFile, createSendEmail, createEventID, createInviteCode, createForceInitMapping, createCommunicationType, createCommunicationLink); err != nil {
 			log.Fatal(err)
 		}
 
@@ -59,4 +61,6 @@ func init() {
 	teamCreateCmd.Flags().IntVar(&createEventID, "event-id", 0, "Specify the event ID to add teams to")
 	teamCreateCmd.Flags().StringVar(&createInviteCode, "invite-code", "", "Specify the invite code for the event")
 	teamCreateCmd.Flags().BoolVar(&createForceInitMapping, "force-init-mapping", false, "Force initialization of column mapping")
+	teamCreateCmd.Flags().StringVar(&createCommunicationType, "communication-type", "", "Global communication type for all team emails (e.g. Discord, WhatsApp)")
+	teamCreateCmd.Flags().StringVar(&createCommunicationLink, "communication-link", "", "Global communication link for all team emails")
 }

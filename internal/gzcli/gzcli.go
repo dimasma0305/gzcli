@@ -427,7 +427,7 @@ func (gz *GZ) MustScoreboard2CTFTimeFeed() *event.CTFTimeFeed {
 
 // MustCreateTeams creates teams or fatally logs error
 func (gz *GZ) MustCreateTeams(url string, sendEmail bool) {
-	if err := gz.CreateTeams(url, sendEmail, 0, "", false); err != nil {
+	if err := gz.CreateTeams(url, sendEmail, 0, "", false, "", ""); err != nil {
 		log.Fatal("Team creation failed: ", err)
 	}
 }
@@ -507,7 +507,7 @@ func (gz *GZ) MustStopWatcher() {
 }
 
 // CreateTeams creates teams from a CSV file
-func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCode string, forceInitMapping bool) error {
+func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCode string, forceInitMapping bool, communicationType string, communicationLink string) error {
 	// Step 1: Get configuration
 	conf, err := getConfigWrapper(gz.api)
 	if err != nil {
@@ -635,7 +635,20 @@ func (gz *GZ) CreateTeams(csvURL string, isSendEmail bool, eventID int, inviteCo
 		eventID:    eventID,
 		inviteCode: inviteCode,
 	}
-	if err := team.ParseCSV(csvData, configAdapter, &teamConfig, teamsCredsCache, isSendEmail, team.CreateTeamAndUser, generateUsername, setCache); err != nil {
+	if err := team.ParseCSV(
+		csvData,
+		configAdapter,
+		&teamConfig,
+		teamsCredsCache,
+		isSendEmail,
+		team.CreateTeamAndUser,
+		generateUsername,
+		setCache,
+		team.CommunicationOptions{
+			Type: communicationType,
+			Link: communicationLink,
+		},
+	); err != nil {
 		return fmt.Errorf("failed to parse CSV and create teams: %w", err)
 	}
 

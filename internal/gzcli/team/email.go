@@ -2,9 +2,34 @@ package team
 
 import (
 	"fmt"
+	"strings"
 
 	"gopkg.in/gomail.v2"
 )
+
+// DetectCommunicationType infers the platform name from a communication link.
+func DetectCommunicationType(link string) string {
+	lower := strings.ToLower(strings.TrimSpace(link))
+	if lower == "" {
+		return ""
+	}
+
+	switch {
+	case strings.Contains(lower, "wa.me/"),
+		strings.Contains(lower, "chat.whatsapp.com/"),
+		strings.Contains(lower, "whatsapp.com/"):
+		return "WhatsApp"
+	case strings.Contains(lower, "discord.gg/"),
+		strings.Contains(lower, "discord.com/"),
+		strings.Contains(lower, "discordapp.com/"):
+		return "Discord"
+	case strings.Contains(lower, "slack.com/"),
+		strings.Contains(lower, ".slack.com/"):
+		return "Slack"
+	default:
+		return ""
+	}
+}
 
 // GenerateEmailBody generates the HTML body for the email
 func GenerateEmailBody(realName, website string, creds *TeamCreds, isSolo bool) string {
@@ -21,6 +46,30 @@ func GenerateEmailBody(realName, website string, creds *TeamCreds, isSolo bool) 
 		<p>This event is configured as <strong>Solo CTF</strong>, so no team invitation code is required.</p>
 		<p>Your account has already been joined to the event automatically. Go to <strong>/games</strong> to verify status and prepare.</p>
 	`
+	}
+
+	communicationSection := ""
+	communicationType := strings.TrimSpace(creds.CommunicationType)
+	communicationLink := strings.TrimSpace(creds.CommunicationLink)
+	if communicationLink != "" {
+		if communicationType == "" {
+			communicationType = DetectCommunicationType(communicationLink)
+		}
+		if communicationType == "" {
+			communicationType = "Communication"
+		}
+
+		normalizedLink := communicationLink
+		if !strings.Contains(normalizedLink, "://") {
+			normalizedLink = "https://" + normalizedLink
+		}
+
+		communicationSection = fmt.Sprintf(
+			`<p><strong>%s:</strong> <a href="%s">%s</a></p>`,
+			communicationType,
+			normalizedLink,
+			communicationLink,
+		)
 	}
 
 	return fmt.Sprintf(`
@@ -106,6 +155,7 @@ func GenerateEmailBody(realName, website string, creds *TeamCreds, isSolo bool) 
 			<p><strong>Password:</strong> %s</p>
 			<p><strong>Team Name:</strong> %s</p>
 			<p><strong>Website:</strong> <a href="%s">%s</a></p>
+			%s
 		</div>
 		<div class="steps">
 			%s
@@ -118,7 +168,7 @@ func GenerateEmailBody(realName, website string, creds *TeamCreds, isSolo bool) 
 	</body>
 	</html>
 	`,
-		realName, modeLabel, creds.Username, creds.Password, creds.TeamName, website, website, modeInstructions, website,
+		realName, modeLabel, creds.Username, creds.Password, creds.TeamName, website, website, communicationSection, modeInstructions, website,
 	)
 }
 
