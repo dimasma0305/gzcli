@@ -1,3 +1,9 @@
+## [1.45.0](https://github.com/dimasma0305/gzcli/compare/v1.44.0...v1.45.0) (2026-02-13)
+
+### Features
+
+* add global communication type and link options for team creation and email generation ([95ef2d1](https://github.com/dimasma0305/gzcli/commit/95ef2d1b8503e14e2d2d3a25e09e9a7c871c5536))
+
 ## [1.44.0](https://github.com/dimasma0305/gzcli/compare/v1.43.0...v1.44.0) (2026-02-12)
 
 ### Features
