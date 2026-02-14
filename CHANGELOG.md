@@ -1,3 +1,9 @@
+## [1.46.0](https://github.com/dimasma0305/gzcli/compare/v1.45.0...v1.46.0) (2026-02-14)
+
+### Features
+
+* Enhance CSV parsing to skip malformed rows, empty emails, and duplicate entries, and trim whitespace from parsed fields. ([923165c](https://github.com/dimasma0305/gzcli/commit/923165c2665ad6aaba15e83c6f5260414e645d37))
+
 ## [1.45.0](https://github.com/dimasma0305/gzcli/compare/v1.44.0...v1.45.0) (2026-02-13)
 
 ### Features
