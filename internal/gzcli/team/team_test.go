@@ -222,6 +222,55 @@ Jane Smith,jane@example.com,Team2`)
 	}
 }
 
+func TestParseCSV_DuplicateEmailInCSV_SkipsDuplicateRow(t *testing.T) {
+	csvData := []byte(`RealName,Email,TeamName
+John Doe,john@example.com,Team1
+John Duplicate,john@example.com,Team2`)
+
+	config := &mockConfig{
+		url:        "http://test.com",
+		eventId:    1,
+		eventTitle: "Test CTF",
+	}
+
+	createdCount := 0
+	createTeamFunc := func(creds *TeamCreds, cfg ConfigInterface, existingTeams, existingUsers map[string]struct{}, cache []*TeamCreds, sendEmail bool, genUser func(string, int, map[string]struct{}) (string, error)) (*TeamCreds, error) {
+		createdCount++
+		return &TeamCreds{
+			Username: creds.Username,
+			Email:    creds.Email,
+			TeamName: creds.TeamName,
+			Password: "testpass",
+		}, nil
+	}
+
+	generateUsername := func(name string, maxLen int, existing map[string]struct{}) (string, error) {
+		return strings.ToLower(strings.ReplaceAll(name, " ", "")), nil
+	}
+
+	setCache := func(key string, value interface{}) error {
+		return nil
+	}
+
+	err := ParseCSV(
+		csvData,
+		config,
+		&Config{ColumnMapping: ColumnMapping{RealName: "RealName", Email: "Email", TeamName: "TeamName"}},
+		[]*TeamCreds{},
+		false,
+		createTeamFunc,
+		generateUsername,
+		setCache,
+	)
+	if err != nil {
+		t.Errorf("ParseCSV() failed: %v", err)
+	}
+
+	if createdCount != 1 {
+		t.Errorf("Expected duplicate email row to be skipped, createdCount=%d", createdCount)
+	}
+}
+
 func TestParseCSV_Empty(t *testing.T) {
 	csvData := []byte(``)
 

@@ -106,11 +106,28 @@ func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCach
 	if len(communicationOptions) > 0 {
 		globalCommunication = communicationOptions[0]
 	}
+	seenEmails := make(map[string]struct{})
 
 	for _, row := range records[1:] {
-		realName := row[colIndices[teamConfig.ColumnMapping.RealName]]
-		email := row[colIndices[teamConfig.ColumnMapping.Email]]
-		teamName := row[colIndices[teamConfig.ColumnMapping.TeamName]]
+		if len(row) < len(headers) {
+			log.Error("Skipping malformed row with insufficient columns: %v", row)
+			continue
+		}
+
+		realName := strings.TrimSpace(row[colIndices[teamConfig.ColumnMapping.RealName]])
+		email := strings.TrimSpace(row[colIndices[teamConfig.ColumnMapping.Email]])
+		teamName := strings.TrimSpace(row[colIndices[teamConfig.ColumnMapping.TeamName]])
+		emailKey := strings.ToLower(email)
+		if emailKey == "" {
+			log.Error("Skipping row with empty email: %v", row)
+			continue
+		}
+
+		if _, duplicate := seenEmails[emailKey]; duplicate {
+			log.InfoH2("Duplicate email %s found in CSV; skipping duplicate row", email)
+			continue
+		}
+		seenEmails[emailKey] = struct{}{}
 
 		// Parse events if column mapping exists
 		var events []string
@@ -150,6 +167,7 @@ func ParseCSV(data []byte, config ConfigInterface, teamConfig *Config, credsCach
 			} else {
 				// Add new credentials to the list
 				teamsCreds = append(teamsCreds, creds)
+				credsCacheMap[creds.Email] = creds
 			}
 		}
 
