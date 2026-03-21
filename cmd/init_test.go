@@ -198,6 +198,30 @@ func TestEventTemplateStructure(t *testing.T) {
 	if _, err := os.Stat(structureDir); err != nil {
 		t.Errorf(".structure directory not found: %v", err)
 	}
+
+	// Check AGENTS.md exists
+	agentsFile := filepath.Join(eventDir, "AGENTS.md")
+	if _, err := os.Stat(agentsFile); err != nil {
+		t.Errorf("AGENTS.md not found: %v", err)
+	}
+
+	// Check .agents directory exists
+	projectAgentsDir := filepath.Join(eventDir, ".agents")
+	if _, err := os.Stat(projectAgentsDir); err != nil {
+		t.Errorf(".agents directory not found: %v", err)
+	}
+
+	// Check skill file exists
+	skillFile := filepath.Join(
+		eventDir,
+		".agents",
+		"skills",
+		"authoring-gzcli-ctf-events",
+		"SKILL.md",
+	)
+	if _, err := os.Stat(skillFile); err != nil {
+		t.Errorf("event authoring skill not found: %v", err)
+	}
 }
 
 func TestCTFTemplateNoEventsCreated(t *testing.T) {
