@@ -1,3 +1,9 @@
+## [1.47.0](https://github.com/dimasma0305/gzcli/compare/v1.46.0...v1.47.0) (2026-03-21)
+
+### Features
+
+* Add gzcli CTF event authoring skill with comprehensive documentation and update init tests to verify agent file generation. ([492f0a4](https://github.com/dimasma0305/gzcli/commit/492f0a4e866535c010724a7193271c8273de774c))
+
 ## [1.46.0](https://github.com/dimasma0305/gzcli/compare/v1.45.0...v1.46.0) (2026-02-14)
 
 ### Features
