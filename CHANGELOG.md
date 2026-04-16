@@ -1,3 +1,9 @@
+## [1.47.1](https://github.com/dimasma0305/gzcli/compare/v1.47.0...v1.47.1) (2026-04-16)
+
+### Bug Fixes
+
+* detect GZCTF state divergence in updateChallengeIfNeeded ([f7fa024](https://github.com/dimasma0305/gzcli/commit/f7fa02477f76f2a61de7605f63ce775e799f4448))
+
 ## [1.47.0](https://github.com/dimasma0305/gzcli/compare/v1.46.0...v1.47.0) (2026-03-21)
 
 ### Features
