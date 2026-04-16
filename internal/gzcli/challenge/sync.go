@@ -429,8 +429,13 @@ func (s *SyncOrchestrator) processAttachmentsAndFlags() error {
 
 // mergeAndupdate merges challenge data and updates the challenge if needed.
 func (s *SyncOrchestrator) mergeAndupdate() error {
+	// Snapshot current GZCTF state before merge so we can compare "what GZCTF
+	// actually has" vs "what we intend to send". The cache stores what we sent
+	// last time, which may diverge from GZCTF if a prior update failed or if
+	// GZCTF was modified externally.
+	preMerge := *s.challengeData
 	s.challengeData = MergeChallengeData(&s.challengeConf, s.challengeData)
-	return updateChallengeIfNeeded(s.conf, &s.challengeConf, s.challengeData, s.getCache, s.setCache)
+	return updateChallengeIfNeeded(s.conf, &s.challengeConf, s.challengeData, &preMerge, s.getCache, s.setCache)
 }
 
 func (s *SyncOrchestrator) prepareContainerImage() error {
@@ -588,9 +593,16 @@ func updateChallengeWithRetry(conf *config.Config, challengeConf *config.Challen
 	return updatedData, nil
 }
 
-// updateChallengeIfNeeded updates the challenge if configuration has changed
-func updateChallengeIfNeeded(conf *config.Config, challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
-	if !IsConfigEdited(conf, challengeConf, challengeData, getCache) {
+// updateChallengeIfNeeded updates the challenge if configuration has changed.
+// preMerge is a snapshot of challengeData before MergeChallengeData was applied;
+// it represents what GZCTF currently stores. We compare the post-merge intended
+// state against both the pre-merge GZCTF state and the cache: if either differs,
+// we must update GZCTF. This catches cases where the cache claims the update was
+// already done but GZCTF actually has a stale value (e.g. a prior PUT failed
+// silently, or GZCTF was modified externally).
+func updateChallengeIfNeeded(conf *config.Config, challengeConf *config.ChallengeYaml, challengeData *gzapi.Challenge, preMerge *gzapi.Challenge, getCache func(string, interface{}) error, setCache func(string, interface{}) error) error {
+	gzctfDiffers := preMerge != nil && !cmp.Equal(toComparableChallenge(*challengeData), toComparableChallenge(*preMerge))
+	if !gzctfDiffers && !IsConfigEdited(conf, challengeConf, challengeData, getCache) {
 		return nil
 	}
 
