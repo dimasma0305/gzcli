@@ -1,3 +1,9 @@
+## [1.47.4](https://github.com/dimasma0305/gzcli/compare/v1.47.3...v1.47.4) (2026-04-17)
+
+### Bug Fixes
+
+* **lint:** resolve remaining gosec/staticcheck/unparam errors ([1ac1f9e](https://github.com/dimasma0305/gzcli/commit/1ac1f9ee7df8de1f8815dcb2231f58c96b78c5bd))
+
 ## [1.47.3](https://github.com/dimasma0305/gzcli/compare/v1.47.2...v1.47.3) (2026-04-17)
 
 ### Bug Fixes
