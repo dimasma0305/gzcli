@@ -57,13 +57,30 @@ func GetDockerUsedPorts() (map[int]bool, error) {
 	return usedPorts, nil
 }
 
+// validComposeProjectName allows the characters Docker Compose itself
+// accepts for project names (lowercase letters, digits, dashes, underscores).
+var validComposeProjectName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+
 // GetComposePortMappings extracts port mappings from Docker Compose containers
 // Returns a slice of port mappings in "host:container" format
 func GetComposePortMappings(configPath, projectName, cwd string) ([]string, error) {
 	if !filepath.IsAbs(configPath) {
 		configPath = filepath.Join(cwd, configPath)
 	}
+	configPath = filepath.Clean(configPath)
 
+	// Validate projectName against Compose's own allowed charset to refuse
+	// any value that could be misinterpreted as a flag or shell metacharacter.
+	if !validComposeProjectName.MatchString(projectName) {
+		return nil, fmt.Errorf("invalid compose project name %q", projectName)
+	}
+	// Guard against configPath values that could be interpreted as a flag.
+	if strings.HasPrefix(filepath.Base(configPath), "-") {
+		return nil, fmt.Errorf("invalid compose config path %q", configPath)
+	}
+
+	// #nosec G204 -- program is the literal "docker"; configPath is cleaned
+	// and projectName is restricted to [a-z0-9_-].
 	cmd := exec.Command("docker", "compose",
 		"-f", configPath,
 		"-p", projectName,

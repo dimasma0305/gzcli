@@ -645,14 +645,31 @@ func copyDir(src, dst string) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve destination: %w", err)
 	}
-	return filepath.Walk(src, func(p string, info os.FileInfo, err error) error {
+	absSrc, err := filepath.Abs(filepath.Clean(src))
+	if err != nil {
+		return fmt.Errorf("failed to resolve source: %w", err)
+	}
+	return filepath.Walk(absSrc, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		rel, err := filepath.Rel(src, p)
+		// Reject symlinks encountered during the walk to avoid TOCTOU
+		// traversal out of the extracted source tree (G122).
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refusing to follow symlink at %q", p)
+		}
+
+		rel, err := filepath.Rel(absSrc, p)
 		if err != nil {
 			return err
+		}
+
+		// Defensively verify the walked path stays within absSrc; this guards
+		// against races where a directory was replaced with a symlink between
+		// the Walk enumeration and this callback.
+		if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			return fmt.Errorf("walk entry %q escapes source %q", p, absSrc)
 		}
 
 		target, err := safeJoin(absDst, rel)
@@ -661,13 +678,19 @@ func copyDir(src, dst string) error {
 		}
 
 		if info.IsDir() {
+			// Re-verify containment of target against absDst prior to the
+			// filesystem call so gosec can observe the guarantee (G122).
+			if _, err := safeJoin(absDst, rel); err != nil {
+				return fmt.Errorf("copy target for %q rejected: %w", rel, err)
+			}
+			//nolint:gosec // G122: target is produced via safeJoin and re-verified against absDst; symlink entries are rejected above.
 			if err := os.MkdirAll(target, ensureDirWritable(info.Mode())); err != nil {
 				return fmt.Errorf("failed to create directory %q: %w", target, err)
 			}
 			return nil
 		}
 
-		if err := copyFile(p, target, info.Mode(), absDst); err != nil {
+		if err := copyFile(p, target, info.Mode(), absDst, absSrc); err != nil {
 			return err
 		}
 
@@ -675,7 +698,7 @@ func copyDir(src, dst string) error {
 	})
 }
 
-func copyFile(src, dst string, mode fs.FileMode, trustedRoot string) error {
+func copyFile(src, dst string, mode fs.FileMode, trustedRoot string, srcRoot string) error {
 	// Re-verify that the resolved destination still lives within trustedRoot.
 	// The caller has already produced dst via safeJoin but we defensively
 	// re-check to make the contract explicit to static analysis tools.
@@ -692,13 +715,29 @@ func copyFile(src, dst string, mode fs.FileMode, trustedRoot string) error {
 		return fmt.Errorf("destination %q escapes trusted root %q", dst, trustedRoot)
 	}
 
+	// Re-verify the source path lives under srcRoot to make containment
+	// explicit for gosec (G304).
+	absSrc, err := filepath.Abs(filepath.Clean(src))
+	if err != nil {
+		return fmt.Errorf("failed to resolve source %q: %w", src, err)
+	}
+	absSrcRoot, err := filepath.Abs(filepath.Clean(srcRoot))
+	if err != nil {
+		return fmt.Errorf("failed to resolve source root: %w", err)
+	}
+	srcRel, err := filepath.Rel(absSrcRoot, absSrc)
+	if err != nil || srcRel == ".." || strings.HasPrefix(srcRel, ".."+string(os.PathSeparator)) {
+		return fmt.Errorf("source %q escapes source root %q", src, srcRoot)
+	}
+
 	if err := os.MkdirAll(filepath.Dir(absDst), 0750); err != nil {
 		return fmt.Errorf("failed to create parent directory for %q: %w", absDst, err)
 	}
 
-	in, err := os.Open(src)
+	//nolint:gosec // G304: absSrc has been re-verified to lie under absSrcRoot.
+	in, err := os.Open(absSrc)
 	if err != nil {
-		return fmt.Errorf("failed to open source file %q: %w", src, err)
+		return fmt.Errorf("failed to open source file %q: %w", absSrc, err)
 	}
 	defer func() { _ = in.Close() }()
 

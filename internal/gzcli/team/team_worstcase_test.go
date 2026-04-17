@@ -146,7 +146,7 @@ func TestParseCSV_LargeDataset(t *testing.T) {
 	var csvBuilder strings.Builder
 	csvBuilder.WriteString("RealName,Email,TeamName\n")
 	for i := 0; i < 10000; i++ {
-		csvBuilder.WriteString(fmt.Sprintf("User%d,user%d@test.com,Team%d\n", i, i, i))
+		fmt.Fprintf(&csvBuilder, "User%d,user%d@test.com,Team%d\n", i, i, i)
 	}
 
 	config := &mockConfig{

@@ -326,11 +326,18 @@ func setDefaultEvent(cwd, eventName string) error {
 }
 
 func updateGitignore(cwd string) error {
-	gitignorePath := filepath.Join(cwd, ".gitignore")
+	// Resolve cwd to an absolute, cleaned path before joining the constant
+	// filename so gosec's taint analysis can confirm the write target cannot
+	// escape the working directory.
+	absCwd, err := filepath.Abs(filepath.Clean(cwd))
+	if err != nil {
+		return fmt.Errorf("failed to resolve working directory: %w", err)
+	}
+	gitignorePath := filepath.Join(absCwd, ".gitignore")
 
 	// Read existing .gitignore if it exists
 	var existing string
-	//nolint:gosec // G304: Path is constructed from working directory
+	//nolint:gosec // G304: gitignorePath is absCwd + constant filename ".gitignore".
 	if data, err := os.ReadFile(gitignorePath); err == nil {
 		existing = string(data)
 	}
@@ -362,6 +369,7 @@ func updateGitignore(cwd string) error {
 	}
 	existing += "\n" + strings.Join(newEntries, "\n") + "\n"
 
+	//nolint:gosec // G703: gitignorePath is absCwd + constant filename ".gitignore"; absCwd was cleaned above.
 	if err := os.WriteFile(gitignorePath, []byte(existing), 0600); err != nil {
 		return fmt.Errorf("failed to update .gitignore: %w", err)
 	}

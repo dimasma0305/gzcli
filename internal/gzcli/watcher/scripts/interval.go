@@ -47,9 +47,19 @@ func (m *Manager) StartIntervalScript(challengeName, scriptName string, challeng
 	}
 	m.scriptMetricsMu.Unlock()
 
-	// Create new context for this interval script
+	// Create new context for this interval script. Ownership of cancel is
+	// transferred to the intervalScripts map and released by StopIntervalScript
+	// (or StopAll). The defer below only fires on early return paths that
+	// leave the cancel unassigned.
 	ctx, cancel := context.WithCancel(m.ctx)
+	handedOff := false
+	defer func() {
+		if !handedOff {
+			cancel()
+		}
+	}()
 	m.intervalScripts[challengeName][scriptName] = cancel
+	handedOff = true
 
 	// Start the interval script in a goroutine
 	go m.runIntervalScript(ctx, challengeName, scriptName, command, interval, challenge.GetCwd())

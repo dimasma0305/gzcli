@@ -125,6 +125,8 @@ func (m *Manager) PerformPull() error {
 }
 
 func (m *Manager) getHeadSHA(root string) (string, error) {
+	//nolint:gosec // G204: program is the literal "git"; root is the repo path
+	// configured by the user and the remaining arguments are hard-coded.
 	cmd := exec.Command("git", "-C", root, "rev-parse", "HEAD")
 	out, err := cmd.CombinedOutput()
 	if err != nil {

@@ -150,9 +150,7 @@ func (ew *EventWatcher) Start() error {
 
 						// Force a sync pass after pulls that changed HEAD. This ensures newly
 						// pulled challenges are pushed to GZCTF even if fsnotify misses events.
-						if err := ew.enqueueSyncForWatchedChallenges(); err != nil {
-							log.Error("[%s] Failed to enqueue challenge sync after git pull: %v", ew.eventName, err)
-						}
+						ew.enqueueSyncForWatchedChallenges()
 					})
 					ew.gitMgrs = append(ew.gitMgrs, mgr)
 				}
@@ -898,10 +896,10 @@ func (ew *EventWatcher) GetScriptManager() *scripts.Manager {
 }
 
 // enqueueSyncForWatchedChallenges schedules sync for all currently watched challenges.
-func (ew *EventWatcher) enqueueSyncForWatchedChallenges() error {
+func (ew *EventWatcher) enqueueSyncForWatchedChallenges() {
 	challenges := ew.challengeMgr.GetChallenges()
 	if len(challenges) == 0 {
-		return nil
+		return
 	}
 
 	for challengeName, challengePath := range challenges {
@@ -916,6 +914,4 @@ func (ew *EventWatcher) enqueueSyncForWatchedChallenges() error {
 
 		ew.HandleFileChange(challengeFile)
 	}
-
-	return nil
 }

@@ -185,6 +185,9 @@ func dockerLoginOnce(ctx context.Context, server string, username string, passwo
 }
 
 func runDocker(ctx context.Context, dir string, args []string, stdin string) error {
+	// #nosec G204 -- program is the hard-coded literal "docker"; args are
+	// assembled internally from trusted constants (login/tag/push/build) and
+	// config-sourced identifiers, not from end-user input at call time.
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	if strings.TrimSpace(dir) != "" {
 		cmd.Dir = dir

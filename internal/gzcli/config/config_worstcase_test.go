@@ -223,7 +223,7 @@ creds:
 challenges:
 `)
 	for i := 0; i < 10000; i++ {
-		sb.WriteString(fmt.Sprintf("  - id: %d\n    name: Challenge%d\n", i, i))
+		fmt.Fprintf(&sb, "  - id: %d\n    name: Challenge%d\n", i, i)
 	}
 
 	confPath := filepath.Join(tmpDir, ".gzctf", "conf.yaml")

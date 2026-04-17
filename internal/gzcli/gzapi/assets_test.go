@@ -32,6 +32,7 @@ func TestGZAPI_CreateAssets(t *testing.T) {
 				t.Errorf("Expected POST method, got %s", r.Method)
 			}
 
+			r.Body = http.MaxBytesReader(w, r.Body, 32<<20)
 			if err := r.ParseMultipartForm(32 << 20); err != nil {
 				t.Errorf("Failed to parse multipart form: %v", err)
 			}
