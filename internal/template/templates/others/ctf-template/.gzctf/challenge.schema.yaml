@@ -87,11 +87,15 @@ properties:
         minimum: 0
       networkMode:
         type: string
-        description: The network mode for the container. Defaults to "Open".
+        description: |
+          Network mode for the container. Defaults to "Open".
+          - Open: container has outbound internet access.
+          - Isolated: container can only reach the internal container network; no external traffic.
+          - Custom: Kubernetes → adds label `gzctf.gzti.me/NetworkMode: custom` so a NetworkPolicy or CNI hook can match it. Docker → places the container in a user-defined docker network configured in GZCTF appsettings.
         enum:
           - Open
-          - Internal
           - Isolated
+          - Custom
         default: "Open"
       enableTrafficCapture:
         type: boolean
