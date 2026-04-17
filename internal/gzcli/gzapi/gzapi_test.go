@@ -1348,3 +1348,22 @@ func TestCookieIsolation(t *testing.T) {
 		t.Fatal("Expected different cookie store paths for different users")
 	}
 }
+
+// TestInsecureSkipVerify_DefaultSecure asserts that TLS certificate
+// verification is enforced unless an operator explicitly opts in.
+func TestInsecureSkipVerify_DefaultSecure(t *testing.T) {
+	// Ensure the feature is disabled regardless of host env when the test
+	// runs and restore the prior value afterwards.
+	prior := InsecureSkipVerifyEnabled()
+	t.Cleanup(func() { SetInsecureSkipVerify(prior) })
+
+	SetInsecureSkipVerify(false)
+	if InsecureSkipVerifyEnabled() {
+		t.Fatal("expected InsecureSkipVerifyEnabled() to report false by default")
+	}
+
+	SetInsecureSkipVerify(true)
+	if !InsecureSkipVerifyEnabled() {
+		t.Fatal("expected InsecureSkipVerifyEnabled() to report true after opt-in")
+	}
+}

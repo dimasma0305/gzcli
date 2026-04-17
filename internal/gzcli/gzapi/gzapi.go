@@ -8,12 +8,43 @@ import (
 	"net/http/cookiejar"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/imroc/req/v3"
 
 	"github.com/dimasma0305/gzcli/internal/log"
 )
+
+// insecureSkipVerify controls whether the HTTP clients created by this
+// package skip TLS certificate verification. It defaults to false (i.e.
+// verification is enforced) and can be opted into by operators via
+// SetInsecureSkipVerify or the GZCLI_INSECURE_TLS environment variable.
+//
+// Stored as an atomic Bool so the setting can be toggled safely from
+// configuration code before clients are created.
+var insecureSkipVerify atomic.Bool
+
+// SetInsecureSkipVerify enables or disables TLS certificate verification for
+// subsequently created HTTP clients. The default is secure (verification
+// enabled). Enabling this should only be done in development or when
+// connecting to GZCTF deployments with self-signed certificates that the
+// operator trusts out-of-band.
+func SetInsecureSkipVerify(skip bool) {
+	insecureSkipVerify.Store(skip)
+}
+
+// InsecureSkipVerifyEnabled reports whether TLS verification is currently
+// disabled for new HTTP clients.
+func InsecureSkipVerifyEnabled() bool {
+	return insecureSkipVerify.Load()
+}
+
+func init() {
+	if v := os.Getenv("GZCLI_INSECURE_TLS"); v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes") {
+		insecureSkipVerify.Store(true)
+	}
+}
 
 type Creds struct {
 	Username string `json:"username" yaml:"username"`
@@ -110,14 +141,21 @@ func Register(url string, creds *RegisterForm) (*GZAPI, error) {
 	return newGz, nil
 }
 
-// createOptimizedClient creates an HTTP client with optimal performance settings
+// createOptimizedClient creates an HTTP client with optimal performance settings.
+// TLS certificate verification is enforced by default; operators can opt into
+// skipping verification (e.g., for self-signed development deployments) via
+// SetInsecureSkipVerify or the GZCLI_INSECURE_TLS environment variable.
 func createOptimizedClient(jar *cookiejar.Jar) *req.Client {
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+	if insecureSkipVerify.Load() {
+		tlsConfig.InsecureSkipVerify = true
+		log.Error("TLS certificate verification is DISABLED for GZAPI client (GZCLI_INSECURE_TLS opt-in)")
+	}
 	client := req.C().
 		SetUserAgent("Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/110.0").
-		SetTLSClientConfig(&tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec // G402: InsecureSkipVerify needed for self-signed certs in dev/test
-			MinVersion:         tls.VersionTLS12,
-		}).
+		SetTLSClientConfig(tlsConfig).
 		SetTimeout(30 * time.Second). // Default timeout for most operations
 		EnableKeepAlives()            // Enable connection keep-alive (auto-negotiates HTTP/2 for HTTPS)
 
