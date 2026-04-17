@@ -1,3 +1,9 @@
+## [1.47.2](https://github.com/dimasma0305/gzcli/compare/v1.47.1...v1.47.2) (2026-04-17)
+
+### Bug Fixes
+
+* **schema:** correct networkMode enum values in challenge.schema.yaml ([aaa61dd](https://github.com/dimasma0305/gzcli/commit/aaa61dddf4a8ac71f7e1faed6bce6590eba6b519))
+
 ## [1.47.1](https://github.com/dimasma0305/gzcli/compare/v1.47.0...v1.47.1) (2026-04-16)
 
 ### Bug Fixes
