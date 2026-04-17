@@ -114,17 +114,28 @@ func (s *server) processUpload(ctx context.Context, event, category string, file
 		return err
 	}
 
-	destCategoryDir := filepath.Join(eventPath, category)
+	// Containment check: destCategoryDir must live beneath eventPath even
+	// after normalising the user-supplied category token.
+	destCategoryDir, err := safeJoin(eventPath, category)
+	if err != nil {
+		return fmt.Errorf("invalid category path: %w", err)
+	}
 	if err := os.MkdirAll(destCategoryDir, 0750); err != nil {
 		return fmt.Errorf("failed to ensure category directory: %w", err)
 	}
 
 	finalName := sanitizeChallengeDirName(chall.Name)
 	if finalName == "" {
-		finalName = filepath.Base(challengeRoot)
+		finalName = sanitizeChallengeDirName(filepath.Base(challengeRoot))
+	}
+	if finalName == "" {
+		return fmt.Errorf("unable to derive a safe challenge directory name")
 	}
 
-	destination := filepath.Join(destCategoryDir, finalName)
+	destination, err := safeJoin(destCategoryDir, finalName)
+	if err != nil {
+		return fmt.Errorf("invalid challenge destination: %w", err)
+	}
 	if err := os.RemoveAll(destination); err != nil {
 		return fmt.Errorf("failed to replace existing challenge: %w", err)
 	}
@@ -596,18 +607,58 @@ func sanitizeChallengeDirName(name string) string {
 	return fileutil.NormalizeFileName(name)
 }
 
+// safeJoin joins an untrusted child path onto a trusted base directory and
+// verifies the resulting absolute path is contained within base. It returns
+// the cleaned absolute path on success, and a descriptive error if the child
+// attempts to escape the base directory.
+func safeJoin(base, child string) (string, error) {
+	if base == "" {
+		return "", fmt.Errorf("base directory is empty")
+	}
+	if child == "" {
+		return "", fmt.Errorf("child path is empty")
+	}
+	absBase, err := filepath.Abs(filepath.Clean(base))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve base directory: %w", err)
+	}
+	cleanChild := filepath.Clean(child)
+	if filepath.IsAbs(cleanChild) {
+		return "", fmt.Errorf("child path %q is absolute", child)
+	}
+	absTarget, err := filepath.Abs(filepath.Join(absBase, cleanChild))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve target path: %w", err)
+	}
+	rel, err := filepath.Rel(absBase, absTarget)
+	if err != nil {
+		return "", fmt.Errorf("failed to compute relative path: %w", err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("path %q escapes base directory", child)
+	}
+	return absTarget, nil
+}
+
 func copyDir(src, dst string) error {
-	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+	absDst, err := filepath.Abs(filepath.Clean(dst))
+	if err != nil {
+		return fmt.Errorf("failed to resolve destination: %w", err)
+	}
+	return filepath.Walk(src, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		rel, err := filepath.Rel(src, path)
+		rel, err := filepath.Rel(src, p)
 		if err != nil {
 			return err
 		}
 
-		target := filepath.Join(dst, rel)
+		target, err := safeJoin(absDst, rel)
+		if err != nil {
+			return fmt.Errorf("copy target for %q rejected: %w", rel, err)
+		}
 
 		if info.IsDir() {
 			if err := os.MkdirAll(target, ensureDirWritable(info.Mode())); err != nil {
@@ -616,7 +667,7 @@ func copyDir(src, dst string) error {
 			return nil
 		}
 
-		if err := copyFile(path, target, info.Mode()); err != nil {
+		if err := copyFile(p, target, info.Mode(), absDst); err != nil {
 			return err
 		}
 
@@ -624,22 +675,37 @@ func copyDir(src, dst string) error {
 	})
 }
 
-func copyFile(src, dst string, mode fs.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
-		return fmt.Errorf("failed to create parent directory for %q: %w", dst, err)
+func copyFile(src, dst string, mode fs.FileMode, trustedRoot string) error {
+	// Re-verify that the resolved destination still lives within trustedRoot.
+	// The caller has already produced dst via safeJoin but we defensively
+	// re-check to make the contract explicit to static analysis tools.
+	absDst, err := filepath.Abs(filepath.Clean(dst))
+	if err != nil {
+		return fmt.Errorf("failed to resolve destination %q: %w", dst, err)
+	}
+	absRoot, err := filepath.Abs(filepath.Clean(trustedRoot))
+	if err != nil {
+		return fmt.Errorf("failed to resolve trusted root: %w", err)
+	}
+	rel, err := filepath.Rel(absRoot, absDst)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return fmt.Errorf("destination %q escapes trusted root %q", dst, trustedRoot)
 	}
 
-	//nolint:gosec // paths come from validated challenge directory
+	if err := os.MkdirAll(filepath.Dir(absDst), 0750); err != nil {
+		return fmt.Errorf("failed to create parent directory for %q: %w", absDst, err)
+	}
+
 	in, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("failed to open source file %q: %w", src, err)
 	}
 	defer func() { _ = in.Close() }()
 
-	//nolint:gosec // destination resides inside workspace event directory
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
+	//nolint:gosec // G304: absDst has been re-verified to lie under trustedRoot.
+	out, err := os.OpenFile(absDst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
-		return fmt.Errorf("failed to create destination file %q: %w", dst, err)
+		return fmt.Errorf("failed to create destination file %q: %w", absDst, err)
 	}
 	defer func() { _ = out.Close() }()
 

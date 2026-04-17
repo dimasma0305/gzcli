@@ -5,11 +5,45 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dimasma0305/gzcli/internal/gzcli/fileutil"
 	"github.com/dimasma0305/gzcli/internal/gzcli/gzapi"
 	"github.com/dimasma0305/gzcli/internal/log"
 )
+
+// resolveEventPath returns the absolute path to an event directory after
+// verifying that the resolved path is contained within {cwd}/events/. It
+// rejects empty names, path separators and traversal sequences to prevent
+// user-supplied input from escaping the events base directory.
+func resolveEventPath(cwd, eventName string) (string, error) {
+	if eventName == "" {
+		return "", fmt.Errorf("event name cannot be empty")
+	}
+	// Disallow any separators or traversal components in the event name:
+	// event names are expected to be a single directory component.
+	if strings.ContainsAny(eventName, `/\`) || eventName == "." || eventName == ".." {
+		return "", fmt.Errorf("invalid event name %q", eventName)
+	}
+
+	baseDir, err := filepath.Abs(filepath.Join(cwd, EVENTS_DIR))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve events directory: %w", err)
+	}
+
+	eventPath, err := filepath.Abs(filepath.Join(baseDir, eventName))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve event path: %w", err)
+	}
+
+	// Containment check: eventPath must be baseDir/<child>.
+	rel, err := filepath.Rel(baseDir, eventPath)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || strings.ContainsAny(rel, `/\`) {
+		return "", fmt.Errorf("event %q escapes events directory", eventName)
+	}
+
+	return eventPath, nil
+}
 
 const (
 	EVENTS_DIR   = "events"
@@ -198,14 +232,18 @@ func ListEvents() ([]string, error) {
 	return events, nil
 }
 
-// GetEventPath returns the absolute path to an event directory
+// GetEventPath returns the absolute path to an event directory. The event
+// name is validated to prevent path traversal outside the events directory.
 func GetEventPath(eventName string) (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 
-	eventPath := filepath.Join(dir, EVENTS_DIR, eventName)
+	eventPath, err := resolveEventPath(dir, eventName)
+	if err != nil {
+		return "", err
+	}
 	if _, err := os.Stat(eventPath); err != nil {
 		return "", fmt.Errorf("event %s does not exist: %w", eventName, err)
 	}
