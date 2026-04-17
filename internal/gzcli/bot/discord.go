@@ -46,7 +46,7 @@ type GameNotice struct {
 type Bot struct {
 	config *Config
 	db     *sql.DB
-	client webhook.Client
+	client *webhook.Client
 }
 
 // New creates a new Discord bot instance
