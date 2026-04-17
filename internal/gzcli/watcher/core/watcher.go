@@ -31,15 +31,22 @@ type Watcher struct {
 }
 
 // New creates a new file watcher instance
-func New(api *gzapi.GZAPI) (*Watcher, error) {
+func New(api *gzapi.GZAPI) (w *Watcher, err error) {
 	// Validate input
 	if api == nil {
 		return nil, fmt.Errorf("API client cannot be nil")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	// If construction fails after this point, the cancel MUST be invoked to
+	// avoid leaking the context; Stop() takes ownership on the happy path.
+	defer func() {
+		if err != nil {
+			cancel()
+		}
+	}()
 
-	w := &Watcher{
+	w = &Watcher{
 		api:           api,
 		ctx:           ctx,
 		cancel:        cancel,

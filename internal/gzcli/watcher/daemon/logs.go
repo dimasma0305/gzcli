@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -9,35 +10,62 @@ import (
 	"syscall"
 	"time"
 
-	"os/exec"
-
 	"github.com/dimasma0305/gzcli/internal/log"
 	tail "github.com/hpcloud/tail"
 )
 
-// ShowRecentLogs displays recent log entries if the log file exists
+// maxRecentLogLines is the number of trailing lines to display from a log file.
+const maxRecentLogLines = 5
+
+// ShowRecentLogs displays recent log entries if the log file exists.
+// The last maxRecentLogLines lines are read in-process to avoid spawning a
+// subprocess with a user-controlled path (gosec G204).
 func ShowRecentLogs(logFile string) {
 	if _, err := os.Stat(logFile); err != nil {
 		return // Log file doesn't exist
 	}
 
 	log.Info("")
-	log.Info("📋 Recent Activity (last 5 lines from log):")
+	log.Info("📋 Recent Activity (last %d lines from log):", maxRecentLogLines)
 
-	// Use tail command to get last few lines
-	cmd := exec.Command("tail", "-n", "5", logFile)
-	output, err := cmd.Output()
+	lines, err := readLastLines(logFile, maxRecentLogLines)
 	if err != nil {
 		log.Info("   (Unable to read log file)")
 		return
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 	for _, line := range lines {
-		if strings.TrimSpace(line) != "" {
-			log.Info("   %s", strings.TrimSpace(line))
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" {
+			log.Info("   %s", trimmed)
 		}
 	}
+}
+
+// readLastLines returns up to n trailing lines from path. Lines are returned
+// in file order (oldest first).
+func readLastLines(path string, n int) ([]string, error) {
+	//nolint:gosec // G304: logFile path is provided by the operator via CLI flag.
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+
+	ring := make([]string, 0, n)
+	scanner := bufio.NewScanner(f)
+	// Allow long log lines (default buffer is 64KiB).
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		if len(ring) == n {
+			ring = ring[1:]
+		}
+		ring = append(ring, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return ring, nil
 }
 
 // FollowLogs follows a log file and displays new content in real-time

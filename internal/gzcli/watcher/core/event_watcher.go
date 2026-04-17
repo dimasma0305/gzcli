@@ -60,7 +60,7 @@ type EventWatcher struct {
 }
 
 // NewEventWatcher creates a new event-specific watcher
-func NewEventWatcher(eventName string, api *gzapi.GZAPI, config watchertypes.WatcherConfig, db *database.DB, parentCtx context.Context) (*EventWatcher, error) {
+func NewEventWatcher(eventName string, api *gzapi.GZAPI, config watchertypes.WatcherConfig, db *database.DB, parentCtx context.Context) (ew *EventWatcher, err error) {
 	if api == nil {
 		return nil, fmt.Errorf("API client cannot be nil")
 	}
@@ -86,8 +86,15 @@ func NewEventWatcher(eventName string, api *gzapi.GZAPI, config watchertypes.Wat
 	}
 
 	ctx, cancel := context.WithCancel(parentCtx)
+	// If construction fails after this point, cancel MUST be invoked to avoid
+	// leaking the context; Stop() takes ownership on the happy path.
+	defer func() {
+		if err != nil {
+			cancel()
+		}
+	}()
 
-	ew := &EventWatcher{
+	ew = &EventWatcher{
 		eventName:          eventName,
 		eventPath:          eventPath,
 		api:                api,

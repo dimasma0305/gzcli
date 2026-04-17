@@ -3,6 +3,7 @@ package database
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -472,7 +473,7 @@ func TestDB_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < numGoroutines; i++ {
 		go func(id int) {
 			event := "ctf2025"
-			path := filepath.Join("web", "challenge", string(rune('0'+id)))
+			path := filepath.Join("web", "challenge", strconv.Itoa(id))
 
 			// Set mapping
 			err := db.SetChallengeMapping(event, path, id, "Test")
