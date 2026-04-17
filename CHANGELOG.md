@@ -1,3 +1,12 @@
+## [1.47.3](https://github.com/dimasma0305/gzcli/compare/v1.47.2...v1.47.3) (2026-04-17)
+
+### Bug Fixes
+
+* **bot:** adapt to disgo 0.19 webhook.NewWithURL returning *Client ([42bc92a](https://github.com/dimasma0305/gzcli/commit/42bc92ad54dec97d28abe5740c78c7dd726b119a))
+* **lint:** resolve gosec G115/G204/G118 lint failures ([0af00fd](https://github.com/dimasma0305/gzcli/commit/0af00fdae176c0e06bed5b3f0af6139f15d92c51))
+* **sec:** make TLS verification configurable (CodeQL go/disabled-certificate-check) ([b8036de](https://github.com/dimasma0305/gzcli/commit/b8036de40fcf34609b46acf0e5ffc8be53ef7b16)), closes [#nosec](https://github.com/dimasma0305/gzcli/issues/nosec)
+* **sec:** resolve CodeQL go/path-injection alerts ([43c7483](https://github.com/dimasma0305/gzcli/commit/43c748386bed006e3a1c8d1e1687adda74546124)), closes [#5](https://github.com/dimasma0305/gzcli/issues/5) [#6](https://github.com/dimasma0305/gzcli/issues/6) [#7](https://github.com/dimasma0305/gzcli/issues/7) [#9](https://github.com/dimasma0305/gzcli/issues/9) [#10](https://github.com/dimasma0305/gzcli/issues/10) [#11](https://github.com/dimasma0305/gzcli/issues/11)
+
 ## [1.47.2](https://github.com/dimasma0305/gzcli/compare/v1.47.1...v1.47.2) (2026-04-17)
 
 ### Bug Fixes
