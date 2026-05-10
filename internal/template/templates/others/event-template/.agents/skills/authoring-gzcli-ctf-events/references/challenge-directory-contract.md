@@ -34,6 +34,6 @@ Additional root entries may fail upload validation.
 - Start from the closest `.example/` template.
 - Rename the folder to the final challenge slug early.
 - Replace placeholder metadata in `challenge.yml` immediately.
-- Keep downloadable player artifacts in `dist/`.
+- Keep downloadable player artifacts in `dist/` — place raw files directly, **do not zip them**; gzcli automatically zips `dist/` contents when uploading/syncing.
 - Keep service code and build inputs in `src/`.
 - Keep the intended solution or solver in `solver/`.

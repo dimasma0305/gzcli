@@ -138,6 +138,25 @@ type AppSettings struct {
 		DisableStringReuse             bool    `json:"DisableStringReuse"`
 		ConfigurationLoader            *string `json:"ConfigurationLoader"`
 	} `json:"Kestrel"`
+	HoneypotConfig struct {
+		Enabled                   bool           `json:"Enabled"`
+		ListenAddress             string         `json:"ListenAddress"`
+		Ports                     []HoneypotPort `json:"Ports"`
+		ChainEnabled              bool           `json:"ChainEnabled"`
+		ChainThreshold            int            `json:"ChainThreshold"`
+		ChainWindowMinutes        int            `json:"ChainWindowMinutes"`
+		ChainSweepIntervalSeconds int            `json:"ChainSweepIntervalSeconds"`
+	} `json:"HoneypotConfig"`
+}
+
+// HoneypotPort describes a single TCP port that the GZCTF Inspector listens on
+// as a low-interaction honeypot. Banner is optional and may be empty for
+// protocols where the client speaks first (Redis, Postgres, MongoDB, Memcached).
+type HoneypotPort struct {
+	Name    string `json:"Name"`
+	Port    int    `json:"Port"`
+	Banner  string `json:"Banner"`
+	Enabled bool   `json:"Enabled"`
 }
 
 type Label struct {
