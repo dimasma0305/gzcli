@@ -1,3 +1,9 @@
+## [1.48.0](https://github.com/dimasma0305/gzcli/compare/v1.47.4...v1.48.0) (2026-05-10)
+
+### Features
+
+* **config:** add HoneypotConfig structure and update appsettings.json template ([88b4e6b](https://github.com/dimasma0305/gzcli/commit/88b4e6b9dc3ee36192aa9e2e39507a6b4c490e77))
+
 ## [1.47.4](https://github.com/dimasma0305/gzcli/compare/v1.47.3...v1.47.4) (2026-04-17)
 
 ### Bug Fixes
