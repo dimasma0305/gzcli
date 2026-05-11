@@ -23,7 +23,7 @@ container:
     cpuCount: 10
     storageLimit: 1024
     exposePort: 5000
-    enableTrafficCapture: false
+    enableTrafficCapture: true
 
 scripts:
     start: cd src && docker build -t {{.slug}} .

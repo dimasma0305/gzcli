@@ -99,6 +99,7 @@ properties:
         default: "Open"
       enableTrafficCapture:
         type: boolean
+        default: true
         description: Indicates if network traffic capture is enabled for the container. This can be useful for analyzing network activity during the challenge.
     required:
       - containerImage
