@@ -1,3 +1,9 @@
+## [1.50.0](https://github.com/dimasma0305/gzcli/compare/v1.49.0...v1.50.0) (2026-05-11)
+
+### Features
+
+* **config:** add CheatDetectionConfig to appsettings and update related settings in JSON and compose files ([2a3b49f](https://github.com/dimasma0305/gzcli/commit/2a3b49f0546db84c136acb67261c8cec928933e8))
+
 ## [1.49.0](https://github.com/dimasma0305/gzcli/compare/v1.48.0...v1.49.0) (2026-05-11)
 
 ### Features
