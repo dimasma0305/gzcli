@@ -6,7 +6,10 @@ Expected event-root files and directories:
 - `.gzevent`: event metadata such as title, schedule, visibility, summary, and writeup policy
 - `.example/`: starter challenge templates for common deployment models
 - `.structure/`: reusable scaffold copied into challenge folders by `gzcli structure`
-- `.agents/skills/`: project-local Codex skills
+- `.agents/skills/`: shared skill references plus Codex/OpenAI-flavored manifests
+- `.claude/skills/`: project-local Claude Code skills (slash-invocable as `/authoring-gzcli-ctf-events`)
+- `AGENTS.md`: auto-loaded by Codex; points at `.agents/skills/`
+- `CLAUDE.md`: auto-loaded by Claude Code; points at `.claude/skills/`
 - `README.md`: participant and author guidance
 - `Kriteria.md`: organizer challenge criteria
 - Category directories:

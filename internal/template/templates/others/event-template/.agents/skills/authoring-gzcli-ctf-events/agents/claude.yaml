@@ -1,0 +1,7 @@
+interface:
+  display_name: "gzcli CTF Event Authoring"
+  short_description: "Event repo structure, challenge packaging, and sync rules"
+  default_prompt: "Use /authoring-gzcli-ctf-events to create, review, or restructure this gzcli event repo or challenge and enforce the expected event layout, challenge packaging, and sync/upload rules."
+skill:
+  path: ".claude/skills/authoring-gzcli-ctf-events/SKILL.md"
+  invoke_as: "/authoring-gzcli-ctf-events"
