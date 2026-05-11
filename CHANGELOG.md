@@ -1,3 +1,9 @@
+## [1.49.0](https://github.com/dimasma0305/gzcli/compare/v1.48.0...v1.49.0) (2026-05-11)
+
+### Features
+
+* **bot:** add scoreboard freeze logic and related notice suppression functionality ([d5e8040](https://github.com/dimasma0305/gzcli/commit/d5e8040ad95bbb7237aeded4f2d2d12c158e38cf))
+
 ## [1.48.0](https://github.com/dimasma0305/gzcli/compare/v1.47.4...v1.48.0) (2026-05-10)
 
 ### Features
