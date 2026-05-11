@@ -2,20 +2,6 @@ name: '{{.Workspace}}'
 # Project Root: {{.RootFolder}}
 
 services:
-  bot:
-    build:
-      context: ./manager
-      dockerfile: Dockerfile
-    command: |
-      gzcli bot \
-        --webhook "$WEBHOOK_URL" \
-        --db-host "$DB_HOST" \
-        --db-port "$DB_PORT" \
-        --db-user "$DB_USER" \
-        --db-password "$DB_PASSWORD" \
-        --db-name "$DB_NAME"
-    networks:
-      app_net:
   gzctf:
     image: gztime/gzctf:latest
     restart: always

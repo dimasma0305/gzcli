@@ -147,6 +147,12 @@ type AppSettings struct {
 		ChainWindowMinutes        int            `json:"ChainWindowMinutes"`
 		ChainSweepIntervalSeconds int            `json:"ChainSweepIntervalSeconds"`
 	} `json:"HoneypotConfig"`
+	FlagEgressConfig struct {
+		Enabled              bool `json:"Enabled"`
+		WindowSeconds        int  `json:"WindowSeconds"`
+		MinPacketDataLength  int  `json:"MinPacketDataLength"`
+		FlushIntervalSeconds int  `json:"FlushIntervalSeconds"`
+	} `json:"FlagEgressConfig"`
 }
 
 // HoneypotPort describes a single TCP port that the GZCTF Inspector listens on

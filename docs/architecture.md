@@ -101,7 +101,6 @@ Contains core application logic:
 - Environment-specific configs
 
 **`event/` - Event system**
-- Webhooks (Discord, etc.)
 - Event notifications
 - Logging
 
@@ -420,9 +419,6 @@ public_entry: https://public.example.com
 creds:
   username: admin
   password: password
-
-event:
-  discord_webhook: https://discord.com/...
 
 watcher:
   debounce: 2s

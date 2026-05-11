@@ -482,53 +482,6 @@ Saves configuration to file.
 err := config.Save(cfg, ".gzctf/conf.yaml")
 ```
 
-## event Package
-
-Event handling and webhook notifications.
-
-### Type: Event
-
-```go
-type Event struct {
-    DiscordWebhook string
-    // ... other webhooks
-}
-```
-
-### Methods
-
-**`NewEvent(config EventConfig) *Event`**
-
-Creates a new event handler.
-
-```go
-event := event.NewEvent(config.Event)
-```
-
-**`OnSync(challenge *Challenge) error`**
-
-Sends notification when challenge is synced.
-
-```go
-err := event.OnSync(challenge)
-```
-
-**`OnError(err error) error`**
-
-Sends error notification.
-
-```go
-event.OnError(syncError)
-```
-
-**`SendDiscord(message string) error`**
-
-Sends a Discord webhook message.
-
-```go
-err := event.SendDiscord("Challenge synced successfully!")
-```
-
 ## utils Package
 
 Common utility functions.

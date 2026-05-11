@@ -21,9 +21,8 @@ func TestCTFTemplateStructure(t *testing.T) {
 
 	// Test data
 	initInfo := map[string]string{
-		"url":            "https://test.ctf.com",
-		"publicEntry":    "https://public.ctf.com",
-		"discordWebhook": "https://discord.com/webhook/test",
+		"url":         "https://test.ctf.com",
+		"publicEntry": "https://public.ctf.com",
 	}
 
 	// Run CTFTemplate

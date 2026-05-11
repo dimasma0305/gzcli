@@ -32,14 +32,13 @@ func JavaExploitationPlus(destination string, info any) []error {
 
 // CTFInfo contains configuration information for CTF template generation
 type CTFInfo struct {
-	XorKey         string
-	PublicEntry    string
-	DiscordWebhook string
-	URL            string
-	Username       string
-	Password       string
-	Workspace      string
-	RootFolder     string
+	XorKey      string
+	PublicEntry string
+	URL         string
+	Username    string
+	Password    string
+	Workspace   string
+	RootFolder  string
 }
 
 // EventInfo contains configuration information for event template generation
@@ -60,13 +59,12 @@ func randomize(n int) string {
 
 // CTFTemplate generates a complete CTF template structure at the destination
 func CTFTemplate(destination string, info any) []error {
-	var url, publicEntry, discordWebhook, workspace string
+	var url, publicEntry, workspace string
 
 	// Extract values from info map
 	if infoMap, ok := info.(map[string]string); ok {
 		url = infoMap["url"]
 		publicEntry = infoMap["publicEntry"]
-		discordWebhook = infoMap["discordWebhook"]
 		workspace = infoMap["workspace"]
 	}
 
@@ -77,14 +75,13 @@ func CTFTemplate(destination string, info any) []error {
 	}
 
 	ctfInfo := &CTFInfo{
-		XorKey:         randomize(16),
-		Username:       "admin",
-		Password:       "ADMIN" + randomize(16) + "ADMIN",
-		URL:            url,
-		PublicEntry:    publicEntry,
-		DiscordWebhook: discordWebhook,
-		Workspace:      workspace,
-		RootFolder:     absDest,
+		XorKey:      randomize(16),
+		Username:    "admin",
+		Password:    "ADMIN" + randomize(16) + "ADMIN",
+		URL:         url,
+		PublicEntry: publicEntry,
+		Workspace:   workspace,
+		RootFolder:  absDest,
 	}
 
 	// Generate .gzctf/ directory with server files
