@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"github.com/dimasma0305/gzcli/internal/log"
 	"github.com/dimasma0305/gzcli/internal/template/other"
 )
+
+const defaultEventDuration = 48 * time.Hour
 
 var eventCmd = &cobra.Command{
 	Use:   "event",
@@ -108,10 +111,94 @@ This creates/updates the .gzcli/current-event file.`,
 }
 
 var (
-	eventCreateTitle string
-	eventCreateStart string
-	eventCreateEnd   string
+	eventCreateTitle    string
+	eventCreateStart    string
+	eventCreateEnd      string
+	eventCreateDuration string
 )
+
+// eventTimeFormats lists the formats accepted by --start / --end, in order of
+// preference. Formats without an explicit timezone are interpreted as UTC.
+var eventTimeFormats = []string{
+	time.RFC3339,
+	"2006-01-02T15:04:05",
+	"2006-01-02T15:04",
+	"2006-01-02 15:04:05",
+	"2006-01-02 15:04",
+	"2006-01-02",
+}
+
+// parseEventTime accepts "now", any of the eventTimeFormats, and returns a
+// UTC time normalized to RFC3339 second precision when written back out.
+func parseEventTime(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	if strings.EqualFold(s, "now") {
+		return time.Now().UTC().Truncate(time.Second), nil
+	}
+	for _, layout := range eventTimeFormats {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t.UTC(), nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("invalid time %q (try 2026-05-18, 2026-05-18T08:30, or 2026-05-18T08:30:00Z)", s)
+}
+
+// parseEventDuration accepts Go durations (48h, 2h30m, 30m) plus a "Nd" shorthand for days.
+func parseEventDuration(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	if rest, ok := strings.CutSuffix(s, "d"); ok {
+		if n, err := strconv.Atoi(rest); err == nil && n > 0 {
+			return time.Duration(n) * 24 * time.Hour, nil
+		}
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid duration %q (try 48h, 2h30m, or 2d)", s)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("duration must be positive, got %q", s)
+	}
+	return d, nil
+}
+
+// resolveEventTimes computes the start/end RFC3339 strings from the user's
+// flags. Missing values fall back to: start=now, end=start+duration (default
+// 48h, overridden by --duration). --end always wins over --duration.
+func resolveEventTimes(startFlag, endFlag, durationFlag string) (string, string, error) {
+	var start time.Time
+	if startFlag == "" {
+		start = time.Now().UTC().Truncate(time.Second)
+	} else {
+		t, err := parseEventTime(startFlag)
+		if err != nil {
+			return "", "", fmt.Errorf("--start: %w", err)
+		}
+		start = t
+	}
+
+	var end time.Time
+	switch {
+	case endFlag != "":
+		t, err := parseEventTime(endFlag)
+		if err != nil {
+			return "", "", fmt.Errorf("--end: %w", err)
+		}
+		end = t
+	case durationFlag != "":
+		d, err := parseEventDuration(durationFlag)
+		if err != nil {
+			return "", "", fmt.Errorf("--duration: %w", err)
+		}
+		end = start.Add(d)
+	default:
+		end = start.Add(defaultEventDuration)
+	}
+
+	if !end.After(start) {
+		return "", "", fmt.Errorf("end (%s) must be after start (%s)", end.Format(time.RFC3339), start.Format(time.RFC3339))
+	}
+	return start.Format(time.RFC3339), end.Format(time.RFC3339), nil
+}
 
 var eventCreateCmd = &cobra.Command{
 	Use:   "create [event-name]",
@@ -122,41 +209,51 @@ This command will:
   • Create events/[name]/ directory
   • Create a template .gzevent file with provided details
   • Initialize challenge category directories
-  • Auto-set as current event if it's the only event`,
-	Example: `  # Create event with required flags
-  gzcli event create myctf2024 --title "My CTF 2024" --start 2024-12-01T00:00:00Z --end 2024-12-03T00:00:00Z
+  • Auto-set as current event if it's the only event
+
+All flags are optional. When omitted: --title defaults to the event name,
+--start defaults to now (UTC), and --end defaults to start + 48h (override
+with --duration, e.g. 24h or 3d). --start / --end accept friendly formats
+like 2026-05-18, 2026-05-18T08:30, or full RFC3339.`,
+	Example: `  # Quickest form — title=lks, start=now, end=now+48h
+  gzcli event create lks
+
+  # Custom duration
+  gzcli event create lks --start 2026-05-18 --duration 3d
+
+  # Explicit start + end (date-only, treated as UTC midnight)
+  gzcli event create lks --start 2026-05-18 --end 2026-05-20
+
+  # Full RFC3339 (timezone explicit)
+  gzcli event create lks --start 2026-05-18T08:29:57Z --end 2026-05-20T08:29:57Z
 
   # Use TAB to autocomplete event names and dates
   gzcli event create <TAB>`,
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: eventNameCompletion,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		eventName := args[0]
 
-		// Validate required flags
-		if eventCreateTitle == "" {
-			log.Error("--title flag is required")
-			_ = cmd.Usage()
-			return
+		title := eventCreateTitle
+		if title == "" {
+			title = eventName
 		}
-		if eventCreateStart == "" {
-			log.Error("--start flag is required")
-			_ = cmd.Usage()
-			return
-		}
-		if eventCreateEnd == "" {
-			log.Error("--end flag is required")
-			_ = cmd.Usage()
+
+		start, end, err := resolveEventTimes(eventCreateStart, eventCreateEnd, eventCreateDuration)
+		if err != nil {
+			log.Error("%v", err)
 			return
 		}
 
 		log.Info("Creating new event: %s", eventName)
+		log.Info("  title: %s", title)
+		log.Info("  start: %s", start)
+		log.Info("  end:   %s", end)
 
-		// Prepare event info from flags
 		eventInfo := map[string]string{
-			"title": eventCreateTitle,
-			"start": eventCreateStart,
-			"end":   eventCreateEnd,
+			"title": title,
+			"start": start,
+			"end":   end,
 		}
 
 		// Create the event structure
@@ -433,11 +530,11 @@ func padZero(n int) string {
 func eventNameCompletion(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 	// If event name is already provided, suggest flags
 	if len(args) >= 1 {
-		// Return flag suggestions
 		flags := []string{
-			"--title\tEvent title (required)",
-			"--start\tStart date in RFC3339 format (required)",
-			"--end\tEnd date in RFC3339 format (required)",
+			"--title\tEvent title (default: event name)",
+			"--start\tStart time (default: now)",
+			"--end\tEnd time (default: start + duration)",
+			"--duration\tEvent length, e.g. 48h or 3d (default: 48h)",
 		}
 		return flags, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -467,12 +564,25 @@ func init() {
 	eventCmd.AddCommand(eventSwitchCmd)
 	eventCmd.AddCommand(eventCreateCmd)
 
-	// Add flags for event create command
-	eventCreateCmd.Flags().StringVar(&eventCreateTitle, "title", "", "Event title (required)")
-	eventCreateCmd.Flags().StringVar(&eventCreateStart, "start", "", "Start date in RFC3339 format, e.g., 2024-12-01T00:00:00Z (required)")
-	eventCreateCmd.Flags().StringVar(&eventCreateEnd, "end", "", "End date in RFC3339 format, e.g., 2024-12-03T00:00:00Z (required)")
+	// Add flags for event create command. All are optional.
+	eventCreateCmd.Flags().StringVar(&eventCreateTitle, "title", "", "Event title (default: event name)")
+	eventCreateCmd.Flags().StringVar(&eventCreateStart, "start", "", "Start time, e.g. 2026-05-18, 2026-05-18T08:30, or RFC3339 (default: now)")
+	eventCreateCmd.Flags().StringVar(&eventCreateEnd, "end", "", "End time in the same formats as --start (default: start + duration)")
+	eventCreateCmd.Flags().StringVar(&eventCreateDuration, "duration", "", "Event length, e.g. 48h, 2h30m, or 3d (default: 48h; ignored if --end is set)")
 
 	// Add intelligent shell completion for date flags
 	_ = eventCreateCmd.RegisterFlagCompletionFunc("start", dateCompletion)
 	_ = eventCreateCmd.RegisterFlagCompletionFunc("end", dateCompletion)
+	_ = eventCreateCmd.RegisterFlagCompletionFunc("duration", durationCompletion)
+}
+
+// durationCompletion offers common event-length presets.
+func durationCompletion(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	return []string{
+		"24h\t1 day",
+		"36h\t1.5 days",
+		"48h\t2 days (default)",
+		"72h\t3 days",
+		"7d\t1 week",
+	}, cobra.ShellCompDirectiveNoFileComp
 }
