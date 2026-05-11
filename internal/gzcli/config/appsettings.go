@@ -153,6 +153,11 @@ type AppSettings struct {
 		MinPacketDataLength  int  `json:"MinPacketDataLength"`
 		FlushIntervalSeconds int  `json:"FlushIntervalSeconds"`
 	} `json:"FlagEgressConfig"`
+	CheatDetectionConfig struct {
+		LogContainerAccess                bool `json:"LogContainerAccess"`
+		DelayedSubmissionThresholdMinutes int  `json:"DelayedSubmissionThresholdMinutes"`
+		InstantSubmitThresholdSeconds     int  `json:"InstantSubmitThresholdSeconds"`
+	} `json:"CheatDetectionConfig"`
 }
 
 // HoneypotPort describes a single TCP port that the GZCTF Inspector listens on

@@ -44,6 +44,12 @@ services:
     networks:
       traefik:
       app_net:
+      # PlatformProxy mode (appsettings.json -> ContainerProvider.PortMappingType)
+      # requires gzctf to reach challenge container IPs. The "challenges" network
+      # is the same name as ContainerProvider.DockerConfig.ChallengeNetwork; it is
+      # declared external below because gzcli also creates/uses it for the
+      # challenge containers it spawns via /var/run/docker.sock.
+      challenges:
     labels:
       - "traefik.enable=true"
       # docker network to use
@@ -97,3 +103,8 @@ networks:
     ipam:
       config:
         - subnet: 172.28.0.0/16
+  # The shared challenges network is created externally (by gzcli or manually
+  # via `docker network create challenges`) so gzctf can connect to challenge
+  # container IPs when PortMappingType=PlatformProxy.
+  challenges:
+    external: true
