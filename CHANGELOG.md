@@ -1,3 +1,9 @@
+## [1.51.0](https://github.com/dimasma0305/gzcli/compare/v1.50.0...v1.51.0) (2026-05-11)
+
+### Features
+
+* **event:** smart defaults and flexible time parsing for `event create` ([9d69cd6](https://github.com/dimasma0305/gzcli/commit/9d69cd62b1521ec8a9dd4babd6c4892dc3c01f6b))
+
 ## [1.50.0](https://github.com/dimasma0305/gzcli/compare/v1.49.0...v1.50.0) (2026-05-11)
 
 ### Features
