@@ -1,3 +1,9 @@
+## [1.53.0](https://github.com/dimasma0305/gzcli/compare/v1.52.0...v1.53.0) (2026-05-11)
+
+### Features
+
+* **template:** default enableTrafficCapture to true for container challenges ([0db8fd1](https://github.com/dimasma0305/gzcli/commit/0db8fd1253b2607ba9957ea6061918bb66d396bb))
+
 ## [1.52.0](https://github.com/dimasma0305/gzcli/compare/v1.51.0...v1.52.0) (2026-05-11)
 
 ### Features
