@@ -33,7 +33,7 @@ func TestGZAPI_CreateAssets(t *testing.T) {
 			}
 
 			r.Body = http.MaxBytesReader(w, r.Body, 32<<20)
-			if err := r.ParseMultipartForm(32 << 20); err != nil {
+			if err := r.ParseMultipartForm(32 << 20); err != nil { // #nosec G120 -- test mock; request body is bounded by MaxBytesReader above
 				t.Errorf("Failed to parse multipart form: %v", err)
 			}
 

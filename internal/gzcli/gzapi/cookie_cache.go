@@ -162,6 +162,7 @@ func storedCookieFromHTTPCookie(c *http.Cookie) storedCookie {
 }
 
 func (c storedCookie) toHTTPCookie() *http.Cookie {
+	// #nosec G124 -- security attributes are round-tripped from the origin Set-Cookie via storedCookieFromHTTPCookie
 	return &http.Cookie{
 		Name:     c.Name,
 		Value:    c.Value,

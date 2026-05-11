@@ -83,7 +83,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	data := s.baseViewData()
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
-	if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+	if err := r.ParseMultipartForm(maxUploadBytes); err != nil { // #nosec G120 -- request body is bounded by MaxBytesReader above
 		data.ErrorMsg = friendlyError(err)
 		s.renderWithStatus(w, data, http.StatusBadRequest)
 		return
