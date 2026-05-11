@@ -2,7 +2,74 @@ package bot
 
 import (
 	"testing"
+	"time"
 )
+
+func TestSuppressedByFreeze(t *testing.T) {
+	gameStart := time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC)
+	freeze := gameStart.Add(2 * time.Hour)
+	end := gameStart.Add(4 * time.Hour)
+
+	freezePtr := func(t time.Time) *time.Time { return &t }
+
+	cases := []struct {
+		name      string
+		notice    GameNotice
+		now       time.Time
+		suppress  bool
+	}{
+		{
+			name:     "blood pre-freeze: not suppressed",
+			notice:   GameNotice{NoticeType: NoticeTypeFirstBlood, PublishTimeUtc: gameStart.Add(time.Hour), GameFreezeUtc: freezePtr(freeze), GameEndUtc: end},
+			now:      gameStart.Add(time.Hour),
+			suppress: false,
+		},
+		{
+			name:     "blood inside freeze window: suppressed",
+			notice:   GameNotice{NoticeType: NoticeTypeSecondBlood, PublishTimeUtc: freeze.Add(15 * time.Minute), GameFreezeUtc: freezePtr(freeze), GameEndUtc: end},
+			now:      freeze.Add(20 * time.Minute),
+			suppress: true,
+		},
+		{
+			name:     "blood inside freeze, but game already ended: not suppressed (auto-reveal)",
+			notice:   GameNotice{NoticeType: NoticeTypeThirdBlood, PublishTimeUtc: freeze.Add(15 * time.Minute), GameFreezeUtc: freezePtr(freeze), GameEndUtc: end},
+			now:      end.Add(time.Minute),
+			suppress: false,
+		},
+		{
+			name:     "hint inside freeze: not suppressed (no ranking leak)",
+			notice:   GameNotice{NoticeType: NoticeTypeNewHint, PublishTimeUtc: freeze.Add(15 * time.Minute), GameFreezeUtc: freezePtr(freeze), GameEndUtc: end},
+			now:      freeze.Add(20 * time.Minute),
+			suppress: false,
+		},
+		{
+			name:     "new challenge inside freeze: not suppressed",
+			notice:   GameNotice{NoticeType: NoticeTypeNewChallenge, PublishTimeUtc: freeze.Add(15 * time.Minute), GameFreezeUtc: freezePtr(freeze), GameEndUtc: end},
+			now:      freeze.Add(20 * time.Minute),
+			suppress: false,
+		},
+		{
+			name:     "no freeze configured: never suppressed",
+			notice:   GameNotice{NoticeType: NoticeTypeFirstBlood, PublishTimeUtc: gameStart.Add(3 * time.Hour), GameFreezeUtc: nil, GameEndUtc: end},
+			now:      gameStart.Add(3*time.Hour + time.Minute),
+			suppress: false,
+		},
+		{
+			name:     "blood at exact freeze instant: suppressed (>= freeze)",
+			notice:   GameNotice{NoticeType: NoticeTypeFirstBlood, PublishTimeUtc: freeze, GameFreezeUtc: freezePtr(freeze), GameEndUtc: end},
+			now:      freeze.Add(time.Second),
+			suppress: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := suppressedByFreeze(&tc.notice, tc.now)
+			if got != tc.suppress {
+				t.Fatalf("suppressedByFreeze=%v, want %v", got, tc.suppress)
+			}
+		})
+	}
+}
 
 func TestNew(t *testing.T) {
 	tests := []struct {

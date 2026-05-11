@@ -39,7 +39,48 @@ type GameNotice struct {
 	Values         []string
 	PublishTimeUtc time.Time
 	GameID         int
-	GameTitle      string // Game title from JOIN with Games table
+	GameTitle      string     // Game title from JOIN with Games table
+	GameFreezeUtc  *time.Time // Optional scoreboard freeze time (ICPC-style); nil if not configured
+	GameEndUtc     time.Time  // Game end time — bloods become public at this point
+}
+
+// Notice type constants (mirror GZ::CTF's NoticeType enum used in the GameNotices table).
+const (
+	NoticeTypeFirstBlood   = 1
+	NoticeTypeSecondBlood  = 2
+	NoticeTypeThirdBlood   = 3
+	NoticeTypeNewHint      = 4
+	NoticeTypeNewChallenge = 5
+)
+
+// isBloodNotice returns true for notice types that reveal scoring/ranking
+// information, which the scoreboard freeze is designed to hide.
+func isBloodNotice(noticeType int) bool {
+	switch noticeType {
+	case NoticeTypeFirstBlood, NoticeTypeSecondBlood, NoticeTypeThirdBlood:
+		return true
+	}
+	return false
+}
+
+// suppressedByFreeze returns true iff this notice should be skipped because the
+// game is currently frozen and posting it would leak ranking information that
+// the public scoreboard is hiding. Matches the server's branching:
+// freeze applies when now ∈ [FreezeTimeUtc, EndTimeUtc) AND the notice was
+// published in that same window. After EndTimeUtc the game is over and bloods
+// are public, so no suppression.
+func suppressedByFreeze(notice *GameNotice, now time.Time) bool {
+	if !isBloodNotice(notice.NoticeType) {
+		return false
+	}
+	if notice.GameFreezeUtc == nil {
+		return false
+	}
+	freeze := *notice.GameFreezeUtc
+	if now.Before(freeze) || !now.Before(notice.GameEndUtc) {
+		return false
+	}
+	return !notice.PublishTimeUtc.Before(freeze) && notice.PublishTimeUtc.Before(notice.GameEndUtc)
 }
 
 // Bot manages Discord notifications for CTF events
@@ -256,9 +297,11 @@ func (b *Bot) createEmbed(notice *GameNotice) *discord.Embed {
 }
 
 // fetchNewNotices retrieves new notices from the database with game title
+// and freeze metadata. FreezeTimeUtc is nullable; EndTimeUtc is required.
 func (b *Bot) fetchNewNotices(lastNoticeID int) ([]GameNotice, error) {
 	query := `
-		SELECT n."Id", n."Type", n."Values", n."PublishTimeUtc", n."GameId", g."Title"
+		SELECT n."Id", n."Type", n."Values", n."PublishTimeUtc", n."GameId",
+		       g."Title", g."FreezeTimeUtc", g."EndTimeUtc"
 		FROM "GameNotices" n
 		INNER JOIN "Games" g ON n."GameId" = g."Id"
 		WHERE n."Id" > $1
@@ -277,11 +320,18 @@ func (b *Bot) fetchNewNotices(lastNoticeID int) ([]GameNotice, error) {
 	for rows.Next() {
 		var notice GameNotice
 		var values string
+		var freeze sql.NullTime
 
-		err := rows.Scan(&notice.ID, &notice.NoticeType, &values, &notice.PublishTimeUtc, &notice.GameID, &notice.GameTitle)
+		err := rows.Scan(
+			&notice.ID, &notice.NoticeType, &values, &notice.PublishTimeUtc, &notice.GameID,
+			&notice.GameTitle, &freeze, &notice.GameEndUtc,
+		)
 		if err != nil {
 			log.Error("Error scanning row: %v", err)
 			continue
+		}
+		if freeze.Valid {
+			notice.GameFreezeUtc = &freeze.Time
 		}
 
 		err = json.Unmarshal([]byte(values), &notice.Values)
@@ -298,8 +348,17 @@ func (b *Bot) fetchNewNotices(lastNoticeID int) ([]GameNotice, error) {
 
 // processNotices processes and sends Discord notifications for notices
 func (b *Bot) processNotices(notices []GameNotice) {
+	now := time.Now().UTC()
 	for _, notice := range notices {
 		sanitizeNoticeValues(&notice)
+
+		if suppressedByFreeze(&notice, now) {
+			log.Debug(
+				"Suppressing blood notice ID %d (type %d) — game %d is in freeze window",
+				notice.ID, notice.NoticeType, notice.GameID,
+			)
+			continue
+		}
 
 		embed := b.createEmbed(&notice)
 		if embed == nil {

@@ -21,6 +21,17 @@ services:
     restart: always
     environment:
       - "LC_ALL=en_US.UTF-8"
+    # Honeypot listener ports. Each port matches an entry in
+    # appsettings.json -> HoneypotConfig.Ports. Drop ports here that you
+    # do not want exposed (or disable per-entry in appsettings.json).
+    ports:
+      - "2222:2222"   # ssh honeypot
+      - "3306:3306"   # mysql honeypot
+      - "5432:5432"   # postgres honeypot
+      - "6379:6379"   # redis honeypot
+      - "11211:11211" # memcached honeypot
+      - "27017:27017" # mongo honeypot
+      - "9200:9200"   # elasticsearch honeypot
     deploy:
       resources:
         limits:
