@@ -1,3 +1,9 @@
+## [1.52.0](https://github.com/dimasma0305/gzcli/compare/v1.51.0...v1.52.0) (2026-05-11)
+
+### Features
+
+* **template:** add Claude Code agent support to event template ([4d70e94](https://github.com/dimasma0305/gzcli/commit/4d70e94d2f3eb567b0f8e77b63d2a7499579152c))
+
 ## [1.51.0](https://github.com/dimasma0305/gzcli/compare/v1.50.0...v1.51.0) (2026-05-11)
 
 ### Features
